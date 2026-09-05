@@ -38,6 +38,15 @@ h1 { margin: 0; font-size: clamp(1.5rem, 4vw, 2.4rem); letter-spacing: -.045em; 
 
 .game-frame { position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 24px; box-shadow: 0 30px 80px rgba(0,0,0,.45); background: #87d7dc; }
 canvas { display: block; width: 100%; height: auto; aspect-ratio: 16/9; touch-action: none; }
+.fullscreen-button { position:absolute; top:12px; left:12px; z-index:4; width:46px; height:46px; border:1px solid #83dcc8; border-radius:13px; background:#102936; color:#fff8de; cursor:pointer; touch-action:manipulation; }
+.fullscreen-button svg { width:25px; height:25px; vertical-align:middle; }
+.fullscreen-button:focus-visible { outline:3px solid #ffcb67; outline-offset:3px; }
+.fullscreen-status { position:absolute; z-index:5; top:65px; left:12px; max-width:260px; background:#102936; border-radius:8px; padding:8px; font-size:13px; }
+.fullscreen-status:empty { display:none; }
+.game-frame:fullscreen { display:flex; align-items:center; justify-content:center; width:100vw; height:100vh; border:0; border-radius:0; background:#08111f; }
+.game-frame:fullscreen canvas { width:min(100vw, 177.777778vh); height:auto; flex:none; }
+.game-frame:-webkit-full-screen { display:flex; align-items:center; justify-content:center; width:100vw; height:100vh; border:0; border-radius:0; background:#08111f; }
+.game-frame:-webkit-full-screen canvas { width:min(100vw, 177.777778vh); height:auto; flex:none; }
 
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(6, 20, 30, .32); backdrop-filter: blur(4px); transition: opacity .2s; }
 .overlay.hidden { opacity: 0; pointer-events: none; }
@@ -71,6 +80,10 @@ kbd { padding: 2px 6px; border: 1px solid #43505b; border-radius: 4px; color: #b
       </header>
 
       <section class="game-frame">
+        <button id="fullscreenButton" class="fullscreen-button" type="button" aria-label="Enter fullscreen" title="Enter fullscreen" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path id="fullscreenIcon" d="M9 3H3v6 M15 3h6v6 M3 15v6h6 M21 15v6h-6"/></svg>
+        </button>
+        <div id="fullscreenStatus" class="fullscreen-status" role="status" aria-live="polite"></div>
         <canvas id="game" width="960" height="540" aria-label="Side-scrolling platform game"></canvas>
         <div id="startOverlay" class="overlay">
           <div class="card">
@@ -106,6 +119,37 @@ const ctx = canvas.getContext("2d");
 const overlay = document.querySelector("#startOverlay");
 const startButton = document.querySelector("#startButton");
 const soundButton = document.querySelector("#soundButton");
+const gameFrame = document.querySelector('.game-frame');
+const fullscreenButton = document.querySelector('#fullscreenButton');
+const fullscreenStatus = document.querySelector('#fullscreenStatus');
+function fullscreenElement(){return document.fullscreenElement || document.webkitFullscreenElement;}
+function syncFullscreen(){
+  const active=fullscreenElement()===gameFrame;
+  fullscreenButton.setAttribute('aria-pressed',String(active));
+  fullscreenButton.setAttribute('aria-label',active?'Exit fullscreen':'Enter fullscreen');
+  fullscreenButton.title=active?'Exit fullscreen (Escape)':'Enter fullscreen';
+  document.querySelector('#fullscreenIcon').setAttribute('d',active?'M3 9h6V3 M21 9h-6V3 M9 21v-6H3 M15 21v-6h6':'M9 3H3v6 M15 3h6v6 M3 15v6h6 M21 15v6h-6');
+}
+fullscreenButton.addEventListener('click',async()=>{
+  fullscreenStatus.textContent='';
+  try {
+    if(fullscreenElement()===gameFrame){
+      const exit=document.exitFullscreen || document.webkitExitFullscreen;
+      if(!exit)throw new Error('unsupported');await exit.call(document);
+    } else {
+      const enter=gameFrame.requestFullscreen || gameFrame.webkitRequestFullscreen;
+      if(!enter){fullscreenStatus.textContent='Fullscreen is unavailable in this browser. You can keep playing here.';return;}
+      await enter.call(gameFrame);
+    }
+  } catch {fullscreenStatus.textContent='Fullscreen could not change. Please try again or keep playing here.';}
+  syncFullscreen();fullscreenButton.blur();
+});
+document.addEventListener('fullscreenchange',syncFullscreen);
+document.addEventListener('webkitfullscreenchange',syncFullscreen);
+// Embedded browser previews may forward Escape instead of handling it natively.
+window.addEventListener('keydown',event=>{
+  if(event.code==='Escape'&&fullscreenElement()===gameFrame)fullscreenButton.click();
+});
 const W = canvas.width, H = canvas.height, WORLD_W = 4800;
 const keys = new Set();
 let state = "title", cameraX = 0, lastTime = 0, soundOn = true, audioCtx;
@@ -333,9 +377,13 @@ function drawShrine(time) {
 }
 
 function drawHUD() {
+  ctx.save();
+  const hudScale=Math.min(1.6,Math.max(1,650/canvas.getBoundingClientRect().width));
+  ctx.translate(W/2,18);ctx.scale(hudScale,hudScale);ctx.translate(-123,-18);
   ctx.fillStyle="rgba(13,32,43,.82)";roundRect(18,18,210,54,16);ctx.fillStyle=THEME.gold;ctx.beginPath();ctx.arc(46,45,12,0,7);ctx.fill();
   ctx.fillStyle=THEME.cream;ctx.font="800 18px system-ui";ctx.textAlign="left";ctx.fillText(`${score} / ${coins.length}`,67,51);
   ctx.fillStyle=THEME.coral;for(let i=0;i<lives;i++){ctx.beginPath();ctx.arc(157+i*22,44,8,0,7);ctx.fill();ctx.beginPath();ctx.ellipse(153+i*22,35,3,7,-.3,0,7);ctx.ellipse(161+i*22,35,3,7,.3,0,7);ctx.fill();}
+  ctx.restore();
   const progress=Math.max(0,Math.min(1,player.x/(WORLD_W-150)));ctx.fillStyle="rgba(13,32,43,.4)";roundRect(W-210,28,180,10,5);ctx.fillStyle=THEME.shrine;roundRect(W-210,28,180*progress,10,5);
   ctx.fillStyle="rgba(13,32,43,.75)";ctx.font="700 11px system-ui";ctx.textAlign="right";ctx.fillText("ELEMENTAL SHRINE",W-30,56);
 }
