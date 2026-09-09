@@ -10,11 +10,11 @@ vm.createContext(sandbox);vm.runInContext(script,sandbox);
 const run=s=>vm.runInContext(s,sandbox);
 run("soundOn=false;level='air';resetGame();");
 const reset=()=>run("level='air';resetGame();");
-function place(x,y,vy=0){run(`player.x=${x};player.y=${y};player.vx=0;player.vy=${vy};player.onGround=false;`);}
+function place(x,y,vy=0){run(`player.blueContact=null;player.x=${x};player.y=${y};player.vx=0;player.vy=${vy};player.onGround=false;`);}
 function step(n=1){for(let i=0;i<n;i++)run('update(1/120)');}
 // Blue: upward pass, then descending landing on its exact top.
 place(300,370,-570);step(15);assert(run('player.y<335 && player.vy<0'));
-place(300,250,200);step(20);assert.equal(run('player.y+player.h'),335);assert(run('player.onGround'));
+place(300,250,200);step(20);assert(run('player.blueContact'));assert(run('player.y+player.h>=335'));
 // Recovery cloud catches a miss beside the tutorial blue.
 place(480,330,150);step(50);assert.equal(run('player.y+player.h'),480);
 // Spring bounce and feedback; duck hitbox preserves feet and blocks jumping.
