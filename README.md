@@ -29,11 +29,19 @@ The user's rough route-plan photo inspired a 6,000-pixel aerial route with 20 cl
 
 Run `node tests/blue-cloud.cjs` for sinking, jump escape, no re-grounding, crouch/movement, recovery and later-death checks at 30/60/120 FPS. `previews/blue-cloud-review.png` shows the live renderer's sinking tutorial cloud.
 
-Three lightning emitters cycle every 4.8 seconds: 2.5 seconds quiet, 1 second outlined/audio warning, 0.75 seconds active, then 0.55 seconds quiet. Damage costs one life and grants 1.7 seconds of invulnerability. Falls return to the latest safe white cloud; losing all three lives restarts the selected level.
+Three lightning hazards use the approved eight-frame transparent storm-cloud sheet (`assets/storm-cloud-v1-source.png`, provenance in `assets/storm-cloud-v1.md`), embedded in the HTML. Each 4.8-second cycle starts with 2.7 seconds quiet, then 0.8 seconds of outlined/audio warning through faint charge, internal sparks, strong charge and an emerging bolt. Only the two full-strike frames hurt: 90ms each, followed by a harmless 120ms afterglow and 1 second quiet. Frame-driven glow, charge/strike audio and strike particles are synchronized. Damage costs one life and grants 1.7 seconds of invulnerability. Positions and the 34×130px damage lanes are unchanged. Falls return to the latest safe white cloud; losing all three lives restarts the selected level. Run `node tests/storm-cloud.cjs` for source/embedding, phase/offset and damage-window checks.
 
 Tempest has six animated tentacles and cannot be damaged by Hit. Its 6.4-second attack cycle alternates a telegraphed low sweep (duck beneath it) and a marked vertical slam (move outside the lane). Cross the arena and reach the wind gate. All attacks have safe windows; no combat is required. Touch cancellation, pointer release, and window blur release Duck. Narrow screens use larger, separated Jump / Hit / Duck controls; landscape fullscreen provides the clearest view.
 
 ## Verification
+
+### iPhone and joystick controls
+
+Fullscreen uses the native API where available, otherwise a fixed edge-to-edge CSS view sized to the visual viewport, with safe-area padding, orientation/resize updates and scroll restoration on exit. iPhone Safari can retain its browser bars: the title-screen hint recommends **Share → Add to Home Screen** for the best fullscreen experience. Saved standalone apps start fitted to the available viewport. The exit toggle always remains available; this does not promise to hide Safari chrome.
+
+The lower-right stick moves horizontally and diagonally. Pull up beyond 60% for one Jump; return above the −25% neutral boundary before pulling up again. Existing two-boost limits still apply. Pull down beyond 55% to hold Duck; return to 25% or less to release. Separate buttons continue to work. Cancellation, lost capture, blur/visibility, reset, death and map/end overlays clear stick input.
+
+Title build metadata is defined in `BUILD_INFO`: v0.3.1, build 2026091202, 12 September 2026, 10:32 Europe/Brussels; deployment **GitHub Pages release — 12 September 2026, 10:32 Europe/Brussels**. This is the authorized release artifact's timestamp, not the later GitHub Pages job-completion time. `tests/mobile.cjs` covers joystick and viewport state regressions; `tests/mobile-preview.html` offers iPhone/CSS/standalone emulation fixtures. Emulation does not replace a real-device Safari check.
 
 Run `node tests/air.cjs` for collision, spring, keyboard/touch duck, hazard immunity, boss evasion, death/restart/win and meadow regression checks. `node tests/route.cjs` checks all 19 mandatory cloud transitions against the actual movement integrator (hazard timing is isolated in the mechanics suite). Serve the project and open `tests/air-preview.html` for reproducible spawn, spring, blue, lightning, boss and win visual fixtures; **Live play** resumes from the selected fixture. These tests are not loaded by the game and add no runtime dependency.
 

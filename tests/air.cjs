@@ -5,7 +5,7 @@ new vm.Script(script);
 const nodes=new Map();
 function node(id){if(!nodes.has(id))nodes.set(id,{width:960,height:540,hidden:false,style:{setProperty(){},removeProperty(){}},classList:{add(){},remove(){},toggle(){},contains(){return false;}},listeners:{},addEventListener(n,f){(this.listeners[n]??=[]).push(f);},setAttribute(){},focus(){},blur(){},getContext(){return {};},getBoundingClientRect(){return {x:0,y:0,left:0,top:0,width:960,height:540};},querySelector(s){return node(id+s);},setPointerCapture(){}});return nodes.get(id);}
 const window=node('window');window.scrollTo=()=>{};
-const sandbox={document:{querySelector:node,querySelectorAll:()=>[],addEventListener(){},documentElement:node('root')},window,Image:class{},performance:{now:()=>0},requestAnimationFrame(){},setTimeout(){},location:{search:''},URLSearchParams,Math,console};
+const sandbox={document:{querySelector:node,querySelectorAll:()=>[],addEventListener(n,f){node('document').addEventListener(n,f);},documentElement:node('root')},window,Image:class{},performance:{now:()=>0},requestAnimationFrame(){},setTimeout(){},location:{search:''},URLSearchParams,Math,console};
 vm.createContext(sandbox);vm.runInContext(script,sandbox);
 const run=s=>vm.runInContext(s,sandbox);
 run("soundOn=false;level='air';resetGame();");

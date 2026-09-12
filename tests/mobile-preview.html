@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>iPhone layout fixtures</title>
+<style>body{margin:0;background:#13233a;color:white;font:14px system-ui}nav{padding:6px}iframe{display:block;width:100%;height:calc(100dvh - 42px);border:0}button{font:inherit}</style>
+<nav><button data-mode="normal">iPhone title</button> <button data-mode="css">CSS fallback</button> <button data-mode="standalone">Standalone</button> <output id="gesture"></output></nav><iframe title="iPhone game fixture"></iframe>
+<script>
+async function load(mode){const source=await(await fetch('../index.html')).text();
+const emulation=`Object.defineProperty(window.navigator,'userAgent',{get:()=> 'iPhone Safari'});Object.defineProperty(window.navigator,'standalone',{get:()=> ${mode==='standalone'}});`;
+const gesture=`for(const type of ['pointerdown','pointermove'])canvas.addEventListener(type,()=>{if(joystick.active&&(player.duck||player.vy<0))parent.document.querySelector('#gesture').textContent=(player.duck?'Duck held':'Jump triggered')+(Math.abs(joystick.dx)>.22?' + horizontal':'');});`;
+document.querySelector('iframe').srcdoc=source.replace('const canvas =',emulation+'const canvas =').replace("const forceCSS=new URLSearchParams(location.search).get('fullscreen')==='css';","const forceCSS=true;").replace('resetGame(false);requestAnimationFrame(loop);',`resetGame(false);${mode==='css'?'fallbackFullscreen=true;syncFullscreen();':''}${gesture}requestAnimationFrame(loop);`);}
+document.querySelectorAll('button').forEach(b=>b.onclick=()=>load(b.dataset.mode));load('normal');
+</script>
