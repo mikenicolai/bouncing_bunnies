@@ -41,7 +41,7 @@ h1 { margin: 0; font-size: clamp(1.5rem, 4vw, 2.4rem); letter-spacing: -.045em; 
 .icon-button { border: 1px solid rgba(255,255,255,.14); border-radius: 999px; padding: 9px 14px; color: #f5f2df; background: rgba(255,255,255,.07); cursor: pointer; }
 
 .game-frame { position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 24px; box-shadow: 0 30px 80px rgba(0,0,0,.45); background: #87d7dc; }
-canvas { display: block; width: 100%; height: auto; aspect-ratio: 16/9; touch-action: none; }
+canvas { display: block; width: 100%; height: auto; aspect-ratio:var(--game-aspect,16/9); touch-action: none; }
 .fullscreen-button { position:absolute; top:12px; left:12px; z-index:4; width:46px; height:46px; border:1px solid #83dcc8; border-radius:13px; background:#102936; color:#fff8de; cursor:pointer; touch-action:manipulation; }
 .fullscreen-button svg { width:25px; height:25px; vertical-align:middle; }
 .fullscreen-button:focus-visible { outline:3px solid #ffcb67; outline-offset:3px; }
@@ -147,7 +147,7 @@ kbd { padding: 2px 6px; border: 1px solid #43505b; border-radius: 4px; color: #b
             <button id="startButton" type="button">Begin adventure</button>
             <p class="controls-copy"><strong>Move</strong> ← → &nbsp; <strong>Jump</strong> ↑ / Space &nbsp; <strong>Hit</strong> X</p>
             <small id="buildInfo" class="build-info" aria-label="Build information"></small>
-            <p id="iphoneHint" class="iphone-hint" hidden>iPhone Safari may keep its bars visible. For the best fullscreen view, use Share → Add to Home Screen, then open the saved app.</p>
+            <p id="iphoneHint" class="iphone-hint" hidden>To remove Safari’s URL bar: Share → Add to Home Screen → keep “Open as Web App” on, then launch that icon. The fullscreen button alone cannot hide Safari’s bars.</p>
           </div>
         </div>
         <section id="worldMap" class="world-map" aria-label="World map" hidden>
@@ -201,7 +201,7 @@ const gameFrame = document.querySelector('.game-frame');
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.3.1',build:2026091202,builtAt:'2026-09-12T10:32:39+02:00',builtLabel:'12 September 2026, 10:32 Europe/Brussels',deployment:'GitHub Pages release — 12 September 2026, 10:32 Europe/Brussels'});
+const BUILD_INFO=Object.freeze({version:'0.4.0',build:2026091203,builtAt:'2026-09-12T10:43:16+02:00',builtLabel:'12 September 2026, 10:43 Europe/Brussels',deployment:'GitHub Pages release — 12 September 2026, 10:43 Europe/Brussels'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -217,7 +217,7 @@ function fitExpandedCanvas(){
   const style=getComputedStyle(gameFrame);
   const width=gameFrame.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight);
   const height=gameFrame.clientHeight-parseFloat(style.paddingTop)-parseFloat(style.paddingBottom);
-  gameFrame.style.setProperty('--expanded-canvas-width',Math.max(1,Math.min(width,height*16/9))+'px');
+  gameFrame.style.setProperty('--expanded-canvas-width',Math.max(1,Math.min(width,height*W/H))+'px');
 }
 function syncFullscreen(){
   // WebKit may report native entry after its request method returns.
@@ -261,13 +261,22 @@ document.addEventListener('webkitfullscreenchange',syncFullscreen);
 window.addEventListener('keydown',event=>{
   if(event.code==='Escape'&&(fallbackFullscreen||fullscreenElement()===gameFrame))fullscreenButton.click();
 });
-window.addEventListener('resize',()=>{syncFullscreen();requestAnimationFrame(fitExpandedCanvas);});
-window.addEventListener('orientationchange',()=>requestAnimationFrame(()=>{syncFullscreen();fitExpandedCanvas();}));
-window.visualViewport?.addEventListener('resize',fitExpandedCanvas);
+window.addEventListener('resize',()=>{fitGameViewport();syncFullscreen();requestAnimationFrame(fitExpandedCanvas);});
+window.addEventListener('orientationchange',()=>requestAnimationFrame(()=>{fitGameViewport();syncFullscreen();fitExpandedCanvas();}));
+window.visualViewport?.addEventListener('resize',()=>{fitGameViewport();fitExpandedCanvas();});
 window.visualViewport?.addEventListener('scroll',fitExpandedCanvas);
 document.addEventListener('visibilitychange',()=>{clearInputs();syncFullscreen();});
 window.addEventListener('pageshow',()=>{clearInputs();syncFullscreen();});
-const W = canvas.width, H = canvas.height;
+let W = canvas.width, H = canvas.height;
+function fitGameViewport(){
+  const width=window.visualViewport?.width||window.innerWidth||960;
+  const height=window.visualViewport?.height||window.innerHeight||540;
+  const portrait=width<600&&height>width;
+  const nextW=portrait?480:960,nextH=portrait?Math.max(720,Math.min(1100,Math.round(480*height/width))):540;
+  if(W!==nextW||H!==nextH){clearInputs();W=canvas.width=nextW;H=canvas.height=nextH;}
+  canvas.style.setProperty('--game-aspect',`${W} / ${H}`);
+  fitTouchControls();
+}
 let WORLD_W=4800, level='meadow', airTime=0, bossTime=0, bossAwake=false, lastBossPhase='', airFinished=false, selectedWorld='water', duckPointer=null;
 const keys = new Set();
 let state = "title", cameraX = 0, lastTime = 0, soundOn = true, audioCtx;
@@ -425,8 +434,14 @@ function hurt(direction=1){
 }
 // Frame 4 only previews the bolt; only complete strike frames 5 and 6 hurt.
 function stormFrame(s){
-  const t=(airTime+s.offset)%4.8;
-  return t<2.7?0:t<2.95?1:t<3.15?2:t<3.45?3:t<3.5?4:t<3.59?5:t<3.68?6:t<3.8?7:0;
+  const t=(airTime+s.offset)%3;
+  return t<1.7?0:t<1.85?1:t<2?2:t<2.2?3:t<2.25?4:t<2.31?5:t<2.37?6:t<2.47?7:0;
+}
+function touchesStormCloud(s){
+  const cx=s.x,cy=s.y-168;
+  const px=Math.max(player.x,Math.min(cx,player.x+player.w));
+  const py=Math.max(player.y,Math.min(cy,player.y+player.h));
+  return ((px-cx)/44)**2+((py-cy)/29)**2<=1;
 }
 function stormPhase(s){const frame=stormFrame(s);return frame===0?'off':frame<5?'warn':frame<7?'on':'fade';}
 function bossPhase(){
@@ -445,7 +460,7 @@ function updateAir(dt){
       if(phase==='on'){tone(90,.16,'sawtooth',.025);burst(s.x,s.y-5,'#b9efff',10);}
     }
     s.lastPhase=phase;
-    if(phase==='on'&&overlap(player,{x:s.x-17,y:s.y-130,w:34,h:130}))hurt(player.x<s.x?-1:1);
+    if(touchesStormCloud(s)||(phase==='on'&&overlap(player,{x:s.x-17,y:s.y-130,w:34,h:130})))hurt(player.x<s.x?-1:1);
   }
   if(player.x>4780)bossAwake=true;
   if(bossAwake)bossTime+=dt;
@@ -601,10 +616,7 @@ function drawStorm(s){
   const x=s.x-cameraX;if(x<-100||x>W+100)return;
   const frame=stormFrame(s),phase=stormPhase(s);
   ctx.save();
-  if(phase==='warn'){
-    ctx.strokeStyle='#d88738';ctx.lineWidth=2;ctx.setLineDash([5,7]);ctx.strokeRect(x-17,s.y-130,34,130);ctx.setLineDash([]);
-    ctx.fillStyle='#664422';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.fillText('CHARGING',x,s.y-207);
-  }
+  // The cloud's internal charge is the only visual strike warning.
   ctx.shadowColor='#b9efff';ctx.shadowBlur=[0,2,4,7,9,16,19,4][frame];
   if(stormSheet.complete&&stormSheet.naturalWidth){
     const width=stormSheet.naturalWidth/8;
@@ -646,7 +658,7 @@ function drawTempest(){
     const rect=b.kind==='sweep'?{x:4820-cameraX,y:378,w:1030,h:18}:{x:b.x-34-cameraX,y:240,w:68,h:180};
     if(b.warn){ctx.fillStyle='rgba(246,188,83,.22)';ctx.fillRect(rect.x,rect.y,rect.w,rect.h);ctx.strokeStyle='#b27439';ctx.lineWidth=2;ctx.setLineDash([8,7]);ctx.strokeRect(rect.x,rect.y,rect.w,rect.h);ctx.setLineDash([]);}
     if(b.active){ctx.fillStyle='#a765ad';roundRect(rect.x,rect.y,rect.w,rect.h,9);ctx.fillStyle='#eac7d9';if(b.kind==='sweep')for(let x=rect.x+15;x<rect.x+rect.w;x+=35){ctx.beginPath();ctx.arc(x,387,4,0,7);ctx.fill();}else for(let y=250;y<420;y+=25){ctx.beginPath();ctx.arc(rect.x+34,y,9,0,7);ctx.fill();}}
-    ctx.fillStyle='#183c54';roundRect(300,85,360,32,12);ctx.fillStyle='#fff4d0';ctx.font='800 14px system-ui';ctx.textAlign='center';ctx.fillText(b.kind==='sweep'?'↓ HOLD DUCK — LOW TENTACLE':'MOVE OUT OF THE MARKED LANE',480,107);
+    const bannerY=H>540?128:85;ctx.fillStyle='#183c54';roundRect(W/2-180,bannerY,360,32,12);ctx.fillStyle='#fff4d0';ctx.font='800 14px system-ui';ctx.textAlign='center';ctx.fillText(b.kind==='sweep'?'↓ HOLD DUCK — LOW TENTACLE':'MOVE OUT OF THE MARKED LANE',W/2,bannerY+22);
   }
   ctx.restore();
 }
@@ -812,14 +824,14 @@ function drawShrine(time) {
 
 function drawHUD() {
   ctx.save();
-  const hudScale=Math.min(1.6,Math.max(1,650/canvas.getBoundingClientRect().width));
+  const hudScale=H>540?1:Math.min(1.6,Math.max(1,650/canvas.getBoundingClientRect().width));
   ctx.translate(W/2,18);ctx.scale(hudScale,hudScale);ctx.translate(-123,-18);
   ctx.fillStyle="rgba(13,32,43,.82)";roundRect(18,18,210,54,16);ctx.fillStyle=THEME.gold;ctx.beginPath();ctx.arc(46,45,12,0,7);ctx.fill();
   ctx.fillStyle=THEME.cream;ctx.font="800 18px system-ui";ctx.textAlign="left";ctx.fillText(`${score} / ${coins.length}`,67,51);
   ctx.fillStyle=THEME.coral;for(let i=0;i<lives;i++){ctx.beginPath();ctx.arc(157+i*22,44,8,0,7);ctx.fill();ctx.beginPath();ctx.ellipse(153+i*22,35,3,7,-.3,0,7);ctx.ellipse(161+i*22,35,3,7,.3,0,7);ctx.fill();}
   ctx.restore();
-  const progress=Math.max(0,Math.min(1,player.x/(WORLD_W-150)));ctx.fillStyle="rgba(13,32,43,.4)";roundRect(W-210,28,180,10,5);ctx.fillStyle=THEME.shrine;roundRect(W-210,28,180*progress,10,5);
-  ctx.fillStyle="rgba(13,32,43,.75)";ctx.font="700 11px system-ui";ctx.textAlign="right";ctx.fillText(level==='air'?"AIR · WIND GATE":"ELEMENTAL SHRINE",W-30,56);
+  const progress=Math.max(0,Math.min(1,player.x/(WORLD_W-150))),progressY=H>540?86:28;ctx.fillStyle="rgba(13,32,43,.4)";roundRect(W-210,progressY,180,10,5);ctx.fillStyle=THEME.shrine;roundRect(W-210,progressY,180*progress,10,5);
+  ctx.fillStyle="rgba(13,32,43,.75)";ctx.font="700 11px system-ui";ctx.textAlign="right";ctx.fillText(level==='air'?"AIR · WIND GATE":"ELEMENTAL SHRINE",W-30,progressY+28);
 }
 
 function drawTouchControls() {
@@ -827,6 +839,7 @@ function drawTouchControls() {
   // Always visible: mouse users can drag it too, and tablet players do not
   // have to discover a hidden control mode.
   ctx.save();
+  if(H>540){ctx.fillStyle='#132d40';ctx.fillRect(0,H-220,W,220);}
   ctx.globalAlpha=.82;ctx.fillStyle="rgba(13,32,43,.38)";ctx.strokeStyle="rgba(255,255,255,.6)";ctx.lineWidth=3;
   ctx.beginPath();ctx.arc(JOY.x,JOY.y,JOY.radius,0,Math.PI*2);ctx.fill();ctx.stroke();
   const kx=JOY.x+joystick.dx*32,ky=JOY.y+joystick.dy*32;
@@ -848,6 +861,10 @@ window.addEventListener("keydown",e=>{if(state==='map'){if(e.code==='KeyR')start
 window.addEventListener("keyup",e=>keys.delete(e.code));
 function canvasPoint(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
 function fitTouchControls(){
+  if(H>540){
+    Object.assign(ACTIONS.jump,{x:55,y:H-100,r:42});Object.assign(ACTIONS.hit,{x:150,y:H-100,r:40});Object.assign(ACTIONS.duck,{x:245,y:H-100,r:40});
+    JOY.radius=65;JOY.x=W-85;JOY.y=H-110;return;
+  }
   const compact=canvas.getBoundingClientRect().width<520;
   Object.assign(ACTIONS.jump,compact?{x:75,y:462,r:60}:{x:82,y:H-80,r:40});
   Object.assign(ACTIONS.hit,compact?{x:210,y:462,r:55}:{x:172,y:H-75,r:34});
@@ -887,7 +904,7 @@ canvas.addEventListener('lostpointercapture',releaseJoystick);
 window.addEventListener('blur',clearInputs);
 canvas.addEventListener("pointerup",releaseJoystick);canvas.addEventListener("pointercancel",releaseJoystick);
 startButton.addEventListener("click",start);soundButton.addEventListener("click",()=>{soundOn=!soundOn;soundButton.textContent=`Sound: ${soundOn?"on":"off"}`;document.querySelector('#mapSound').setAttribute('aria-pressed',String(!soundOn));document.querySelector('#mapSound').setAttribute('aria-label',soundOn?'Mute sound':'Enable sound');});
-fallbackFullscreen=standaloneMode();syncFullscreen();
+fitGameViewport();fallbackFullscreen=standaloneMode();syncFullscreen();
 resetGame(false);requestAnimationFrame(loop);
     </script>
   </body>

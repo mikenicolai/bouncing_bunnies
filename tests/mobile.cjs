@@ -13,7 +13,7 @@ for(const event of ['pointercancel','lostpointercapture','pointerup']){
 for(const action of ["window.listeners.blur[0]()","document.querySelector('document').listeners.visibilitychange[0]()","clearInputs()","resetGame()","openWorldMap()","showEnd(false)"]){reset();pull(0,1);run(action);assert(run('!joystick.duck && !joystick.active && joystick.dy===0 && duckPointer===null'));}
 reset();pull(0,1);place(1000,700);step();assert(run('!joystick.duck && joystick.jumpArmed'));
 const html=fs.readFileSync('index.html','utf8');assert(html.includes('viewport-fit=cover'));assert(html.includes('apple-mobile-web-app-capable'));
-assert(run("document.querySelector('#buildInfo').textContent.includes('GitHub Pages release — 12 September 2026, 10:32 Europe/Brussels')"));assert.equal(run('BUILD_INFO.build'),2026091202);assert.equal(run('BUILD_INFO.version'),'0.3.1');assert.equal(run('BUILD_INFO.builtAt'),'2026-09-12T10:32:39+02:00');
+assert(run("document.querySelector('#buildInfo').textContent.includes('GitHub Pages release — 12 September 2026, 10:43 Europe/Brussels')"));assert.equal(run('BUILD_INFO.build'),2026091203);assert.equal(run('BUILD_INFO.version'),'0.4.0');assert.equal(run('BUILD_INFO.builtAt'),'2026-09-12T10:43:16+02:00');
 // Model CSS fallback geometry, visual viewport changes and scroll restoration.
 run(`
 const styles=new Map(),classes=new Set();
@@ -32,4 +32,6 @@ run('window.visualViewport.width=844;window.visualViewport.height=390;fitExpande
 run('fallbackFullscreen=false;syncFullscreen()');assert.equal(run('window.restoredY'),125);assert(!run("classes.has('expanded')"));
 run("window.navigator={standalone:true,userAgent:'iPhone'}");assert(run('standaloneMode()'));run('fallbackFullscreen=standaloneMode();syncFullscreen()');assert(run("classes.has('expanded')"));assert(run("document.querySelector('#iphoneHint').hidden"));
 run('fallbackFullscreen=false;document.fullscreenElement=gameFrame;syncFullscreen()');assert(run("classes.has('expanded')"));run('document.fullscreenElement=null;syncFullscreen()');assert(!run("classes.has('expanded')"));
-console.log('PASS mobile joystick threshold/rearm/boost bound/duck hysteresis/diagonals/cancel/reset/death/overlays; CSS viewport/orientation/scroll restore/standalone/native state; local build metadata.');
+run('window.visualViewport.width=390;window.visualViewport.height=844;fitGameViewport()');assert.equal(run('W'),480);assert(run('H>900'));assert(run('JOY.y>700 && ACTIONS.jump.y>700'));
+run('window.visualViewport.width=844;window.visualViewport.height=390;fitGameViewport()');assert.equal(run('W'),960);assert.equal(run('H'),540);assert.equal(run('JOY.y'),446);
+console.log('PASS mobile controls, portrait canvas/camera/control layout, orientation, fullscreen state and build metadata.');

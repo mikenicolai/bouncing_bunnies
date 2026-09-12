@@ -26,8 +26,8 @@ const canvas=node('#game');const event={clientX:150,clientY:380,pointerId:44,pre
 canvas.listeners.pointerdown[0](event);assert.equal(run('player.h'),18);assert.equal(run('duckPointer'),44);
 canvas.listeners.pointercancel[0](event);assert.equal(run('player.h'),58);assert.equal(run('duckPointer'),null);
 // Lightning is telegraphed, costs exactly one life during immunity.
-reset();run('airTime=2.8');assert.equal(run('stormPhase(storms[0])'),'warn');
-place(1460,342);run('airTime=3.6');step();assert.equal(run('lives'),2);run('player.x=1460;player.y=342;player.vy=0');step();assert.equal(run('lives'),2);
+reset();run('airTime=1.9');assert.equal(run('stormPhase(storms[0])'),'warn');
+place(1460,342);run('airTime=2.28');step();assert.equal(run('lives'),2);run('player.x=1460;player.y=342;player.vy=0');step();assert.equal(run('lives'),2);
 // Boss sweep hurts standing, misses duck, ignores Hit entirely.
 reset();place(5000,362);run('bossAwake=true;bossTime=1.4');step();assert.equal(run('lives'),2);
 reset();place(5000,362);run("keys.add('KeyS');updateDuck();bossAwake=true;bossTime=1.4");step();assert.equal(run('lives'),3);assert.equal(run('player.y+player.h'),420);
