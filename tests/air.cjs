@@ -38,11 +38,13 @@ reset();place(5350,-1748);run('bossAwake=true;bossTime=4.8');step();assert.equal
 reset();place(850,177);step(3);assert.equal(run('checkpoint.x'),845);place(1000,700);step();assert.equal(run('lives'),2);assert.equal(run('player.x'),845);
 run('lives=1');place(1000,700);step();assert.equal(run('state'),'lost');run('start()');assert.equal(run('lives'),3);assert.equal(run('level'),'air');
 reset();place(4800,-1748);
-for(let i=0;i<4000&&run("state==='playing'");i++){
+for(let i=0;i<4000&&run("state==='playing'&&!descentStarted");i++){
   run("{const b=bossPhase();keys.clear();if(b.kind==='sweep')keys.add('ArrowDown');if(!(b.kind==='slam'&&player.x+42>b.x-95&&player.x<b.x+60))keys.add('ArrowRight');}");
   step();
 }
-assert.equal(run('state'),'map');assert.equal(run('lives'),3);assert(run('airFinished'));assert.equal(node('#mapHeading').textContent,'Air complete!');
+assert.equal(run('state'),'playing');assert.equal(run('lives'),3);assert(run('descentStarted'));
+place(6300,440,100);step(20);assert(run('descentBlueReached'));place(6760,1490,100);step(5);
+assert.equal(run('state'),'map');assert(run('airFinished'));assert.equal(node('#mapHeading').textContent,'Air complete!');
 // Existing meadow remains selectable and resets to original geometry.
 run("level='meadow';start()");assert.equal(run('platforms.length'),19);assert.equal(run('coins.length'),26);assert.equal(run('WORLD_W'),4800);
 console.log('PASS: syntax; blue through/landing/recovery; spring; keyboard/touch duck; lightning; boss sweep/slam/safe lane/no combat; death/restart/win; meadow regression.');

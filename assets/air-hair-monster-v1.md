@@ -1,0 +1,9 @@
+# Air hair monster — v1
+
+Generated with the built-in image-generation tool on 12 September 2026 from the user's Photo 1.jpg drawing. The source is saved unchanged in `assets/air-hair-monster-v1.png` and embedded verbatim in `index.html`.
+
+1536 × 1024 RGB, four columns and two rows. The tool returned a baked checkerboard despite requesting alpha. At load time the game removes border-connected neutral checkerboard pixels into cached Canvas frames, preserving enclosed white teeth and the turquoise/yellow pencil texture. Runtime frame crops are 384 × 430, with row origins 48 and 512. A common draw scale and foot baseline keep the monster grounded. Frames 0–3: forward, glance left, glance right, blink. Frames 4–7: grounded walk/mouth poses. The game mirrors the complete walk with `facing=-1` for left and `facing=1` for right; both are shown in `previews/air-monster-animation.html`.
+
+## Generation prompt
+
+Use case: illustration-story. Create a production game sprite sheet based on the reference child's monster drawing. Preserve the recognizable mint turquoise tall body with exactly two pointed tufts forming an M silhouette, dark angry narrow eyes, open toothy mouth and two big yellow shoes. Clean hand-drawn cartoon style with charcoal outlines, mild pencil texture, no arms. Transparent background, no paper, no shadow, no labels or grid lines. EXACTLY eight equal cells in a 4-column by 2-row sheet, each with one complete monster at identical scale and grounded at the same baseline within each cell, ample padding. Row 1: idle looking forward mouth open; idle looking left mouth smaller; idle looking right mouth wide; blink with closed eyes. Row 2: four successive grounded walking poses facing slightly right, yellow feet alternate stepping and mouth changes, never jumping, keep total height consistent. This is the same character eight times, not different characters. Make image 1536x1024 if possible. Alpha transparent outside each character.

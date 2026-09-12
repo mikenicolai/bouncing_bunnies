@@ -1,0 +1,24 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Air monster — animation review</title>
+<style>body{margin:0;background:#142738;color:#fff5df;font:16px system-ui}header{padding:18px 24px}h1{font-size:22px;margin:0 0 8px}p{margin:0;line-height:1.5;color:#b7d8d9}iframe{display:block;border:0;width:100%;height:76vh}a{color:#a4ecca}</style></head><body>
+<header><h1>Your air monster · both walking directions</h1><p>Idle glances and mouth movement · walking left · walking right. Feet stay on the cloud.</p><p><a href="../tests/air-preview.html">Try the monster and descent in the game →</a></p></header><iframe title="Animated monster poses"></iframe>
+<script>
+(async()=>{
+ const source=await(await fetch('../index.html')).text();
+ const preview=`soundOn=false;level='air';resetGame();overlay.classList.add('hidden');
+ function reviewFrame(ms){
+  const t=ms/1000;W=960;H=540;canvas.width=W;canvas.height=H;cameraX=0;cameraY=0;
+  ctx.fillStyle='#b8e5df';ctx.fillRect(0,0,W,H);
+  const names=['LOOK AROUND','WALK LEFT','WALK RIGHT'];
+  for(let i=0;i<3;i++){
+   const center=160+i*320;ctx.fillStyle='#193b4c';ctx.font='800 18px system-ui';ctx.textAlign='center';ctx.fillText(names[i],center,85);
+   ctx.save();ctx.translate(center,370);ctx.scale(2.6,2.6);
+   const p={x:-50,y:0,w:100,h:28,kind:'white'};drawAirPlatform(p);
+   drawAirMonster({x:-26,y:-64,w:52,h:64,platform:p,facing:i===1?-1:1,walking:i>0,phase:t*(i?7:1.6)});ctx.restore();
+  }
+  ctx.fillStyle='#193b4c';ctx.font='16px system-ui';ctx.fillText('Two guardians · large white clouds only · follows the bunny on the same cloud',480,470);
+  requestAnimationFrame(reviewFrame);
+ }
+ requestAnimationFrame(reviewFrame);`;
+ document.querySelector('iframe').srcdoc=source.replace('resetGame(false);requestAnimationFrame(loop);',preview).replace('<head>','<head><style>header,.topbar,.footer,.below-game{display:none!important}body{padding:0!important}.game-shell{max-width:100%!important}</style>');
+})();
+</script></body></html>
