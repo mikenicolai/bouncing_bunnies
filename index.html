@@ -279,7 +279,7 @@ function fitGameViewport(){
 }
 let WORLD_W=4800, level='meadow', airTime=0, bossTime=0, bossAwake=false, lastBossPhase='', airFinished=false, selectedWorld='water', duckPointer=null;
 const keys = new Set();
-let state = "title", cameraX = 0, lastTime = 0, soundOn = true, audioCtx;
+let state = "title", cameraX = 0, cameraY = 0, lastTime = 0, soundOn = true, audioCtx;
 const joystick = { active:false, pointerId:null, dx:0, dy:0, jumpArmed:true, duck:false };
 const JOY = { x: W-92, y:H-94, radius:57, knob:25 };
 const ACTIONS = {
@@ -299,21 +299,24 @@ const meadowPlatforms = [
 const airPlatforms=[
   [0,440,280,'white'],[240,335,190,'blue'],[245,480,340,'white'],
   [610,425,155,'green'],[820,235,190,'white'],[1080,335,190,'blue'],
-  [1330,400,270,'white'],[1690,390,150,'green'],[1910,210,180,'blue'],
-  [2170,330,180,'white'],[2420,425,250,'white'],[2780,400,160,'green'],
-  [2990,205,200,'blue'],[3210,360,160,'white'],[3450,255,180,'blue'],
-  [3700,420,220,'white'],[4020,410,160,'green'],[4240,220,170,'white'],
-  [4420,340,150,'blue'],[4660,420,1340,'white']
+  [1330,400,270,'white'],[1690,260,150,'green'],[1910,30,180,'blue'],
+  [2170,-110,180,'white'],[2420,-250,250,'white'],[2780,-390,160,'green'],
+  [2990,-620,200,'blue'],[3210,-760,160,'white'],[3450,-900,180,'blue'],
+  [3700,-1040,220,'white'],[4020,-1180,160,'green'],[4240,-1410,170,'white'],
+  [4420,-1550,190,'blue'],[4660,-1690,1340,'white']
 ].map(([x,y,w,kind])=>({x,y,w,h:kind==='blue'?60:28,kind,spring:0}));
+const AIR_SUMMIT_OFFSET=-2110;
 let platforms=meadowPlatforms, checkpoint={x:90,y:390};
-const storms=[{x:1470,y:400,offset:0},{x:2560,y:425,offset:1.5},{x:3810,y:420,offset:2.7}];
+const storms=[{x:1470,y:400,offset:0},{x:3120,y:-790,offset:1.5},{x:4550,y:-1720,offset:2.7}];
 const airSigns=[
- [40,190,'START →','White clouds hold you'],[255,235,'BLUE CLOUDS SINK ↓','Jump again · white cloud below'],
+ [40,190,'CLIMB THE CLOUDS ↑','White clouds save your progress'],[255,235,'BLUE CLOUDS SINK ↓','Jump again · white cloud below'],
  [610,310,'SPRING ↑↑','Green coils launch you'],[1100,230,'STEER IN THE AIR','Tap JUMP again for extra height'],
- [1340,105,'⚡ WAIT FOR QUIET','Sparks → flash → safe'],[1900,90,'UP, THEN DRIFT →','Aim for the lower cloud'],
- [2990,90,'EASE LEFT / RIGHT','Brake above the landing'],[4290,100,'DROP TO BLUE →','Open sky below'],
- [4710,285,'TEMPEST · EVADE, DON’T FIGHT','Hold ↓ / S / DUCK under low sweeps'],
- [5290,300,'DODGE THE MARKED LANES','Reach the glowing wind gate →']
+ [1340,105,'⚡ WAIT FOR QUIET','Avoid the dark cloud · cross below'],[1900,-190,'KEEP CLIMBING ↑','Jump again before the blue cloud sinks'],
+ [2440,-430,'WATCH THE STORM AHEAD','Wait here · then spring up to blue'],
+ [3210,-990,'UP THROUGH BLUE ↑','Cross under dark clouds after the flash'],
+ [4240,-1640,'ONE LAST STORM','Wait on white · jump again from blue'],
+ [4710,-1825,'TEMPEST · EVADE, DON’T FIGHT','Hold ↓ / S / DUCK under low sweeps'],
+ [5290,-1810,'DODGE THE MARKED LANES','Reach the glowing wind gate →']
 ];
 
 const coinSpots = [
@@ -335,7 +338,7 @@ function resetGame(autoPlay = true) {
   const spots=level==='air'?airPlatforms.filter(p=>p.w<500).flatMap(p=>[[p.x+p.w*.35,p.y-45],[p.x+p.w*.7,p.y-45]]):coinSpots;
   coins = spots.map(([x,y]) => ({x,y,r:12,taken:false,bob:Math.random()*6}));
   enemies = (level==='air'?[]:enemySpots).map(([x,y,min,max],i) => ({x,y,w:44,h:44,min,max,vx:i%2 ? -55:55,alive:true,phase:i*.7}));
-  particles = []; score = 0; lives = 3; cameraX = 0;
+  particles = []; score = 0; lives = 3; cameraX = 0; cameraY = 0;
   state = autoPlay ? "playing" : "title";
 }
 
@@ -455,21 +458,21 @@ function updateAir(dt){
   airTime+=dt;airPlatforms.forEach(p=>p.spring=Math.max(0,p.spring-dt));
   for(const s of storms){
     const phase=stormPhase(s);
-    if(phase!==s.lastPhase&&Math.abs(player.x-s.x)<650){
+    if(phase!==s.lastPhase&&Math.abs(player.x-s.x)<650&&Math.abs(player.y-s.y)<600){
       if(phase==='warn')tone(610,.12,'triangle',.018);
       if(phase==='on'){tone(90,.16,'sawtooth',.025);burst(s.x,s.y-5,'#b9efff',10);}
     }
     s.lastPhase=phase;
     if(touchesStormCloud(s)||(phase==='on'&&overlap(player,{x:s.x-17,y:s.y-130,w:34,h:130})))hurt(player.x<s.x?-1:1);
   }
-  if(player.x>4780)bossAwake=true;
+  if(player.x>4780&&player.y<AIR_SUMMIT_OFFSET+460)bossAwake=true;
   if(bossAwake)bossTime+=dt;
   const b=bossPhase();
   const phaseKey=b.kind+String(b.warn)+String(b.active);
   if(phaseKey!==lastBossPhase&&b.warn)tone(250,.18,'triangle',.028);
   lastBossPhase=phaseKey;
   if(b.active){
-    const hit=b.kind==='sweep'?{x:4820,y:378,w:1030,h:18}:{x:b.x-34,y:240,w:68,h:180};
+    const hit=b.kind==='sweep'?{x:4820,y:378+AIR_SUMMIT_OFFSET,w:1030,h:18}:{x:b.x-34,y:240+AIR_SUMMIT_OFFSET,w:68,h:180};
     if(overlap(player,hit))hurt(player.x<5350?-1:1);
   }
 }
@@ -535,13 +538,20 @@ function update(dt) {
   }
   if(level==='air')updateAir(dt);
   if(state!=='playing')return;
-  if(player.y>650){lives--;if(lives<=0){showEnd(false);return;}else{
+  if(player.y>(level==='air'?Math.min(650,checkpoint.y+650):650)){lives--;if(lives<=0){showEnd(false);return;}else{
     clearInputs();player.blueContact=null;player.duck=false;player.h=58;duckPointer=null;
     player.x=level==='air'?checkpoint.x:Math.max(40,cameraX+80);player.y=level==='air'?checkpoint.y:100;
-    player.vx=0;player.vy=0;player.invincible=2;tone(100,.25,"sawtooth");
+    player.vx=0;player.vy=0;player.invincible=2;
+    if(level==='air'){cameraX=Math.max(0,Math.min(WORLD_W-W,player.x-W*.38));cameraY=Math.min(0,player.y-H*.5);}tone(100,.25,"sawtooth");
   }}
-  if(player.x>(level==='air'?5910:4650)) showEnd(true);
+  if(player.x>(level==='air'?5910:4650)&&(level!=='air'||Math.abs(player.y+player.h-airPlatforms[19].y)<85)) showEnd(true);
   cameraX+=(Math.max(0,Math.min(WORLD_W-W,player.x-W*.38))-cameraX)*Math.min(1,dt*5);
+  if(level==='air'){
+    // A vertical dead zone leaves small hops steady and follows long ascents/falls.
+    const screenY=player.y-cameraY,top=H*.32,bottom=H*.64;
+    const target=screenY<top?player.y-top:screenY>bottom?player.y-bottom:cameraY;
+    cameraY+=(Math.min(0,target)-cameraY)*Math.min(1,dt*9);
+  }else cameraY=0;
   particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;}); particles=particles.filter(p=>p.life>0);
 }
 
@@ -577,7 +587,7 @@ function drawBackground() {
     ctx.lineTo(W,H);ctx.fill();
   }
   ctx.fillStyle="rgba(255,255,255,.55)";
-  for(let i=0;i<5;i++){let x=((i*277-cameraX*.12)%(W+220)+W+220)%(W+220)-110,y=70+(i%3)*55;ctx.beginPath();ctx.arc(x,y,22,0,7);ctx.arc(x+28,y-8,29,0,7);ctx.arc(x+61,y,20,0,7);ctx.fill();}
+  for(let i=0;i<5;i++){let x=((i*277-cameraX*.12)%(W+220)+W+220)%(W+220)-110,y=((70+(i%3)*155-cameraY*.18)%(H+120)+H+120)%(H+120)-50;ctx.beginPath();ctx.arc(x,y,22,0,7);ctx.arc(x+28,y-8,29,0,7);ctx.arc(x+61,y,20,0,7);ctx.fill();}
 }
 
 function drawAirPlatform(p){
@@ -637,14 +647,15 @@ function drawAirWorld(){
     ctx.fillStyle='#b6e9e7';ctx.font='11px system-ui';ctx.fillText(detail,x+10,y+34);
   }
   ctx.fillStyle='#8be486';ctx.beginPath();ctx.ellipse(90-cameraX,439,37,7,0,0,7);ctx.fill();
+  ctx.save();ctx.translate(0,AIR_SUMMIT_OFFSET);
   const gx=5920-cameraX;ctx.save();ctx.strokeStyle='#d6fff3';ctx.lineWidth=9;ctx.shadowColor='#72e7d1';ctx.shadowBlur=22;
   ctx.beginPath();ctx.ellipse(gx,361,28,56,0,0,7);ctx.stroke();ctx.restore();
-  ctx.fillStyle='#193d52';ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.fillText('WIND GATE',gx,285);
+  ctx.fillStyle='#193d52';ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.fillText('WIND GATE',gx,285);ctx.restore();
   if(player.x>4300)drawTempest();
 }
 function drawTempest(){
   const cx=5470-cameraX,cy=174+Math.sin(airTime*1.8)*8,b=bossPhase();
-  ctx.save();ctx.lineCap='round';
+  ctx.save();ctx.translate(0,AIR_SUMMIT_OFFSET);ctx.lineCap='round';
   // Decorative tentacles stay above the arena. Only bright attacks cause damage.
   for(let i=0;i<6;i++){
     const dx=(i-2.5)*48;ctx.strokeStyle=i%2?'#779eb9':'#597d9f';ctx.lineWidth=16;
@@ -658,7 +669,7 @@ function drawTempest(){
     const rect=b.kind==='sweep'?{x:4820-cameraX,y:378,w:1030,h:18}:{x:b.x-34-cameraX,y:240,w:68,h:180};
     if(b.warn){ctx.fillStyle='rgba(246,188,83,.22)';ctx.fillRect(rect.x,rect.y,rect.w,rect.h);ctx.strokeStyle='#b27439';ctx.lineWidth=2;ctx.setLineDash([8,7]);ctx.strokeRect(rect.x,rect.y,rect.w,rect.h);ctx.setLineDash([]);}
     if(b.active){ctx.fillStyle='#a765ad';roundRect(rect.x,rect.y,rect.w,rect.h,9);ctx.fillStyle='#eac7d9';if(b.kind==='sweep')for(let x=rect.x+15;x<rect.x+rect.w;x+=35){ctx.beginPath();ctx.arc(x,387,4,0,7);ctx.fill();}else for(let y=250;y<420;y+=25){ctx.beginPath();ctx.arc(rect.x+34,y,9,0,7);ctx.fill();}}
-    const bannerY=H>540?128:85;ctx.fillStyle='#183c54';roundRect(W/2-180,bannerY,360,32,12);ctx.fillStyle='#fff4d0';ctx.font='800 14px system-ui';ctx.textAlign='center';ctx.fillText(b.kind==='sweep'?'↓ HOLD DUCK — LOW TENTACLE':'MOVE OUT OF THE MARKED LANE',W/2,bannerY+22);
+    const bannerY=(H>540?128:85)+cameraY-AIR_SUMMIT_OFFSET;ctx.fillStyle='#183c54';roundRect(W/2-180,bannerY,360,32,12);ctx.fillStyle='#fff4d0';ctx.font='800 14px system-ui';ctx.textAlign='center';ctx.fillText(b.kind==='sweep'?'↓ HOLD DUCK — LOW TENTACLE':'MOVE OUT OF THE MARKED LANE',W/2,bannerY+22);
   }
   ctx.restore();
 }
@@ -851,8 +862,8 @@ function drawTouchControls() {
 }
 
 function render(time) {
-  drawBackground();platforms.forEach(drawPlatform);if(level==='air')drawAirWorld();else drawShrine(time);coins.forEach(c=>drawCoin(c,time));enemies.forEach(drawEnemy);drawBunny();
-  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;drawHUD();drawTouchControls();
+  drawBackground();ctx.save();ctx.translate(0,-cameraY);platforms.forEach(drawPlatform);if(level==='air')drawAirWorld();else drawShrine(time);coins.forEach(c=>drawCoin(c,time));enemies.forEach(drawEnemy);drawBunny();
+  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;ctx.restore();drawHUD();drawTouchControls();
 }
 
 function loop(ms) { const t=ms/1000,dt=Math.min(.033,t-lastTime||0);lastTime=t;update(dt);render(t);requestAnimationFrame(loop); }

@@ -29,15 +29,15 @@ canvas.listeners.pointercancel[0](event);assert.equal(run('player.h'),58);assert
 reset();run('airTime=1.9');assert.equal(run('stormPhase(storms[0])'),'warn');
 place(1460,342);run('airTime=2.28');step();assert.equal(run('lives'),2);run('player.x=1460;player.y=342;player.vy=0');step();assert.equal(run('lives'),2);
 // Boss sweep hurts standing, misses duck, ignores Hit entirely.
-reset();place(5000,362);run('bossAwake=true;bossTime=1.4');step();assert.equal(run('lives'),2);
-reset();place(5000,362);run("keys.add('KeyS');updateDuck();bossAwake=true;bossTime=1.4");step();assert.equal(run('lives'),3);assert.equal(run('player.y+player.h'),420);
+reset();place(5000,-1748);run('bossAwake=true;bossTime=1.4');step();assert.equal(run('lives'),2);
+reset();place(5000,-1748);run("keys.add('KeyS');updateDuck();bossAwake=true;bossTime=1.4");step();assert.equal(run('lives'),3);assert.equal(run('player.y+player.h'),-1690);
 run("keys.clear();updateDuck();attack()");assert(run('bossAwake'));assert.equal(run('enemies.length'),0);
-reset();place(5150,362);run('bossAwake=true;bossTime=4.8');step();assert.equal(run('lives'),2);
-reset();place(5350,362);run('bossAwake=true;bossTime=4.8');step();assert.equal(run('lives'),3);
+reset();place(5150,-1748);run('bossAwake=true;bossTime=4.8');step();assert.equal(run('lives'),2);
+reset();place(5350,-1748);run('bossAwake=true;bossTime=4.8');step();assert.equal(run('lives'),3);
 // Death uses a known solid checkpoint, game over stops, restart resets.
 reset();place(850,177);step(3);assert.equal(run('checkpoint.x'),845);place(1000,700);step();assert.equal(run('lives'),2);assert.equal(run('player.x'),845);
 run('lives=1');place(1000,700);step();assert.equal(run('state'),'lost');run('start()');assert.equal(run('lives'),3);assert.equal(run('level'),'air');
-reset();place(4800,362);
+reset();place(4800,-1748);
 for(let i=0;i<4000&&run("state==='playing'");i++){
   run("{const b=bossPhase();keys.clear();if(b.kind==='sweep')keys.add('ArrowDown');if(!(b.kind==='slam'&&player.x+42>b.x-95&&player.x<b.x+60))keys.add('ArrowRight');}");
   step();
