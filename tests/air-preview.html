@@ -20,7 +20,7 @@ document.querySelector('select').insertAdjacentHTML('beforeend','<option>monster
 scenes['monster-dizzy']="player.x=1430;player.y=342;cameraX=1180;cameraY=0;hitAirMonster(airMonsters[0]);airTime=1;";
 scenes['descent-lightning']="beginDescent();player.x=6440;player.y=-1130;cameraX=5940;cameraY=-1300;airTime=2.28;";
 scenes['small-storm']="beginDescent();player.x=6170;player.y=-740;cameraX=5940;cameraY=-940;airTime=1.88;";
-scenes['island-red']="player.x=845;player.y=177;cameraX=650;cameraY=-100;";
+scenes['island-red']="player.x=1390;player.y=342;cameraX=1200;cameraY=0;";
 document.querySelector('select').insertAdjacentHTML('beforeend','<option>monster-dizzy</option><option>descent-lightning</option><option>small-storm</option><option>island-red</option>');
 let source;async function load(live=false){source??=await(await fetch('../index.html')).text();const scene=document.querySelector('select').value;
 const fixture="level='air';soundOn=false;resetGame();overlay.classList.add('hidden');"+scenes[scene]+(live?"requestAnimationFrame(loop);":"setTimeout(()=>render(1),300);");

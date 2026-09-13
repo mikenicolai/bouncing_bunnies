@@ -6,7 +6,7 @@ for(const fps of [30,60,120]){
  const x=run('airMonsters[0].x');run(`updateAirMonsters(1/${fps})`);
  assert(run('airMonsters[0].x')<x);assert.equal(run('airMonsters[0].facing'),-1);
  // Remain interested throughout a jump over this cloud, reversing to follow.
- run('player.x=1620;player.y=140');run(`updateAirMonsters(1/${fps})`);
+ run('player.x=airMonsters[0].x+60;player.y=140');run(`updateAirMonsters(1/${fps})`);
  assert.equal(run('airMonsters[0].facing'),1);assert(run('airMonsters[0].walking'));
  assert.equal(run('airMonsters[0].y+airMonsters[0].h'),400);
  run('player.airCloud=airPlatforms[5]');const stopped=run('airMonsters[0].x');run('updateAirMonsters(.5)');

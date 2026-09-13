@@ -1,0 +1,9 @@
+<!doctype html><meta charset="utf-8"><title>Air islands · in-game artwork</title>
+<style>body{margin:0;background:#c5e8ee;font:16px system-ui;color:#234653}header{padding:12px 24px}h1{font-size:22px;margin:0}iframe{border:0;width:100%;height:calc(100vh - 74px)}</style>
+<header><h1>Air islands · four solid landing platforms</h1>Flowers and tree sit behind the bunny’s path. The three upper islands are 50 pixels longer.</header><iframe title="In-game island variants"></iframe>
+<script>
+(async()=>{const source=await(await fetch('../index.html')).text();const fixture=`soundOn=false;level='air';resetGame();overlay.classList.add('hidden');
+function review(){W=960;H=600;canvas.width=W;canvas.height=H;cameraX=0;cameraY=0;ctx.fillStyle='#c5e8ee';ctx.fillRect(0,0,W,H);
+[0,6,10,15].forEach((id,i)=>{const p={...airPlatforms[id],x:60+(i%2)*480,y:145+Math.floor(i/2)*255};drawAirPlatform(p);player.x=p.x+p.w*.48;player.y=p.y-player.h;player.onGround=true;player.invincible=0;drawBunny();});requestAnimationFrame(review);}requestAnimationFrame(review);`;
+document.querySelector('iframe').srcdoc=source.replace('resetGame(false);requestAnimationFrame(loop);',fixture).replace('</head>','<style>canvas{aspect-ratio:8/5!important}header,footer,.fullscreen-button{display:none!important}.game-shell{width:min(960px,100%);padding:0}body{background:#c5e8ee;min-height:0}</style></head>');})();
+</script>

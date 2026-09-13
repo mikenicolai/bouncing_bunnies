@@ -1,9 +1,16 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const {run,reset,place}=require('./air.cjs');
-assert(run("airPlatforms.filter(p=>p.island!==undefined).length===8&&airPlatforms.filter(p=>p.island!==undefined).every(p=>p.kind==='white')"));
+assert(run("airPlatforms.filter(p=>p.island!==undefined).length===4&&airPlatforms.filter(p=>p.island!==undefined).every(p=>p.kind==='white')"));
+assert(run('[4,9,13,17].every(id=>airPlatforms[id].kind==="white"&&airPlatforms[id].island===undefined)'), 'restored platforms use original white-cloud art');
 assert(run('descentObstacles[0].y-airPlatforms[19].y>=700'));
 assert.equal(run('smallDescentClouds.length'),3);
-const html=fs.readFileSync('index.html','utf8');assert(fs.readFileSync('assets/floating-islands-v1.png').equals(Buffer.from(html.match(/islandSheet.src='data:image\/png;base64,([^']+)'/)[1],'base64')));
+const html=fs.readFileSync('index.html','utf8');assert(fs.readFileSync('assets/floating-islands-v2.png').equals(Buffer.from(html.match(/islandSheet.src='data:image\/png;base64,([^']+)'/)[1],'base64')));
+// Land on the added outer section of each island; no automatic spring bounce.
+for(const id of [0,6,10,15]){
+ reset();run(`{const p=airPlatforms[${id}];airMonsters.forEach(m=>m.hp=0);player.x=p.x+p.w-45;player.y=p.y-player.h-2;player.vy=100;update(1/60);}`);
+ assert.equal(run('player.y+player.h'),run(`airPlatforms[${id}].y`));
+ assert.equal(run('player.vy'),0);assert(run('player.onGround'));
+}
 for(const fps of [30,60,120]){
  reset();
  // Punch from outside the contact box. A press counts once, only while recovered.
@@ -37,4 +44,4 @@ for(let j=0;j<7;j++)for(const [time,damaging] of [[0,false],[2.1,false],[2.28,tr
 }
 reset();run('beginDescent();player.x=smallDescentClouds[0].x+15;player.y=smallDescentClouds[0].y+10;airTime=0;updateDescent()');assert.equal(run('lives'),2);
 reset();assert(run('airMonsters.every(m=>m.hp===3&&m.dizzy===0)'));
-console.log('PASS: both island variants; original solid landing geometry; lower/easier descent entry; small clouds; three-hit combat; stun immunity/recovery; real stomps and rebound at 30/60/120 FPS; all seven lightning damage phases; reset.');
+console.log('PASS: four island variants; original solid landing geometry; lower/easier descent entry; small clouds; three-hit combat; stun immunity/recovery; real stomps and rebound at 30/60/120 FPS; all seven lightning damage phases; reset.');
