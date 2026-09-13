@@ -39,7 +39,7 @@ for(const fps of [30,60,120]){
 reset();run('airMonsters[0].walking=true');
 for(let f=0;f<4;f++){run(`airMonsters[0].phase=${f}`);assert.equal(run('airMonsterFrame(airMonsters[0])'),4+f);}
 // Missed blue/final landings return to the summit, not into the void.
-reset();run('beginDescent();descentBlueReached=true');place(6200,1900);step();assert.equal(run('player.x'),5890);assert.equal(run('player.y'),-1748);assert(!run('descentBlueReached'));
-reset();run('beginDescent()');place(6100,700);step(2);assert.equal(run('lives'),2);assert.equal(run('player.x'),5890);
+reset();run('beginDescent();descentBlueReached=true');place(6200,2200);step();assert.equal(run('player.x'),5890);assert.equal(run('player.y'),-1748);assert(!run('descentBlueReached'));
+reset();run('beginDescent()');place(6100,1000);step(2);assert.equal(run('lives'),2);assert.equal(run('player.x'),5890);
 run("level='meadow';resetGame()");assert.equal(run('enemies.length'),9);assert(!run('descentStarted'));
 console.log('PASS: same-cloud chase; reverse/stop/edge bounds; grounded feet; contact immunity; left/right animation states; full no-damage descent with blue jump at 30/60/120 FPS on phone/desktop; missed-waypoint recovery.');

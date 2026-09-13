@@ -43,7 +43,7 @@ for(let i=0;i<4000&&run("state==='playing'&&!descentStarted");i++){
   step();
 }
 assert.equal(run('state'),'playing');assert.equal(run('lives'),3);assert(run('descentStarted'));
-place(6300,440,100);step(20);assert(run('descentBlueReached'));place(6760,1490,100);step(5);
+place(6300,660,100);step(20);assert(run('descentBlueReached'));place(6760,1710,100);step(5);
 assert.equal(run('state'),'map');assert(run('airFinished'));assert.equal(node('#mapHeading').textContent,'Air complete!');
 // Existing meadow remains selectable and resets to original geometry.
 run("level='meadow';start()");assert.equal(run('platforms.length'),19);assert.equal(run('coins.length'),26);assert.equal(run('WORLD_W'),4800);

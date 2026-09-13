@@ -1,0 +1,9 @@
+# Floating islands — v1
+
+Created 13 September 2026 with the built-in image-generation tool, using both user-supplied island drawings as design references. Source: `assets/floating-islands-v1.png`, embedded unchanged in `index.html`.
+
+The 1536 × 1024 RGB source contains two islands: daisy/pointed rock on the left, red flower/rounder rock on the right. Despite requesting alpha, the generated source contains a checkerboard. Runtime Canvas flood-fill removes only border-connected neutral background, preserving enclosed grey stone and white flower pixels. Crops: x=24 width=740 and x=802 width=710; both y=215 height=595. The grassy top is aligned 150 source pixels below the crop top to the existing platform landing plane. Rock beneath is decorative; collision geometry and checkpoint behavior are retained. Eight selected white surfaces use the two alternating variants, including the two monster platforms.
+
+## Generation prompt
+
+Create a game asset sheet of exactly TWO floating islands, in two equal side-by-side cells. Reference image 1 is the design for left island: broad horizontal grassy bright green top, grey rocky downward pointed underside, one white daisy yellow centre. Reference image 2 design for right island: horizontal grassy green top, rounder angular grey rocky underside ending in a small point, one red flower. Faithfully preserve these charming child's pencil-drawing designs, charcoal outlines and coloured-pencil texture; clean isolated game sprite rendering, no paper photo. Orthographic side view for a 2D platform game, a perfectly level walkable top surface beneath short grass at identical height in both cells. Each island fits comfortably entirely within its cell with 8% margin and no overlap. Transparent background with genuine alpha, NO checkerboard, no ground shadows, no lettering, no additional islands or objects. 1536x1024 image. Grassy top approx 35% of cell height, rock tip approx 80%; both islands equal overall width.
