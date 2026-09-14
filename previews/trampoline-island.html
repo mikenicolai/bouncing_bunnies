@@ -1,0 +1,12 @@
+<!doctype html><meta charset="utf-8"><title>Trampoline island animation</title>
+<style>body{margin:0;background:#c5e8ee;color:#234653;font:16px system-ui}header{padding:12px 24px}h1{font-size:22px;margin:0}iframe{border:0;width:100%;height:calc(100vh - 80px)}</style>
+<header><h1>Trampoline island · compression and rebound</h1>The blue pad gives the high jump. The grassy ledges are solid ground.</header><iframe title="Trampoline animation"></iframe>
+<script>
+(async()=>{const source=await(await fetch('../index.html')).text();const fixture=`soundOn=false;level='air';resetGame();overlay.classList.add('hidden');
+let lastReview=0,reviewAge=3;
+function review(ms){const dt=Math.min(.033,(ms-lastReview)/1000||.016);lastReview=ms;reviewAge+=dt;const p=airPlatforms[3];
+if(reviewAge>2.3){resetGame();reviewAge=0;player.x=p.x+p.w/2-21;player.y=p.y-130;player.vy=100;player.onGround=false;player.invincible=100;}
+update(dt);W=960;H=540;canvas.width=W;canvas.height=H;cameraX=p.x-350;cameraY=0;ctx.fillStyle='#c5e8ee';ctx.fillRect(0,0,W,H);drawAirPlatform(p);player.invincible=0;drawBunny();player.invincible=100;
+ctx.fillStyle='#234653';ctx.font='20px system-ui';ctx.textAlign='center';ctx.fillText(['Ready','Press down','Spring up','Settle'][trampolineFrame(p)],480,70);requestAnimationFrame(review);}requestAnimationFrame(review);`;
+document.querySelector('iframe').srcdoc=source.replace('resetGame(false);requestAnimationFrame(loop);',fixture).replace('</head>','<style>header,footer,.fullscreen-button{display:none!important}.game-shell{width:min(960px,100%);padding:0}body{background:#c5e8ee;min-height:0}</style></head>');})();
+</script>
