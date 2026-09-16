@@ -1,0 +1,7 @@
+<!doctype html><meta charset="utf-8"><title>Painted clouds in the Air level</title><style>body{margin:0;background:#c5e8ee;color:#234653;font:16px system-ui}header{padding:12px 24px}h1{font-size:22px;margin:0}iframe{border:0;width:100%;height:calc(100vh - 80px)}</style><header><h1>White landing clouds and blue mist</h1>The bunny stands on white clouds and sinks behind the blue mist.</header><iframe title="Cloud artwork in-game"></iframe><script>
+(async()=>{const source=await(await fetch('../index.html')).text();const fixture=`soundOn=false;level='air';resetGame();overlay.classList.add('hidden');
+function review(ms){W=960;H=540;canvas.width=W;canvas.height=H;cameraX=0;cameraY=0;ctx.fillStyle='#b8d8e8';ctx.fillRect(0,0,W,H);
+const white={x:220,y:175,w:520,h:28,kind:'white'},blue={x:220,y:390,w:520,h:60,kind:'blue'};
+drawAirPlatform(white);player.x=459;player.y=white.y-player.h;player.onGround=true;player.invincible=0;drawBunny();drawAirPlatform(blue);
+player.y=blue.y-player.h+((ms/1000)%3)*30;player.onGround=false;player.vy=45;drawBunny();if(paintedCloudSheet.complete&&paintedCloudSheet.naturalWidth)drawPaintedCloud(blue,true);requestAnimationFrame(review);}requestAnimationFrame(review);`;
+document.querySelector('iframe').srcdoc=source.replace('resetGame(false);requestAnimationFrame(loop);',fixture).replace('</head>','<style>header,footer,.fullscreen-button{display:none!important}.game-shell{width:min(960px,100%);padding:0}body{background:#c5e8ee;min-height:0}</style></head>');})();</script>

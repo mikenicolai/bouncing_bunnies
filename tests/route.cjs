@@ -2,7 +2,7 @@ const assert=require('node:assert/strict');
 const {run,reset,step}=require('./air.cjs');
 // Each mandatory platform transition uses the production integrator, acceleration,
 // gravity and jump rules. Immunity isolates reachability from hazard timing tests.
-const route=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19];
+const route=[0,1,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19];
 for(const width of [960,480])for(const fps of [30,60,120])for(let i=0;i<route.length-1;i++){
   const from=route[i],to=route[i+1];let success=false;
   for(const offset of [.3,.6,.85]){

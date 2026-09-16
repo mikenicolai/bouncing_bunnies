@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const {run,reset}=require('./air.cjs');
+reset();assert.equal(run('platforms.length'),21);assert(run('!platforms.includes(airPlatforms[2])'));
+assert(run('airPlatforms.every((p,i)=>i===2||platforms.includes(p))'),'all other platforms retained');
+const html=fs.readFileSync('index.html','utf8');assert(fs.readFileSync('assets/painted-clouds-v1.png').equals(Buffer.from(html.match(/paintedCloudSheet.src='data:image\/png;base64,([^']+)'/)[1],'base64')));
+run(`var cloudDraws=[];Object.assign(ctx,{save(){},restore(){},drawImage(...args){cloudDraws.push({alpha:this.globalAlpha,args});}});paintedCloudSheet.complete=true;paintedCloudSheet.naturalWidth=1536;cameraX=0;W=6900;drawPaintedCloud(airPlatforms[1]);drawPaintedCloud(airPlatforms[1],true);drawPaintedCloud(airPlatforms[4]);`);
+assert.equal(run('cloudDraws[0].alpha'),.28);assert.equal(run('cloudDraws[1].alpha'),.64);assert.equal(run('cloudDraws[2].alpha'),1);
+run('cloudDraws=[];drawBlueCloudForeground()');assert.equal(run('cloudDraws.length'),run("platforms.filter(p=>p.kind==='blue').length"));assert(run('cloudDraws.every(d=>d.alpha===.64)'));
+assert(html.includes('drawBunny();drawBlueCloudForeground();'),'fog overlays the bunny in production render');
+run("level='meadow';resetGame();cloudDraws=[];drawBlueCloudForeground()");assert.equal(run('cloudDraws.length'),0);
+console.log('PASS: only early recovery removed; embedded RGBA art; translucent front/back blue layers; solid white; foreground only in Air.');

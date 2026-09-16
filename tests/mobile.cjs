@@ -13,7 +13,7 @@ for(const event of ['pointercancel','lostpointercapture','pointerup']){
 for(const action of ["window.listeners.blur[0]()","document.querySelector('document').listeners.visibilitychange[0]()","clearInputs()","resetGame()","openWorldMap()","showEnd(false)"]){reset();pull(0,1);run(action);assert(run('!joystick.duck && !joystick.active && joystick.dy===0 && duckPointer===null'));}
 reset();pull(0,1);place(1000,700);step();assert(run('!joystick.duck && joystick.jumpArmed'));
 const html=fs.readFileSync('index.html','utf8');assert(html.includes('viewport-fit=cover'));assert(html.includes('apple-mobile-web-app-capable'));
-assert(run("document.querySelector('#buildInfo').textContent.includes(BUILD_INFO.deployment)"));assert.equal(run('BUILD_INFO.build'),2026091401);assert.equal(run('BUILD_INFO.version'),'0.6.2');assert(Number.isFinite(Date.parse(run('BUILD_INFO.builtAt'))));
+assert(run("document.querySelector('#buildInfo').textContent.includes(BUILD_INFO.deployment)"));assert.equal(run('BUILD_INFO.build'),2026091601);assert.equal(run('BUILD_INFO.version'),'0.6.3');assert(Number.isFinite(Date.parse(run('BUILD_INFO.builtAt'))));
 // Model CSS fallback geometry, visual viewport changes and scroll restoration.
 run(`
 const styles=new Map(),classes=new Set();

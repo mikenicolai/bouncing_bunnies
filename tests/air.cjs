@@ -15,8 +15,9 @@ function step(n=1){for(let i=0;i<n;i++)run('update(1/120)');}
 // Blue: upward pass, then descending landing on its exact top.
 place(300,370,-570);step(15);assert(run('player.y<335 && player.vy<0'));
 place(300,250,200);step(20);assert(run('player.blueContact'));assert(run('player.y+player.h>=335'));
-// Recovery cloud catches a miss beside the tutorial blue.
-place(480,330,150);step(50);assert.equal(run('player.y+player.h'),480);
+// The removed recovery platform no longer catches misses beside the tutorial blue.
+assert(run('!platforms.includes(airPlatforms[2])'));
+place(480,330,150);step(50);assert(run('player.y+player.h>480'));
 // Spring bounce and feedback; duck hitbox preserves feet and blocks jumping.
 place(650,350,100);step(12);assert(run('player.vy<-700'));assert(run('airPlatforms[3].spring>0'));
 reset();place(100,382);step(2);run("keys.add('ArrowDown');updateDuck()");assert.equal(run('player.h'),18);assert.equal(run('player.y+player.h'),440);run('jump()');assert.equal(run('player.vy'),0);
