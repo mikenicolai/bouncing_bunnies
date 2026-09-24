@@ -145,7 +145,7 @@ kbd { padding: 2px 6px; border: 1px solid #43505b; border-radius: 4px; color: #b
             <h2>Wake the ancient lantern</h2>
             <p>Gather sun-coins, dodge the mossy undead, and reach the elemental shrine.</p>
             <button id="startButton" type="button">Begin adventure</button>
-            <p class="controls-copy"><strong>Move</strong> ← → &nbsp; <strong>Jump</strong> ↑ / Space &nbsp; <strong>Hit</strong> X</p>
+            <p class="controls-copy"><strong>Move</strong> ← → &nbsp; <strong>Jump</strong> ↑ / Space &nbsp; <strong>Hit</strong> X &nbsp; <strong>Map</strong> M</p>
             <small id="buildInfo" class="build-info" aria-label="Build information"></small>
             <p id="iphoneHint" class="iphone-hint" hidden>To remove Safari’s URL bar: Share → Add to Home Screen → keep “Open as Web App” on, then launch that icon. The fullscreen button alone cannot hide Safari’s bars.</p>
           </div>
@@ -176,7 +176,7 @@ kbd { padding: 2px 6px; border: 1px solid #43505b; border-radius: 4px; color: #b
 
       <footer>
         <span>Collect every coin for a perfect run.</span>
-        <span>Press <kbd>R</kbd> to restart.</span>
+        <span><kbd>R</kbd> restart · <kbd>M</kbd> map</span>
         <button id="mapOpen" class="icon-button" type="button">World map</button>
       </footer>
     </main>
@@ -278,6 +278,8 @@ function fitGameViewport(){
   fitTouchControls();
 }
 let WORLD_W=4800, level='meadow', airTime=0, bossTime=0, bossAwake=false, lastBossPhase='', airFinished=false, selectedWorld='water', duckPointer=null;
+const TEMPEST_MAX_HP=5;
+let tempest={x:5410,y:-1840,w:100,h:150,hp:TEMPEST_MAX_HP,dizzy:0,flash:0};
 const keys = new Set();
 let state = "title", cameraX = 0, cameraY = 0, lastTime = 0, soundOn = true, audioCtx;
 const joystick = { active:false, pointerId:null, dx:0, dy:0, jumpArmed:true, duck:false };
@@ -378,24 +380,6 @@ function updateDescent(){
 
 let platforms=meadowPlatforms, checkpoint={x:90,y:390};
 const storms=[{x:1470,y:400,offset:0},{x:3120,y:-790,offset:1.5},{x:4550,y:-1720,offset:2.7}];
-const airSigns=[
- [40,190,'CLIMB THE CLOUDS ↑','Islands and white clouds save progress'],[255,235,'BLUE CLOUDS SINK ↓','Jump again · white cloud below'],
- [610,310,'TRAMPOLINE ↑↑','Centre pad boosts · grass is safe'],[1100,230,'STEER IN THE AIR','Tap JUMP again for extra height'],
- [1340,105,'⚡ WAIT FOR QUIET','Avoid the dark cloud · cross below'],
- [1330,160,'3 HEARTS · HIT OR STOMP','Wait for the stars to clear · hit again'],[1900,-190,'KEEP CLIMBING ↑','Jump again before the blue cloud sinks'],
- [2440,-430,'WATCH THE STORM AHEAD','Wait here · then spring up to blue'],
- [3210,-990,'UP THROUGH BLUE ↑','Cross under dark clouds after the flash'],
- [4240,-1640,'ONE LAST STORM','Wait on white · jump again from blue'],
- [4710,-1825,'TEMPEST · EVADE, DON’T FIGHT','Hold ↓ / S / DUCK under low sweeps'],
- [5290,-1810,'DODGE THE MARKED LANES','Cross Tempest’s cloud · then descend →'],
- [5720,-1870,'TO THE SHRINE ↓','EXIT: step off right, then follow the wind ↓'],
- [6330,-1180,'STEER RIGHT →','Dark clouds hurt · follow the coins'],
- [6010,-580,'← NOW LEFT','Keep steering while you fall'],
- [6325,20,'RIGHT AGAIN →','Blue cloud below catches you'],
- [6070,570,'BLUE CLOUD STOP','Jump left, then fall through the last gap'],
- [6020,1000,'← FINAL DROP','Land on white · wind gate to the right']
-];
-
 const coinSpots = [
   [250,410],[410,295],[470,295],[850,370],[970,230],[1040,230],[1280,420],[1440,270],
   [1510,270],[1880,350],[2025,205],[2290,410],[2450,280],[2520,280],[2720,200],[3000,340],
@@ -409,6 +393,7 @@ let player, coins, enemies, particles, score, lives;
 function resetGame(autoPlay = true) {
   WORLD_W=level==='air'?6900:4800;platforms=level==='air'?airPlatforms.filter(p=>!p.removed):meadowPlatforms;
   airTime=0;bossTime=0;bossAwake=false;lastBossPhase='';descentStarted=false;descentBlueReached=false;resetAirMonsters();clearInputs();
+  tempest={x:5410,y:AIR_SUMMIT_OFFSET+120,w:100,h:150,hp:TEMPEST_MAX_HP,dizzy:0,flash:0};
   airPlatforms.forEach(p=>p.spring=0);storms.forEach(s=>s.lastPhase='off');allDescentClouds.forEach(o=>o.lastPhase='off');
   player = {x:90,y:390,w:42,h:58,vx:0,vy:0,onGround:false,facing:1,invincible:0,run:0,attack:0,attackCooldown:0,jumpAge:9,boosts:0};
   checkpoint={x:90,y:level==='air'?382:390};player.y=checkpoint.y;
@@ -526,11 +511,31 @@ function touchesStormCloud(s){
 }
 function stormPhase(s){const frame=stormFrame(s);return frame===0?'off':frame<5?'warn':frame<7?'on':'fade';}
 function bossPhase(){
-  if(!bossAwake||descentStarted)return {kind:'rest',active:false,warn:false};
-  const t=bossTime%6.4, lane=Math.floor(bossTime/6.4)%2?5530:5150;
-  if(t<2.8)return {kind:'sweep',warn:t<1.2,active:t>=1.2,t};
-  if(t>=3.5&&t<5.7)return {kind:'slam',warn:t<4.7,active:t>=4.7,x:lane,t};
+  if(!bossAwake||descentStarted||tempest.hp<=0||tempest.dizzy>0)return {kind:'rest',active:false,warn:false};
+  const t=bossTime%4.8, lane=Math.floor(bossTime/4.8)%2?5530:5150;
+  if(t<1.7)return {kind:'sweep',warn:t<.65,active:t>=.65,t};
+  if(t>=2.3&&t<3.85)return {kind:'slam',warn:t<2.95,active:t>=2.95&&t<3.55,x:lane,t};
   return {kind:'rest',active:false,warn:false};
+}
+function hitTempest(){
+  if(!bossAwake||descentStarted||tempest.hp<=0||tempest.dizzy>0)return false;
+  tempest.hp--;tempest.dizzy=.7;tempest.flash=.25;
+  burst(tempest.x+tempest.w/2,tempest.y+55,tempest.hp?'#ffe8a0':'#a8f4ee',tempest.hp?12:30);
+  tone(tempest.hp?260:130,.18,'triangle',.04);
+  return true;
+}
+function updateTempest(dt){
+  if(!bossAwake||descentStarted||tempest.hp<=0)return;
+  tempest.dizzy=Math.max(0,tempest.dizzy-dt);tempest.flash=Math.max(0,tempest.flash-dt);
+  // The vortex patrols the cloud and periodically lifts far enough for a
+  // precisely timed crouch escape. Its occupied space remains dangerous.
+  tempest.x=5370+175*Math.sin(bossTime*1.05);
+  const lift=47*(1-Math.cos(bossTime*2.1));
+  tempest.y=airPlatforms[19].y-tempest.h-lift;
+  // The rising wind column closes the route above its head, while a brief
+  // gap beneath the lifted tail permits a difficult ducked escape.
+  const column={x:tempest.x,y:airPlatforms[19].y-460,w:tempest.w,h:tempest.y+tempest.h-(airPlatforms[19].y-460)};
+  if(tempest.dizzy<=0&&overlap(player,column))hurt(player.x<tempest.x+tempest.w/2?-1:1);
 }
 function updateAir(dt){
   airTime+=dt;airPlatforms.forEach(p=>p.spring=Math.max(0,p.spring-dt));
@@ -546,6 +551,7 @@ function updateAir(dt){
   updateAirMonsters(dt);updateDescent();
   if(!descentStarted&&player.x>4780&&player.y<AIR_SUMMIT_OFFSET+460)bossAwake=true;
   if(bossAwake)bossTime+=dt;
+  updateTempest(dt);
   const b=bossPhase();
   const phaseKey=b.kind+String(b.warn)+String(b.active);
   if(phaseKey!==lastBossPhase&&b.warn)tone(250,.18,'triangle',.028);
@@ -659,7 +665,10 @@ function attack() {
   if(state!=="playing"||player.duck||player.attackCooldown>0)return;
   player.attack=.18;player.attackCooldown=.32;tone(210,.07,"square",.025);
   const reach={x:player.facing>0?player.x+player.w:player.x-40,y:player.y+8,w:40,h:42};
-  if(level==='air')for(const m of airMonsters)if(overlap(reach,m))hitAirMonster(m);
+  if(level==='air'){
+    for(const m of airMonsters)if(overlap(reach,m))hitAirMonster(m);
+    if(overlap(reach,tempest))hitTempest();
+  }
   for(const e of enemies)if(e.alive&&overlap(reach,e)){e.alive=false;burst(e.x+22,e.y+20,THEME.zombie,12);tone(150,.1,"square",.04);}
 }
 
@@ -784,19 +793,12 @@ function drawStorm(s){
 }
 function drawAirWorld(){
   for(const s of storms)drawStorm(s);
-  for(const [wx,y,title,detail] of airSigns){
-    const x=wx-cameraX;if(x>W||x<-330)continue;
-    ctx.fillStyle='rgba(20,55,75,.88)';roundRect(x,y,Math.max(180,detail.length*6.3),45,12);
-    ctx.textAlign='left';ctx.fillStyle='#fff7d8';ctx.font='800 12px system-ui';ctx.fillText(title,x+10,y+17);
-    ctx.fillStyle='#b6e9e7';ctx.font='11px system-ui';ctx.fillText(detail,x+10,y+34);
-  }
   ctx.fillStyle='#8be486';ctx.beginPath();ctx.ellipse(90-cameraX,439,37,7,0,0,7);ctx.fill();
   for(const o of allDescentClouds)drawDescentCloud(o);
   airMonsters.forEach(drawAirMonster);
   const gx=DESCENT.gateX-cameraX,gy=airPlatforms[DESCENT.finish].y-59;
   ctx.save();ctx.strokeStyle='#d6fff3';ctx.lineWidth=9;ctx.shadowColor='#72e7d1';ctx.shadowBlur=22;
   ctx.beginPath();ctx.ellipse(gx,gy,28,56,0,0,7);ctx.stroke();ctx.restore();
-  ctx.fillStyle='#193d52';ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.fillText('WIND GATE',gx,gy-76);
   if(player.x>4300&&player.y<-1400)drawTempest();
   if(descentStarted){
     ctx.save();ctx.strokeStyle='rgba(245,255,255,.38)';ctx.lineWidth=2;ctx.setLineDash([10,18]);
@@ -859,23 +861,30 @@ function drawDescentCloud(o){
   }
   ctx.restore();
 }
+const tempestSheet=new Image();
+tempestSheet.src='assets/tempest-v1.png';
 function drawTempest(){
-  const cx=5470-cameraX,cy=174+Math.sin(airTime*1.8)*8,b=bossPhase();
-  ctx.save();ctx.translate(0,AIR_SUMMIT_OFFSET);ctx.lineCap='round';
-  // Decorative tentacles stay above the arena. Only bright attacks cause damage.
-  for(let i=0;i<6;i++){
-    const dx=(i-2.5)*48;ctx.strokeStyle=i%2?'#779eb9':'#597d9f';ctx.lineWidth=16;
-    ctx.beginPath();ctx.moveTo(cx+dx*.45,cy+28);ctx.bezierCurveTo(cx+dx,cy+90,cx+dx+Math.sin(airTime*2+i)*38,cy+120,cx+dx*1.6,cy+80);ctx.stroke();
+  if(tempest.hp<=0)return;
+  const cx=tempest.x+tempest.w/2-cameraX,cy=tempest.y,b=bossPhase();
+  ctx.save();ctx.lineCap='round';
+  if(tempestSheet.complete&&tempestSheet.naturalWidth){
+    const frame=Math.floor(bossTime*10)%8,sx=frame%4*384,sy=Math.floor(frame/4)*512;
+    const left=cx-110,top=cy-35,w=220,h=190;
+    ctx.save();ctx.globalAlpha=tempest.flash>0?.55:1;
+    // Keep the face steady while the pointed lower vortex twists separately.
+    ctx.drawImage(tempestSheet,sx,sy,384,325,left,top,w,h*325/512);
+    ctx.translate(cx,top+h*325/512);
+    ctx.rotate(Math.sin(bossTime*13)*.13);
+    ctx.drawImage(tempestSheet,sx,sy+325,384,187,-w/2,-4,w,h*187/512);
+    ctx.restore();
   }
-  ctx.fillStyle='#789ebc';ctx.beginPath();ctx.ellipse(cx,cy,105,64,0,0,7);ctx.fill();
-  ctx.fillStyle='#c5e9ed';ctx.beginPath();ctx.ellipse(cx-20,cy-17,77,42,-.15,0,7);ctx.fill();
-  for(const x of [-31,31]){ctx.fillStyle='#fff6d1';ctx.beginPath();ctx.ellipse(cx+x,cy,16,22,0,0,7);ctx.fill();ctx.fillStyle='#283d64';ctx.beginPath();ctx.arc(cx+x+Math.sin(airTime)*4,cy+4,7,0,7);ctx.fill();}
-  ctx.fillStyle='#233d61';ctx.font='900 12px system-ui';ctx.textAlign='center';ctx.fillText('TEMPEST · EVADE',cx,cy-100);
+  ctx.textAlign='center';
+  ctx.font='bold 17px system-ui';
+  for(let i=0;i<TEMPEST_MAX_HP;i++){ctx.fillStyle=i<tempest.hp?'#eb5779':'#71848d';ctx.fillText('♥',cx+(i-2)*23,cy-57);}
   if(b.kind!=='rest'){
-    const rect=b.kind==='sweep'?{x:4820-cameraX,y:378,w:1030,h:18}:{x:b.x-34-cameraX,y:240,w:68,h:180};
+    const rect=b.kind==='sweep'?{x:4820-cameraX,y:378+AIR_SUMMIT_OFFSET,w:1030,h:18}:{x:b.x-34-cameraX,y:240+AIR_SUMMIT_OFFSET,w:68,h:180};
     if(b.warn){ctx.fillStyle='rgba(246,188,83,.22)';ctx.fillRect(rect.x,rect.y,rect.w,rect.h);ctx.strokeStyle='#b27439';ctx.lineWidth=2;ctx.setLineDash([8,7]);ctx.strokeRect(rect.x,rect.y,rect.w,rect.h);ctx.setLineDash([]);}
-    if(b.active){ctx.fillStyle='#a765ad';roundRect(rect.x,rect.y,rect.w,rect.h,9);ctx.fillStyle='#eac7d9';if(b.kind==='sweep')for(let x=rect.x+15;x<rect.x+rect.w;x+=35){ctx.beginPath();ctx.arc(x,387,4,0,7);ctx.fill();}else for(let y=250;y<420;y+=25){ctx.beginPath();ctx.arc(rect.x+34,y,9,0,7);ctx.fill();}}
-    const bannerY=(H>540?128:85)+cameraY-AIR_SUMMIT_OFFSET;ctx.fillStyle='#183c54';roundRect(W/2-180,bannerY,360,32,12);ctx.fillStyle='#fff4d0';ctx.font='800 14px system-ui';ctx.textAlign='center';ctx.fillText(b.kind==='sweep'?'↓ HOLD DUCK — LOW TENTACLE':'MOVE OUT OF THE MARKED LANE',W/2,bannerY+22);
+    if(b.active){ctx.fillStyle='#a765ad';roundRect(rect.x,rect.y,rect.w,rect.h,9);ctx.fillStyle='#eac7d9';if(b.kind==='sweep')for(let x=rect.x+15;x<rect.x+rect.w;x+=35){ctx.beginPath();ctx.arc(x,rect.y+9,4,0,7);ctx.fill();}else for(let y=rect.y+10;y<rect.y+rect.h;y+=25){ctx.beginPath();ctx.arc(rect.x+34,y,9,0,7);ctx.fill();}}
   }
   ctx.restore();
 }
@@ -1056,14 +1065,21 @@ function drawTouchControls() {
   // Always visible: mouse users can drag it too, and tablet players do not
   // have to discover a hidden control mode.
   ctx.save();
-  if(H>540){ctx.fillStyle='#132d40';ctx.fillRect(0,H-220,W,220);}
+  if(H>540){ctx.fillStyle='rgba(19,45,64,.35)';ctx.fillRect(0,H-220,W,220);}
   ctx.globalAlpha=.82;ctx.fillStyle="rgba(13,32,43,.38)";ctx.strokeStyle="rgba(255,255,255,.6)";ctx.lineWidth=3;
   ctx.beginPath();ctx.arc(JOY.x,JOY.y,JOY.radius,0,Math.PI*2);ctx.fill();ctx.stroke();
   const kx=JOY.x+joystick.dx*32,ky=JOY.y+joystick.dy*32;
   ctx.fillStyle="rgba(131,220,200,.9)";ctx.beginPath();ctx.arc(kx,ky,JOY.knob,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#fff8de';ctx.font=`bold ${JOY.radius>60?20:14}px system-ui`;ctx.textAlign='center';
   ctx.fillText('↑ JUMP',JOY.x,JOY.y-JOY.radius+20);ctx.fillText('↓ DUCK',JOY.x,JOY.y+JOY.radius-10);
-  for(const [name,b] of Object.entries(ACTIONS)){const reserved=name.startsWith("ability");if(reserved&&canvas.getBoundingClientRect().width<520)continue;ctx.globalAlpha=reserved ? .55 : .88;ctx.fillStyle=b.color;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();ctx.strokeStyle="rgba(255,255,255,.65)";ctx.stroke();ctx.fillStyle=reserved?"#d7dfdc":THEME.ink;ctx.font=`900 ${reserved?17:b.r>50?20:12}px system-ui`;ctx.textAlign="center";ctx.fillText(b.label,b.x,b.y+4);if(reserved){ctx.font="700 8px system-ui";ctx.fillText("SOON",b.x,b.y+15);}}
+  for(const [name,b] of Object.entries(ACTIONS)){
+    const reserved=name.startsWith('ability');if(reserved&&canvas.getBoundingClientRect().width<520)continue;
+    ctx.globalAlpha=reserved?.3:.48;ctx.fillStyle=b.color;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=.7;ctx.strokeStyle='#fff';ctx.stroke();
+    ctx.globalAlpha=reserved?.65:.9;ctx.fillStyle=reserved?'#d7dfdc':THEME.ink;
+    ctx.font=`900 ${reserved?17:b.r>50?20:12}px system-ui`;ctx.textAlign='center';ctx.fillText(b.label,b.x,b.y+4);
+    if(reserved){ctx.font='700 8px system-ui';ctx.fillText('SOON',b.x,b.y+15);}
+  }
   ctx.restore();
 }
 
@@ -1074,7 +1090,7 @@ function render(time) {
 
 function loop(ms) { const t=ms/1000,dt=Math.min(.033,t-lastTime||0);lastTime=t;update(dt);render(t);requestAnimationFrame(loop); }
 
-window.addEventListener("keydown",e=>{if(state==='map'){if(e.code==='KeyR')start();return;}if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(["ArrowUp","KeyW","Space"].includes(e.code)&&!e.repeat)jump();if(["KeyX","KeyF"].includes(e.code)&&!e.repeat)attack();if(e.code==="KeyR")start();});
+window.addEventListener("keydown",e=>{if(e.code==='KeyM'){e.preventDefault();if(!e.repeat&&state!=='map')openWorldMap();return;}if(state==='map'){if(e.code==='KeyR')start();return;}if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(["ArrowUp","KeyW","Space"].includes(e.code)&&!e.repeat)jump();if(["KeyX","KeyF"].includes(e.code)&&!e.repeat)attack();if(e.code==="KeyR")start();});
 window.addEventListener("keyup",e=>keys.delete(e.code));
 function canvasPoint(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
 function fitTouchControls(){

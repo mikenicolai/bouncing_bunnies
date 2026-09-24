@@ -29,16 +29,27 @@ canvas.listeners.pointercancel[0](event);assert.equal(run('player.h'),58);assert
 // Lightning is telegraphed, costs exactly one life during immunity.
 reset();run('airTime=1.9');assert.equal(run('stormPhase(storms[0])'),'warn');
 place(1460,342);run('airTime=2.28');step();assert.equal(run('lives'),2);run('player.x=1460;player.y=342;player.vy=0');step();assert.equal(run('lives'),2);
-// Boss sweep hurts standing, misses duck, ignores Hit entirely.
-reset();place(5000,-1748);run('bossAwake=true;bossTime=1.4');step();assert.equal(run('lives'),2);
-reset();place(5000,-1748);run("keys.add('KeyS');updateDuck();bossAwake=true;bossTime=1.4");step();assert.equal(run('lives'),3);assert.equal(run('player.y+player.h'),-1690);
-run("keys.clear();updateDuck();attack()");assert(run('bossAwake'));assert.equal(run('enemies.length'),0);
-reset();place(5150,-1748);run('bossAwake=true;bossTime=4.8');step();assert.equal(run('lives'),2);
-reset();place(5350,-1748);run('bossAwake=true;bossTime=4.8');step();assert.equal(run('lives'),3);
+// Faster sweep still requires ducking. The body blocks jumps, but lifts
+// high enough for a short crouched passage between attacks.
+reset();place(5000,-1748);run('bossAwake=true;bossTime=.8');step();assert.equal(run('lives'),2);
+reset();place(5000,-1748);run("keys.add('KeyS');updateDuck();bossAwake=true;bossTime=.8");step();assert.equal(run('lives'),3);assert.equal(run('player.y+player.h'),-1690);
+reset();run('bossAwake=true;bossTime=0;updateTempest(0)');place(run('tempest.x+20'),-1880);run('updateTempest(0)');assert.equal(run('lives'),2,'jumping above Tempest enters the wind column');
+reset();run('bossAwake=true;bossTime=1.5;updateTempest(0)');place(run('tempest.x+20'),-1748);run("keys.add('KeyS');updateDuck();updateTempest(0)");assert.equal(run('lives'),3,'a high lift opens a brief crouch route');
+run('keys.clear();updateDuck()');
+// One punch per recovery window removes one of the five displayed hearts.
+reset();run('bossAwake=true;bossTime=0;updateTempest(0)');
+for(let hit=1;hit<=5;hit++){
+  run("player.x=tempest.x-72;player.y=tempest.y+45;player.facing=1;player.attackCooldown=0;tempest.dizzy=0;attack()");
+  assert.equal(run('tempest.hp'),5-hit);
+  if(hit<5){run('player.attackCooldown=0;attack()');assert.equal(run('tempest.hp'),5-hit,'repeated punches during stun do not count');}
+}
+assert.equal(run('bossPhase().kind'),'rest');
+reset();place(5150,-1748);run('bossAwake=true;bossTime=3.1');step();assert.equal(run('lives'),2);
+reset();place(5700,-1748);run('bossAwake=true;bossTime=3.1');step();assert.equal(run('lives'),3);
 // Death uses a known solid checkpoint, game over stops, restart resets.
 reset();place(850,177);step(3);assert.equal(run('checkpoint.x'),845);place(1000,700);step();assert.equal(run('lives'),2);assert.equal(run('player.x'),845);
 run('lives=1');place(1000,700);step();assert.equal(run('state'),'lost');run('start()');assert.equal(run('lives'),3);assert.equal(run('level'),'air');
-reset();place(4800,-1748);
+reset();place(4800,-1748);run('tempest.hp=0');
 for(let i=0;i<4000&&run("state==='playing'&&!descentStarted");i++){
   run("{const b=bossPhase();keys.clear();if(b.kind==='sweep')keys.add('ArrowDown');if(!(b.kind==='slam'&&player.x+42>b.x-95&&player.x<b.x+60))keys.add('ArrowRight');}");
   step();
@@ -48,5 +59,10 @@ place(6300,660,100);step(20);assert(run('descentBlueReached'));place(6760,1710,1
 assert.equal(run('state'),'map');assert(run('airFinished'));assert.equal(node('#mapHeading').textContent,'Air complete!');
 // Existing meadow remains selectable and resets to original geometry.
 run("level='meadow';start()");assert.equal(run('platforms.length'),19);assert.equal(run('coins.length'),26);assert.equal(run('WORLD_W'),4800);
-console.log('PASS: syntax; blue through/landing/recovery; spring; keyboard/touch duck; lightning; boss sweep/slam/safe lane/no combat; death/restart/win; meadow regression.');
+// M opens the map immediately and pauses the current level for testing.
+run("window.listeners.keydown[1]({code:'KeyM',repeat:false,preventDefault(){}})");
+assert.equal(run('state'),'map');assert.equal(node('#worldMap').hidden,false);
+assert.equal(run('mapReturnState'),'playing');
+assert(!html.includes('const airSigns='),'Air tutorial panels should be absent');
+console.log('PASS: syntax; blue cloud; spring; duck; lightning; five-hit Tempest combat, wind column and crouch gap; descent/win; meadow regression.');
 module.exports={run,reset,place,step};
