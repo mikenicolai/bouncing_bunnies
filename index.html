@@ -277,9 +277,9 @@ function fitGameViewport(){
   canvas.style.setProperty('--game-aspect',`${W} / ${H}`);
   fitTouchControls();
 }
-let WORLD_W=4800, level='meadow', airTime=0, bossTime=0, bossAwake=false, lastBossPhase='', airFinished=false, selectedWorld='water', duckPointer=null;
+let WORLD_W=4800, level='meadow', airTime=0, bossTime=0, bossAwake=false, airFinished=false, selectedWorld='water', duckPointer=null;
 const TEMPEST_MAX_HP=5;
-let tempest={x:5410,y:-1840,w:100,h:150,hp:TEMPEST_MAX_HP,dizzy:0,flash:0};
+let tempest={x:5330,y:-1865,w:120,h:175,hp:TEMPEST_MAX_HP,dizzy:0,flash:0};
 const keys = new Set();
 let state = "title", cameraX = 0, cameraY = 0, lastTime = 0, soundOn = true, audioCtx;
 const joystick = { active:false, pointerId:null, dx:0, dy:0, jumpArmed:true, duck:false };
@@ -392,8 +392,8 @@ let player, coins, enemies, particles, score, lives;
 
 function resetGame(autoPlay = true) {
   WORLD_W=level==='air'?6900:4800;platforms=level==='air'?airPlatforms.filter(p=>!p.removed):meadowPlatforms;
-  airTime=0;bossTime=0;bossAwake=false;lastBossPhase='';descentStarted=false;descentBlueReached=false;resetAirMonsters();clearInputs();
-  tempest={x:5410,y:AIR_SUMMIT_OFFSET+120,w:100,h:150,hp:TEMPEST_MAX_HP,dizzy:0,flash:0};
+  airTime=0;bossTime=0;bossAwake=false;descentStarted=false;descentBlueReached=false;resetAirMonsters();clearInputs();
+  tempest={x:5330,y:airPlatforms[19].y-175,w:120,h:175,hp:TEMPEST_MAX_HP,dizzy:0,flash:0};
   airPlatforms.forEach(p=>p.spring=0);storms.forEach(s=>s.lastPhase='off');allDescentClouds.forEach(o=>o.lastPhase='off');
   player = {x:90,y:390,w:42,h:58,vx:0,vy:0,onGround:false,facing:1,invincible:0,run:0,attack:0,attackCooldown:0,jumpAge:9,boosts:0};
   checkpoint={x:90,y:level==='air'?382:390};player.y=checkpoint.y;
@@ -510,16 +510,9 @@ function touchesStormCloud(s){
   return ((px-cx)/44)**2+((py-cy)/29)**2<=1;
 }
 function stormPhase(s){const frame=stormFrame(s);return frame===0?'off':frame<5?'warn':frame<7?'on':'fade';}
-function bossPhase(){
-  if(!bossAwake||descentStarted||tempest.hp<=0||tempest.dizzy>0)return {kind:'rest',active:false,warn:false};
-  const t=bossTime%4.8, lane=Math.floor(bossTime/4.8)%2?5530:5150;
-  if(t<1.7)return {kind:'sweep',warn:t<.65,active:t>=.65,t};
-  if(t>=2.3&&t<3.85)return {kind:'slam',warn:t<2.95,active:t>=2.95&&t<3.55,x:lane,t};
-  return {kind:'rest',active:false,warn:false};
-}
 function hitTempest(){
   if(!bossAwake||descentStarted||tempest.hp<=0||tempest.dizzy>0)return false;
-  tempest.hp--;tempest.dizzy=.7;tempest.flash=.25;
+  tempest.hp--;tempest.dizzy=1.5;tempest.flash=.3;
   burst(tempest.x+tempest.w/2,tempest.y+55,tempest.hp?'#ffe8a0':'#a8f4ee',tempest.hp?12:30);
   tone(tempest.hp?260:130,.18,'triangle',.04);
   return true;
@@ -527,13 +520,12 @@ function hitTempest(){
 function updateTempest(dt){
   if(!bossAwake||descentStarted||tempest.hp<=0)return;
   tempest.dizzy=Math.max(0,tempest.dizzy-dt);tempest.flash=Math.max(0,tempest.flash-dt);
-  // The vortex patrols the cloud and periodically lifts far enough for a
-  // precisely timed crouch escape. Its occupied space remains dangerous.
-  tempest.x=5370+175*Math.sin(bossTime*1.05);
-  const lift=47*(1-Math.cos(bossTime*2.1));
+  // A slower patrol leaves room to attack. After 30 seconds the tail lifts
+  // permanently: crouching fits below it, while standing and jumping do not.
+  tempest.x=5330+100*Math.sin(bossTime*.9);
+  const lift=48*Math.max(0,Math.min(1,(bossTime-30)/.8));
   tempest.y=airPlatforms[19].y-tempest.h-lift;
-  // The rising wind column closes the route above its head, while a brief
-  // gap beneath the lifted tail permits a difficult ducked escape.
+  // The wind column blocks jumping over the boss at every height.
   const column={x:tempest.x,y:airPlatforms[19].y-460,w:tempest.w,h:tempest.y+tempest.h-(airPlatforms[19].y-460)};
   if(tempest.dizzy<=0&&overlap(player,column))hurt(player.x<tempest.x+tempest.w/2?-1:1);
 }
@@ -552,14 +544,6 @@ function updateAir(dt){
   if(!descentStarted&&player.x>4780&&player.y<AIR_SUMMIT_OFFSET+460)bossAwake=true;
   if(bossAwake)bossTime+=dt;
   updateTempest(dt);
-  const b=bossPhase();
-  const phaseKey=b.kind+String(b.warn)+String(b.active);
-  if(phaseKey!==lastBossPhase&&b.warn)tone(250,.18,'triangle',.028);
-  lastBossPhase=phaseKey;
-  if(b.active){
-    const hit=b.kind==='sweep'?{x:4820,y:378+AIR_SUMMIT_OFFSET,w:1030,h:18}:{x:b.x-34,y:240+AIR_SUMMIT_OFFSET,w:68,h:180};
-    if(overlap(player,hit))hurt(player.x<5350?-1:1);
-  }
 }
 
 function update(dt) {
@@ -865,11 +849,11 @@ const tempestSheet=new Image();
 tempestSheet.src='assets/tempest-v1.png';
 function drawTempest(){
   if(tempest.hp<=0)return;
-  const cx=tempest.x+tempest.w/2-cameraX,cy=tempest.y,b=bossPhase();
+  const cx=tempest.x+tempest.w/2-cameraX,cy=tempest.y;
   ctx.save();ctx.lineCap='round';
   if(tempestSheet.complete&&tempestSheet.naturalWidth){
     const frame=Math.floor(bossTime*10)%8,sx=frame%4*384,sy=Math.floor(frame/4)*512;
-    const left=cx-110,top=cy-35,w=220,h=190;
+    const left=cx-135,top=cy-40,w=270,h=235;
     ctx.save();ctx.globalAlpha=tempest.flash>0?.55:1;
     // Keep the face steady while the pointed lower vortex twists separately.
     ctx.drawImage(tempestSheet,sx,sy,384,325,left,top,w,h*325/512);
@@ -879,12 +863,11 @@ function drawTempest(){
     ctx.restore();
   }
   ctx.textAlign='center';
-  ctx.font='bold 17px system-ui';
-  for(let i=0;i<TEMPEST_MAX_HP;i++){ctx.fillStyle=i<tempest.hp?'#eb5779':'#71848d';ctx.fillText('♥',cx+(i-2)*23,cy-57);}
-  if(b.kind!=='rest'){
-    const rect=b.kind==='sweep'?{x:4820-cameraX,y:378+AIR_SUMMIT_OFFSET,w:1030,h:18}:{x:b.x-34-cameraX,y:240+AIR_SUMMIT_OFFSET,w:68,h:180};
-    if(b.warn){ctx.fillStyle='rgba(246,188,83,.22)';ctx.fillRect(rect.x,rect.y,rect.w,rect.h);ctx.strokeStyle='#b27439';ctx.lineWidth=2;ctx.setLineDash([8,7]);ctx.strokeRect(rect.x,rect.y,rect.w,rect.h);ctx.setLineDash([]);}
-    if(b.active){ctx.fillStyle='#a765ad';roundRect(rect.x,rect.y,rect.w,rect.h,9);ctx.fillStyle='#eac7d9';if(b.kind==='sweep')for(let x=rect.x+15;x<rect.x+rect.w;x+=35){ctx.beginPath();ctx.arc(x,rect.y+9,4,0,7);ctx.fill();}else for(let y=rect.y+10;y<rect.y+rect.h;y+=25){ctx.beginPath();ctx.arc(rect.x+34,y,9,0,7);ctx.fill();}}
+  ctx.font='bold 19px system-ui';
+  for(let i=0;i<TEMPEST_MAX_HP;i++){ctx.fillStyle=i<tempest.hp?'#eb5779':'#71848d';ctx.fillText('♥',cx+(i-2)*26,cy-69);}
+  if(tempest.dizzy>0){
+    ctx.fillStyle='#ffe48a';ctx.font='bold 17px system-ui';
+    for(let i=0;i<3;i++){const a=airTime*5+i*Math.PI*2/3;ctx.fillText('★',cx+Math.cos(a)*62,cy-32+Math.sin(a)*11);}
   }
   ctx.restore();
 }
