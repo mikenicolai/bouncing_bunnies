@@ -157,7 +157,7 @@ kbd { padding: 2px 6px; border: 1px solid #43505b; border-radius: 4px; color: #b
             <button class="map-hotspot map-meadow" data-world="meadow" aria-label="First Meadow" aria-pressed="false"></button>
             <span id="meadowStatus" class="map-meadow-status"></span>
             <button class="map-hotspot" data-world="water" aria-label="Water — Tide Pools" aria-pressed="false"></button>
-            <button class="map-hotspot" data-world="fire" aria-label="Fire — Ember Peaks" aria-pressed="false"></button>
+            <button class="map-hotspot" data-world="fire" aria-label="Fire — Ember Pass" aria-pressed="false"></button>
             <button class="map-hotspot" data-world="earth" aria-label="Plants / Earth — Wildwood" aria-pressed="false"></button>
             <button class="map-hotspot" data-world="air" aria-label="Air — Cloud Paths" aria-pressed="false"></button>
             <button class="map-hotspot map-final" data-world="final" aria-label="Final Villain — locked, four elements needed" aria-pressed="false"></button>
@@ -300,8 +300,8 @@ const meadowPlatforms = [
 ].map(([x,y,w,h]) => ({x,y,w,h}));
 const FIRE_W=2200,FIRE_EXIT_X=2100;
 const firePlatforms=[
-  [0,450,350,100],[400,410,300,140],[825,365,280,185],
-  [1185,420,300,130],[1560,355,260,195],[1900,405,300,145]
+  [0,450,350,100],[420,345,270,205],[810,435,280,115],
+  [1210,315,275,235],[1600,410,260,140],[1950,335,250,215]
 ].map(([x,y,w,h])=>({x,y,w,h}));
 const airPlatforms=[
   [0,440,280,'white'],[240,335,190,'blue'],[245,480,340,'white'],

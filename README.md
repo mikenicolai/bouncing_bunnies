@@ -37,7 +37,7 @@ Tempest uses the supplied eight-frame transparent sprite sheet (`assets/tempest-
 
 ## Fire — Ember Pass prototype
 
-The first Fire route is a 2,200-pixel playable starting point, selectable from the world map. Six cooling-rock platforms lead across lava gaps to a glowing portal. The two coins above each platform are optional; landing on a new rock saves a checkpoint. Falling into lava costs one life and returns the bunny to the latest rock. Fire has its own ember sky, lava and stone artwork drawn in Canvas. There are no tutorial signs or enemies yet. Completing the route returns to the world map. `node tests/fire.cjs` checks map access, each jump at 30/60/120 FPS, lava recovery and the exit.
+The first Fire route is a 2,200-pixel playable starting point, selectable from the world map. Six cooling-rock platforms climb and drop over wider lava gaps before a glowing portal. The first and third climbs reward a second Jump tap in midair. The two coins above each platform are optional; landing on a new rock saves a checkpoint. Falling into lava costs one life and returns the bunny to the latest rock. Fire has its own ember sky, lava and stone artwork drawn in Canvas. There are no tutorial signs or enemies yet. Completing the route returns to the world map. `node tests/fire.cjs` checks map access, each jump at 30/60/120 FPS, lava recovery and the exit.
 
 ## Verification
 
