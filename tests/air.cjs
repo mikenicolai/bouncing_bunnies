@@ -20,6 +20,17 @@ assert(run('!platforms.includes(airPlatforms[2])'));
 place(480,330,150);step(50);assert(run('player.y+player.h>480'));
 // Spring bounce and feedback; duck hitbox preserves feet and blocks jumping.
 place(650,350,100);step(12);assert(run('player.vy<-700'));assert(run('airPlatforms[3].spring>0'));
+reset();assert.equal(run('coins[0].y'),350);assert.equal(run('coins[1].y'),350);
+assert.equal(run('airPlatforms[4].y'),195);
+// Two extra jumps from the grassy edge still cannot reach the raised cloud.
+run("player.x=590;player.y=airPlatforms[3].y-58;player.onGround=true;player.invincible=10;keys.add('ArrowRight');jump()");
+let reachedWithoutSpring=false;
+for(let frame=0;frame<150;frame++){
+  if(frame===6||frame===12)run('jump()');
+  run('update(1/60)');
+  if(run('player.airCloud===airPlatforms[4]'))reachedWithoutSpring=true;
+}
+assert(!reachedWithoutSpring);
 reset();place(100,382);step(2);run("keys.add('ArrowDown');updateDuck()");assert.equal(run('player.h'),18);assert.equal(run('player.y+player.h'),440);run('jump()');assert.equal(run('player.vy'),0);
 run("keys.clear();updateDuck()");assert.equal(run('player.h'),58);assert.equal(run('player.y+player.h'),440);
 // Touch hold and cancellation feed the real installed pointer listeners.
@@ -58,7 +69,7 @@ for(let hit=1;hit<=5;hit++){
 }
 assert.equal(run('tempest.hp'),0);
 // Death uses a known solid checkpoint, game over stops, restart resets.
-reset();place(850,177);step(3);assert.equal(run('checkpoint.x'),845);place(1000,700);step();assert.equal(run('lives'),2);assert.equal(run('player.x'),845);
+reset();place(850,137);step(3);assert.equal(run('checkpoint.x'),845);place(1000,700);step();assert.equal(run('lives'),2);assert.equal(run('player.x'),845);
 run('lives=1');place(1000,700);step();assert.equal(run('state'),'lost');run('start()');assert.equal(run('lives'),3);assert.equal(run('level'),'air');
 reset();place(4800,-1748);run('tempest.hp=0');
 for(let i=0;i<4000&&run("state==='playing'&&!descentStarted");i++){
