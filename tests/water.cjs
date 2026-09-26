@@ -43,6 +43,16 @@ assert(run('player.y<560'),'swim up moves upward');
 run("player.y=600;player.vy=0;joystick.dy=.9");step(30);assert(run('player.y>600'),'touch joystick dives');
 run("joystick.dy=0;duckPointer=17;player.vy=0");const diveY=run('player.y');step(20);assert(run('player.y')>diveY,'Dive button moves downward');run('duckPointer=null');
 
+// A surface jump clears the water, refills air, and splashes back into swim mode.
+reset();run('player.inWater=true;player.x=1080;player.y=WATER_SURFACE-42;player.air=2;player.invincible=3');
+run('jump()');assert(run('player.breaching'));
+step(22);assert(run('player.y+player.h<WATER_SURFACE-15'),'bunny rises fully above the water');
+assert.equal(run('player.air'),15);
+step(55);assert(!run('player.breaching'),'bunny splashes back into swimming');
+assert(run('player.y+player.h>=WATER_SURFACE'),'splashdown crosses the surface');
+reset();run('player.inWater=true;player.x=1080;player.y=WATER_SURFACE-42;jump();keys.add("ArrowDown")');step(7);
+assert(!run('player.breaching'),'Dive cuts short an airborne leap');run('keys.clear()');
+
 // The surface refills air; expiry costs one heart and uses a water checkpoint.
 reset();run('player.inWater=true;player.x=950;player.y=348;player.air=1');step();
 assert.equal(run('player.air'),15);
@@ -108,4 +118,4 @@ run('sharkSheet.complete=true;sharkSheet.naturalWidth=1774;ctx.drawImage=(source
 assert(run('ctx.sharkDraws===4'),'painted shark frames render for all patrols');
 run('pirateSheet.complete=true;pirateSheet.naturalWidth=1536;ctx.drawImage=(source)=>{if(source===pirateSheet)ctx.pirateDraws=(ctx.pirateDraws||0)+1;};render(1)');
 assert(run('ctx.pirateDraws===3'),'painted pirate frames render on the sea floor');
-console.log('PASS: water entry, swim and dive strokes, oxygen recovery, two-heart enemies, reef routes, and gate.');
+console.log('PASS: water entry, swim, surface leap and dive, oxygen recovery, two-heart enemies, reef routes, and gate.');
