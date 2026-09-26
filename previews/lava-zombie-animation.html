@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lava zombie walk animation</title>
+<style>
+  body{margin:0;padding:28px;background:#1c202e;color:#fff3df;font:16px system-ui}
+  main{max-width:1040px;margin:auto}
+  h1{margin:0 0 8px;font-size:28px}
+  p{margin:0 0 20px;color:#dcc8bb}
+  canvas{width:100%;height:auto;display:block;border:2px solid #765352;border-radius:16px;background:#292735}
+  a{color:#ffcf9a}
+</style>
+<main>
+  <h1>Lava zombie · walking animation</h1>
+  <p>Four painted walk frames, mirrored for both directions and enlarged here so you can see the details.</p>
+  <canvas width="1000" height="340" aria-label="Animated lava zombies walking right and left"></canvas>
+  <p><a href="../assets/lava-zombie-v3.png">Open the complete eight-pose sprite sheet</a> · <a href="fire-cavern-review.html">See it in the Fire level</a></p>
+</main>
+<script>
+const canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d');
+const sheet=new Image(),sprites=[];
+sheet.onload=()=>{
+  for(let frame=4;frame<8;frame++){
+    const w=384,h=512,layer=document.createElement('canvas');layer.width=w;layer.height=h;
+    const paint=layer.getContext('2d',{willReadFrequently:true});
+    paint.drawImage(sheet,(frame%4)*w,h,w,h,0,0,w,h);
+    const pixels=paint.getImageData(0,0,w,h),d=pixels.data,seen=new Uint8Array(w*h),q=new Int32Array(w*h);
+    let head=0,tail=0;
+    function visit(x,y){
+      if(x<0||y<0||x>=w||y>=h)return;
+      const n=y*w+x;if(seen[n])return;seen[n]=1;
+      const i=n*4,lo=Math.min(d[i],d[i+1],d[i+2]),hi=Math.max(d[i],d[i+1],d[i+2]);
+      if(lo>225&&hi-lo<24){d[i+3]=0;q[tail++]=n;}
+    }
+    for(let x=0;x<w;x++){visit(x,0);visit(x,h-1);}for(let y=0;y<h;y++){visit(0,y);visit(w-1,y);}
+    while(head<tail){const n=q[head++],x=n%w,y=Math.floor(n/w);visit(x-1,y);visit(x+1,y);visit(x,y-1);visit(x,y+1);}
+    paint.putImageData(pixels,0,0);sprites.push(layer);
+  }
+};
+sheet.src='../assets/lava-zombie-v3.png';
+function render(ms){
+  ctx.fillStyle='#292735';ctx.fillRect(0,0,1000,340);
+  ctx.fillStyle='#3b303c';ctx.fillRect(0,277,1000,63);
+  ctx.fillStyle='#e28361';ctx.fillRect(0,277,1000,7);
+  ctx.fillStyle='#ffcfaa';ctx.font='bold 18px system-ui';ctx.textAlign='center';
+  ctx.fillText('WALKING RIGHT',265,42);ctx.fillText('WALKING LEFT',735,42);
+  if(sprites.length===4){
+    const frame=Math.floor(ms/170)%4;
+    for(const [x,facing] of [[265,1],[735,-1]]){
+      ctx.save();ctx.translate(x,277);ctx.scale(facing,1);
+      ctx.drawImage(sprites[frame],-96,-218,192,256);
+      ctx.restore();
+    }
+  }
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+</script>
+</html>
