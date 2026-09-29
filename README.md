@@ -2,6 +2,8 @@
 
 A small, original side-scrolling platform game made with the HTML5 Canvas API. It has no external runtime dependencies or borrowed game assets.
 
+Play in an external browser: <https://mikenicolai.github.io/bouncing_bunnies/>.
+
 ## Play
 
 Open `index.html` in a browser, or serve the folder locally:
@@ -21,7 +23,11 @@ Then visit <http://localhost:8080>.
 
 ## Art direction
 
-Finishing a level opens the world map. **Air → Play Air level** launches Cloud Paths; **Fire → Play Fire level** launches Ember Pass; **Water → Play Water level** launches Tide Pools; **First Meadow → Playable now** returns to the original meadow. The World map button pauses the current run, which can be continued. Plants / Earth and the final villain map remain future destinations. The Air monster is separate from that final villain.
+Finishing a level opens the world map. **Air → Play Air level** launches Cloud Paths; **Fire → Play Fire level** launches Ember Pass; **Water → Play Water level** launches Tide Pools; **Plants / Earth → Play Earth level** launches Wildwood; **First Meadow → Playable now** returns to the original meadow. The World map button pauses the current run, which can be continued. The final villain map remains a future destination. The Air monster is separate from that final villain.
+
+## Plants / Earth — Wildwood
+
+Wildwood is a 6,900-pixel-wide rising route with 25 branch and mushroom landings, matching Cloud Paths in horizontal scale. A continuous painted grass floor rises through seven sections. Cliffs stop the bunny from simply running through, so the route climbs the broad mossy branches grown into large oaks and beeches. The trees' trunks reach the ground. Yellow and blue mushrooms bounce the bunny at 730 pixels/second, lower than Air's 850-pixel/second trampolines. Spiked red mushrooms are instant-death hazards; reaching the gate at the top completes Earth. Six tree goblins guard the route. They run toward a nearby bunny at the bunny's 260-pixel/second ground speed and can be punched or stomped twice. Far away, each two-to-four-second animation choice is dance 70% of the time and idle 30% of the time. Runtime art: `assets/wildwood-trees-v2.png`, `assets/wildwood-ground-v1.png`, `assets/wildwood-mushrooms-v1.png`, and `assets/tree-goblin-v1.png`; the goblin's [idle, walk, and dance preview](previews/tree-goblin-animation.html) remains available. Run `node tests/earth.cjs` for route and interaction checks.
 
 ## Air — Cloud Paths
 
@@ -67,7 +73,7 @@ The playable character uses `assets/pink-ear-bunny-v2.png`, an eight-pose sheet 
 
 The approved jump/crouch update is preserved unchanged at `assets/pink-ear-bunny-jump-duck-v3-source.png` (1983 × 793 RGB with baked checkerboard). Provenance and exact crop/state mapping are documented in `assets/pink-ear-bunny-jump-duck-v3.md`. The game embeds these bytes and removes the checkerboard into cached transparent Canvas frames at load time. Four poses follow takeoff/ascent/apex/descent; four lower-row poses animate duck press/hold/release. Every crouch frame preserves its natural source aspect ratio at uniform scale .22; the artwork can extend above the separate fixed-feet 18px hurtbox. Short 60ms blends smooth press/lower/hold/release, with mirrored facing. Existing v2 idle/run/boxing sprites are retained. The original standing bookends in the new source are unused. No cleaned derivative is required on disk.
 
-The full game, CSS, JavaScript, both runtime bunny sheets and map image are embedded in `index.html`; it has no external runtime assets or dependencies. Source PNGs remain under `assets/` for maintenance. Level scenery uses Canvas drawing. Colors and visual rendering are isolated in `THEME` and the `draw*` functions, while level geometry and gameplay remain separate. `node tests/motion.cjs` checks new pose phases, collider stability and embedding. The maintained review image under `previews/` is documentation only; local capture servers and disposable review helpers are not part of the published source.
+The game, CSS, JavaScript, bunny sheets and map image are embedded in `index.html`. Wildwood loads four painted PNGs from `assets/`; Pages must publish that directory alongside the HTML. Source PNGs remain under `assets/` for maintenance. Colors and visual rendering are isolated in `THEME` and the `draw*` functions, while level geometry and gameplay remain separate. `node tests/motion.cjs` checks new pose phases, collider stability and embedding. The maintained review image under `previews/` is documentation only; local capture servers and disposable review helpers are not part of the published source.
 
 Published game: <https://mikenicolai.github.io/bouncing_bunnies/>.
 

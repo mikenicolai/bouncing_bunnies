@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tree goblin animation preview</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f3f0e6; color: #213a34; }
+    main { max-width: 1160px; margin: auto; padding: clamp(20px, 4vw, 42px); }
+    .eyebrow { color: #46786a; font-size: .75rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 8px 0; font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.1; }
+    .intro { max-width: 710px; margin: 0 0 24px; line-height: 1.5; color: #4f635c; }
+    .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .card { overflow: hidden; border: 1px solid #c9d9ca; border-radius: 18px; background: #fffdf7; box-shadow: 0 8px 24px #204d3510; }
+    .card canvas { display: block; width: 100%; height: auto; background: radial-gradient(circle at 50% 53%, #eff9e8, #e0efe1 72%, #d1e4d8); }
+    .caption { padding: 15px 18px 18px; }
+    h2 { margin: 0 0 5px; font-size: 1.1rem; }
+    .caption p { margin: 0; color: #61746b; font-size: .92rem; line-height: 1.4; }
+    .controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 22px; }
+    button, .download { border: 0; border-radius: 9px; padding: 10px 15px; background: #215a4d; color: white; font: 700 .92rem system-ui, sans-serif; text-decoration: none; cursor: pointer; }
+    button:hover, .download:hover { background: #17463c; }
+    label { display: flex; align-items: center; gap: 10px; color: #476359; font-weight: 650; }
+    input { accent-color: #28745f; }
+    .note { margin: 18px 0 0; color: #61746b; font-size: .88rem; }
+    @media (max-width: 780px) { .cards { grid-template-columns: 1fr; } .card { max-width: 440px; width: 100%; margin: auto; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Character animation study</div>
+    <h1>The tree goblin</h1>
+    <p class="intro">The goblin from your sketch, painted with the game’s pencil texture and dark outlines. Watch its idle, walk, and dance loops here before it joins the tree level.</p>
+    <div class="cards">
+      <section class="card"><canvas id="idle" width="360" height="330" role="img" aria-label="Goblin blinking, glancing, and grinning in an idle loop"></canvas><div class="caption"><h2>Idle</h2><p>A little bounce, a blink, and a toothy grin.</p></div></section>
+      <section class="card"><canvas id="walk" width="360" height="330" role="img" aria-label="Goblin walking with alternating feet"></canvas><div class="caption"><h2>Walk</h2><p>Four grounded steps with swinging arms.</p></div></section>
+      <section class="card"><canvas id="dance" width="360" height="330" role="img" aria-label="Goblin swaying side to side and hopping in a dance"></canvas><div class="caption"><h2>Dance</h2><p>Left, right, hop, and a celebratory landing.</p></div></section>
+    </div>
+    <div class="controls">
+      <button id="toggle" type="button" aria-pressed="false">Pause animations</button>
+      <label for="speed">Speed <input id="speed" type="range" min="0.5" max="2" value="1" step="0.1"><output id="speed-value">1×</output></label>
+      <a class="download" href="../assets/tree-goblin-v1.png" download>Download sprite sheet</a>
+    </div>
+    <p class="note">Animation preview only. The tree level has not been built.</p>
+  </main>
+  <script>
+    const sheet = new Image();
+    sheet.src = '../assets/tree-goblin-v1.png';
+    const states = [
+      { canvas: document.querySelector('#idle'), row: 0, fps: 2.3 },
+      { canvas: document.querySelector('#walk'), row: 1, fps: 5.5 },
+      { canvas: document.querySelector('#dance'), row: 2, fps: 4.2 }
+    ];
+    const toggle = document.querySelector('#toggle');
+    const speedInput = document.querySelector('#speed');
+    const speedValue = document.querySelector('#speed-value');
+    let paused = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let elapsed = 0;
+    let previous = 0;
+    function updateButton() {
+      toggle.textContent = paused ? 'Play animations' : 'Pause animations';
+      toggle.setAttribute('aria-pressed', String(paused));
+    }
+    updateButton();
+    toggle.addEventListener('click', () => { paused = !paused; updateButton(); });
+    speedInput.addEventListener('input', () => { speedValue.value = `${Number(speedInput.value).toFixed(1)}×`; });
+    function draw(state) {
+      const canvas = state.canvas;
+      const ctx = canvas.getContext('2d');
+      const frame = Math.floor(elapsed * state.fps) % 4;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#a2c8a4';
+      ctx.beginPath();
+      ctx.ellipse(180, 292, state.row === 2 && frame === 2 ? 80 : 99, 11, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (!sheet.complete || !sheet.naturalWidth) return;
+      const cellWidth = sheet.naturalWidth / 4;
+      const cellHeight = sheet.naturalHeight / 3;
+      const scale = .76;
+      const bob = state.row === 0 ? Math.sin(elapsed * 5) * 2 : 0;
+      const hop = state.row === 2 && frame === 2 ? 14 : 0;
+      ctx.drawImage(sheet,
+        frame * cellWidth, state.row * cellHeight, cellWidth, cellHeight,
+        180 - cellWidth * scale / 2, 292 - cellHeight * scale + bob - hop,
+        cellWidth * scale, cellHeight * scale);
+    }
+    function animate(now) {
+      if (previous && !paused) elapsed += Math.min((now - previous) / 1000, .05) * Number(speedInput.value);
+      previous = now;
+      states.forEach(draw);
+      requestAnimationFrame(animate);
+    }
+    sheet.addEventListener('load', () => states.forEach(draw));
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
