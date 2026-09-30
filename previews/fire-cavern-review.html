@@ -1,24 +1,26 @@
 <!doctype html>
 <html lang="en">
 <meta charset="utf-8">
-<title>Fire cavern review</title>
+<title>Fire volcano review</title>
 <style>
 body{margin:0;background:#1b2232;color:#fff4df;font:16px system-ui;padding:20px}
 button{font:inherit;margin:0 8px 16px 0;padding:8px 14px;border:0;border-radius:8px;background:#e89665;color:#26202b;cursor:pointer}
 iframe{display:block;width:1100px;max-width:100%;height:760px;border:1px solid #776474;border-radius:12px;background:#1b2232}
 </style>
-<h1>Fire cavern review</h1>
-<p>Inspect the entrance, full-size labyrinth, climbing route, and two outdoor jumps in the actual game renderer.</p>
-<button data-scene="surface">Entrance and fire trees</button><button data-scene="maze">Labyrinth</button><button data-scene="turn">Lower turn</button><button data-scene="exit">Exit and jumps</button>
+<h1>Fire volcano review</h1>
+<p>Inspect the opening parkour, walkable volcano, crater dropper, and final labyrinth in the actual game renderer.</p>
+<button data-scene="surface">Opening and fire trees</button><button data-scene="volcano">Volcano climb</button><button data-scene="dropper">Crater dropper</button><button data-scene="maze">Labyrinth</button><button data-scene="turn">Lower maze loop</button><button data-scene="exit">Maze exit</button><button id="live">Play this section</button>
 <iframe src="../index.html" title="Bouncing Bunnies Fire preview"></iframe>
 <script>
 const frame=document.querySelector('iframe');
-const scenes={surface:[500,392,0,0,'surface',1,1],maze:[770,711,400,500,'maze',1,1],turn:[1570,1511,1100,1250,'maze',11,11],exit:[2660,392,2180,0,'exit',23,1]};
+let current='surface';
+const scenes={surface:[500,392,0,0,'surface',1,1],volcano:[3500,-189,3100,-460,'volcano',1,1],dropper:[5050,575,4470,500,'dropper',1,1],maze:[4899,1991,4610,1750,'maze',1,1],turn:[5699,2791,5350,2540,'maze',11,11],exit:[6659,1991,5940,1750,'maze',23,1]};
 function show(name){
-  const [x,y,cx,cy,mode,c,r]=scenes[name];
-  frame.contentWindow.eval(`level='fire';soundOn=false;start();fireMode='${mode}';player.x=${x};player.y=${y};player.mazeC=${c};player.mazeR=${r};player.vx=0;player.vy=0;player.invincible=100;fireUnderground=${y>520};cameraX=${cx};cameraY=${cy};`);
+  current=name;const [x,y,cx,cy,mode,c,r]=scenes[name];
+  frame.contentWindow.eval(`level='fire';soundOn=false;start();fireMode='${mode}';player.x=${x};player.y=${y};player.mazeC=${c};player.mazeR=${r};player.vx=0;player.vy=0;player.invincible=0;fireUnderground=${y>520};cameraX=${cx};cameraY=${cy};checkpoint={x:4650,y:-1108,mode:'volcano',stage:6};state='review';`);
 }
 frame.addEventListener('load',()=>show('surface'));
-document.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>show(button.dataset.scene)));
+document.querySelectorAll('[data-scene]').forEach(button=>button.addEventListener('click',()=>show(button.dataset.scene)));
+document.querySelector('#live').addEventListener('click',()=>{frame.contentWindow.eval(`state='playing';player.invincible=0;`);frame.contentWindow.focus();});
 </script>
 </html>
