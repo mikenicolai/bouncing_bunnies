@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const {run,reset,place}=require('./air.cjs');
-assert(run("airPlatforms.filter(p=>p.island!==undefined).length===4&&airPlatforms.filter(p=>p.island!==undefined).every(p=>p.kind==='white')"));
+assert(run("airPlatforms.filter(p=>p.island!==undefined).length===5&&airPlatforms.filter(p=>p.island!==undefined).every(p=>p.kind==='white')"));
 assert(run('[4,9,13,17].every(id=>airPlatforms[id].kind==="white"&&airPlatforms[id].island===undefined)'), 'restored platforms use original white-cloud art');
 assert(run('descentObstacles[0].y-airPlatforms[19].y>=700'));
 assert.equal(run('smallDescentClouds.length'),3);

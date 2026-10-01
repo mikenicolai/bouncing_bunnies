@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const {run,reset}=require('./air.cjs');
-reset();assert.equal(run('platforms.length'),21);assert(run('!platforms.includes(airPlatforms[2])'));
+reset();assert.equal(run('platforms.length'),22);assert(run('!platforms.includes(airPlatforms[2])'));
 assert(run('airPlatforms.every((p,i)=>i===2||platforms.includes(p))'),'all other platforms retained');
 const html=fs.readFileSync('index.html','utf8');assert(fs.readFileSync('assets/painted-clouds-v1.png').equals(Buffer.from(html.match(/paintedCloudSheet.src='data:image\/png;base64,([^']+)'/)[1],'base64')));
 run(`var cloudDraws=[];Object.assign(ctx,{save(){},restore(){},drawImage(...args){cloudDraws.push({alpha:this.globalAlpha,args});}});paintedCloudSheet.complete=true;paintedCloudSheet.naturalWidth=1536;cameraX=0;W=6900;drawPaintedCloud(airPlatforms[1]);drawPaintedCloud(airPlatforms[1],true);drawPaintedCloud(airPlatforms[4]);`);

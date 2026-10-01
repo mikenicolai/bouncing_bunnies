@@ -1,0 +1,9 @@
+# Ember ground v1
+
+Generated on 1 October 2026 with the built-in imagegen tool, using `wildwood-ground-v1.png` as a brushwork and terrain reference. The saved `ember-ground-v1.png` is the unchanged generated 2172 × 724 RGBA image, with transparent sky and an opaque terrain cross-section.
+
+The renderer places source row 244 at the walkable surface, scales uniformly by 0.3, and crops/repeats the strip inside each platform. On the volcano it rotates the same strip along each slope segment. The artwork is decorative and does not introduce fire damage.
+
+## Final generation prompt
+
+Use case: stylized-concept. Asset type: transparent side-view ground strip for the 2D painted platform game Bouncing Bunnies. Primary request: create polished fiery ground similar to the Earth ground reference, but red and volcanic. Input image: reference only for brushwork and side-view terrain structure. Composition: a wide continuous horizontal strip filling the entire width, with a level walkable top at exactly 25% down the image and a deep solid cross-section filling the image from that line to the bottom edge. Transparent empty space above the top with only small crimson ember grasses rising into it. Terrain extends all the way to left, right and bottom image edges; no floating island silhouette. Materials: rich burgundy and charcoal volcanic earth, painted dark roots, embedded basalt stones, thin glowing orange-red fissures beneath a soft red-orange moss and ember grass top. Warm readable painterly fantasy brushwork, matching a children's storybook platform game, layered detailed textures, not photorealistic. Surface should look walkable, with subtle ember glow rather than tall flames. No trees, characters, coins, text, UI or watermark. Landscape image approximately 3:1 aspect ratio. Transparent background.
