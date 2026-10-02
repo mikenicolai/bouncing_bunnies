@@ -38,7 +38,7 @@ for(let i=0;i<9;i++){
     assert.equal(run('lives'),3);
   }
 }
-assert.equal(run('fireGroundSheet.src'),'assets/ember-ground-v1.png');
+assert.equal(run('fireGroundSheet.src'),'assets/ember-ground-v2.png');
 // Test the real movement integrator at phone/desktop widths and common frame rates.
 for(const width of [480,960])for(const fps of [30,60,120]){
   fireReset();run(`W=${width};keys.add('ArrowRight')`);let hops=0;
@@ -50,8 +50,11 @@ for(const width of [480,960])for(const fps of [30,60,120]){
   assert.equal(run('state'),'playing',`opening survived ${width}/${fps}`);
   assert.equal(hops,5);assert.equal(run('fireMode'),'volcano');
   const lives=run('lives');let startY=run('player.y');
-  run('jump()');assert.equal(run('player.vy'),0,'volcano is walked');
-  for(let frame=0;frame<fps*10&&run("fireMode==='volcano'");frame++)run(`update(1/${fps})`);
+  run('jump()');assert(run('player.vy<0'),'volcano supports jumping');
+  for(let frame=0;frame<fps*14&&run("fireMode==='volcano'");frame++){
+    if(run('player.onGround&&fireRollingStones.some(s=>s.x>player.x&&s.x-player.x<150)'))run('jump()');
+    run(`update(1/${fps})`);
+  }
   assert.equal(run('fireMode'),'dropper');assert(run(`player.y<${startY}-1400`));
   assert(run('cameraY < -1000'));assert.equal(run('checkpoint.mode'),'volcano');
   run('keys.clear();jump()');assert(run('player.vy>=0'),'no jumps in crater');

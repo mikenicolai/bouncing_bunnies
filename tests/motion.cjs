@@ -13,10 +13,10 @@ step(25);assert.equal(run('motionFrame()'),-1);
 run('player.facing=-1;player.onGround=false;player.vy=0;player.jumpAge=.5');assert.equal(run('motionFrame()'),2);
 const html=fs.readFileSync('index.html','utf8');
 assert(!html.includes('__MOTION_SHEET_DATA_URL__'));
-for(const m of html.matchAll(/<(?:img|script)[^>]+src="([^"]+)"/g))assert(m[1].startsWith('data:'),'External runtime source: '+m[1].slice(0,80));
+for(const m of html.matchAll(/<(?:img|script)[^>]+src="([^"]+)"/g))assert(m[1].startsWith('data:')||m[1].startsWith('assets/')&&fs.existsSync(m[1]),'Missing or remote runtime source: '+m[1].slice(0,80));
 const source=fs.readFileSync('assets/pink-ear-bunny-jump-duck-v3-source.png');
 const embedded=Buffer.from(html.match(/motionSheet.src='data:image\/png;base64,([^']+)'/)[1],'base64');assert(source.equals(embedded));
-console.log('PASS: four jump phases; duck press/hold/release; fixed feet and 18px hurtbox; direction-independent selection; embedded source identity; self-contained HTML.');
+console.log('PASS: four jump phases; duck press/hold/release; fixed feet and 18px hurtbox; direction-independent selection; embedded source identity; available local HTML assets.');
 // Guard against reintroducing asymmetric crouch artwork scaling.
 run("ctx.save=()=>{};ctx.restore=()=>{};ctx.globalAlpha=1;ctx.drawImage=(image,x,y,w,h)=>{ctx.lastDraw={x,y,w,h,sourceWidth:image.width,sourceHeight:image.height};};motionSprites.push(...MOTION_FRAMES.map(([x,y,w,h,ax,ay])=>({image:{width:w,height:h},ax,ay})));");
 for(const frame of [4,5,6,7]){

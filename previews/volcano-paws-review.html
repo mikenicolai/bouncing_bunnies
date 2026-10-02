@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Volcano paws and rolling relics · artwork review</title>
+<style>
+body{margin:0;background:#102332;color:#fff4df;font:16px system-ui;padding:20px}h1{font-size:24px;margin:0 0 10px}p{max-width:850px;line-height:1.5}button{font:inherit;margin:0 8px 12px 0;padding:10px 14px;border:0;border-radius:10px;background:#e99762;color:#261c25;cursor:pointer}iframe{display:block;width:1100px;max-width:100%;height:820px;border:1px solid #7c6661;border-radius:16px;background:#102332}.art{display:flex;gap:16px;align-items:center;margin:12px 0}.art img{width:100px;height:100px;border-radius:20px}
+</style>
+<h1>Volcano paws and rolling relics</h1>
+<div class="art"><img src="../assets/bouncing-bunnies-logo-v1.png" alt="Bunny and four elements app icon"><p>Four-paw running, uphill jumps and small tumbling stones. Warm earthy soil hides an antique bunny bust, a paw casting and an old urn.</p></div>
+<button data-scene="run">Four-paw run</button><button data-scene="jump">Jump over a stone</button><button data-scene="ground">Opening ground</button><button data-scene="title">Page logo</button><button id="live">Play this slope</button>
+<iframe src="../index.html" title="Bouncing Bunnies volcano review"></iframe>
+<script>
+const frame=document.querySelector('iframe');let current='run';
+function show(scene){
+ current=scene;
+ let code="level='fire';soundOn=false;start();fireMode='volcano';state='review';player.x=3370;player.y=fireSlopeY(3391)-58;player.onGround=true;player.vx=260;player.vy=0;player.invincible=0;player.run=3;cameraX=2990;cameraY=-350;fireRollingStones=[{x:3530,y:fireSlopeY(3530)-24,r:18,speed:150,angle:.6,variant:1,alive:true}];";
+ if(scene==='jump')code+="player.y-=100;player.onGround=false;player.vy=-320;";
+ if(scene==='ground')code="level='fire';soundOn=false;start();state='review';cameraX=0;cameraY=0;";
+ if(scene==='title')code="level='meadow';soundOn=false;resetGame(false);";
+ frame.contentWindow.eval(code);
+}
+frame.addEventListener('load',()=>show('run'));
+document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>show(b.dataset.scene));
+document.querySelector('#live').onclick=()=>{show('run');frame.contentWindow.eval("state='playing';player.vx=0;fireRollingStones=[];resetFireStones();");frame.contentWindow.focus();};
+// Keep this art review's run and jump poses animated while gameplay is paused.
+let tick=0;function animate(){tick++;if(current==='run'||current==='jump')try{frame.contentWindow.eval(`if(state==='review'){player.run=${tick*.08};fireRollingStones.forEach(s=>s.angle-=.04);}`);}catch{}requestAnimationFrame(animate);}animate();
+</script>
+</html>
