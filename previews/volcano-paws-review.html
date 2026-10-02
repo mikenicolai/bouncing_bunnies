@@ -14,8 +14,8 @@ body{margin:0;background:#102332;color:#fff4df;font:16px system-ui;padding:20px}
 const frame=document.querySelector('iframe');let current='run';
 function show(scene){
  current=scene;
- let code="level='fire';soundOn=false;start();fireMode='volcano';state='review';player.x=3370;player.y=fireSlopeY(3391)-58;player.onGround=true;player.vx=260;player.vy=0;player.invincible=0;player.run=3;cameraX=2990;cameraY=-350;fireRollingStones=[{x:3530,y:fireSlopeY(3530)-24,r:18,speed:150,angle:.6,variant:1,alive:true}];";
- if(scene==='jump')code+="player.y-=100;player.onGround=false;player.vy=-320;";
+ let code="level='fire';soundOn=false;start();fireMode='volcano';state='review';player.x=3370;player.y=fireSlopeY(3391)-58;player.onGround=true;player.vx=260;player.vy=0;player.invincible=0;player.run=3;cameraX=3391-W/3;cameraY=fireSlopeY(3391)-H*.62;fireRollingStones=[{x:3530,y:fireSlopeY(3530)-24,r:18,speed:150,angle:.6,variant:1,alive:true}];";
+ if(scene==='jump')code+="player.y-=100;player.onGround=false;player.vy=-320+fireSlopeGrade(3391)*player.vx;";
  if(scene==='ground')code="level='fire';soundOn=false;start();state='review';cameraX=0;cameraY=0;";
  if(scene==='title')code="level='meadow';soundOn=false;resetGame(false);";
  frame.contentWindow.eval(code);

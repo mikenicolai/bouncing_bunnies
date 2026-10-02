@@ -9,10 +9,34 @@ for(const fps of [30,60,120])for(const direction of [-1,1]){
     run(`update(1/${fps})`);
     clearance=Math.max(clearance,run('fireSlopeY(player.x+21)-(player.y+player.h)'));
   }
-  assert(clearance>95,`jump clearance at ${fps} FPS, direction ${direction}`);
+  assert(clearance>120,`jump clearance at ${fps} FPS, direction ${direction}`);
   assert(run('player.onGround'),'lands back on the slope');
   assert.equal(run('player.y+player.h'),run('fireSlopeY(player.x+21)'));
 }
+// Running and hopping leave roughly two-thirds of the view ahead of the bunny.
+for(const width of [480,960])for(const fps of [30,60,120]){
+  slope(3200,260);run(`W=${width};keys.add('ArrowRight')`);
+  for(let f=0;f<fps*1.5;f++)run(`update(1/${fps})`);
+  run('jump()');let highest=0;
+  for(let f=0;f<fps;f++){
+    run(`update(1/${fps})`);
+    const screenX=run('player.x+player.w/2-cameraX');
+    assert(Math.abs(screenX-width/3)<12,`one-third framing at ${width}/${fps}`);
+    const feet=run('player.y+player.h-cameraY');
+    assert(feet>65&&feet<run('H*.7'),'whole jump remains visible');
+    highest=Math.max(highest,run('fireSlopeY(player.x+21)-(player.y+player.h)'));
+  }
+  assert(highest>120);
+}
+// Takeoff and landing keep the running body's slope alignment in either facing.
+slope();run('ctx.save=()=>{};ctx.restore=()=>{};ctx.translate=()=>{};ctx.scale=()=>{};ctx.drawImage=()=>{};ctx.rotate=a=>ctx.poseAngle=a;');
+for(const facing of [-1,1]){
+  run(`player.facing=${facing};player.onGround=true;drawFourPawBunny();ctx.groundedAngle=ctx.poseAngle;player.onGround=false;drawFourPawBunny();`);
+  assert.equal(run('ctx.poseAngle'),run('ctx.groundedAngle'),'jump does not snap the bunny horizontal');
+  assert(Math.abs(run('ctx.poseAngle'))>.7,'body follows the steep slope');
+}
+// Animation reaches its apex relative to the rising ground, rather than world height.
+slope(3350,260);run('player.onGround=false;player.vy=fireSlopeGrade(3371)*260');assert.equal(run('fourPawFrame()'),6);
 // A single ordinary jump dodges each approaching stone across viewport sizes.
 for(const width of [480,960])for(const fps of [30,60,120]){
   slope(2690);run(`W=${width};keys.add('ArrowRight');resetFireStones();jump()`);let hops=0;
