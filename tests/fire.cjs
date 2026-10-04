@@ -2,7 +2,7 @@ const assert=require('node:assert/strict');
 const {run,reset}=require('./air.cjs');
 const fireReset=()=>run("level='fire';resetGame()");
 fireReset();
-assert.equal(run('WORLD_W'),6900);
+assert.equal(run('WORLD_W'),11500);
 assert.equal(run('FIRE_MAZE.x'),4800,'maze is at the end of the journey');
 assert.equal(run('FIRE_MAZE.rows.length'),15);
 assert.equal(run('FIRE_MAZE.rows[0].length'),25);
@@ -89,7 +89,7 @@ for(const taken of [false,true])for(const fps of [30,60,120]){
   assert(run('fireZombies[0].c>=6'),'maze zombie crosses the coin cell');
   assert.equal(run('coins.find(c=>c.x===mazeCenter(5,3).x&&c.y===mazeCenter(5,3).y).taken'),taken);
 }
-// Four-way movement, loop routes, slow limited pursuit, and immediate maze win.
+// Four-way movement, loop routes, slow limited pursuit, and transition to the second volcano.
 fireReset();run('W=960;beginFireMaze();jump()');assert.equal(run('player.vy'),0);
 run("keys.add('ArrowDown');update(1/60);keys.clear()");
 for(let i=0;i<35;i++)run('update(1/60)');assert.equal(run('player.mazeR'),2);
@@ -105,7 +105,7 @@ while(cell.c!==23||cell.r!==1){
   assert.equal(run('player.mazeC'),next.c);assert.equal(run('player.mazeR'),next.r);
   cell=next;assert(++steps<150);
 }
-assert(down&&up&&steps>35);assert.equal(run('state'),'map');assert(run('fireFinished'));assert(run('lives')>=2);
+assert(down&&up&&steps>35);assert.equal(run('state'),'playing');assert.equal(run('fireMode'),'secondVolcano');assert.equal(run('fireFinished'),false);assert(run('lives')>=2);
 // The same combat applies to maze and outdoor zombies.
 for(const id of [0,4]){
   fireReset();run(`player.x=fireZombies[${id}].x-50;player.y=fireZombies[${id}].y+10;player.facing=1;fireZombies[${id}].hp=4.5;attack()`);
@@ -113,4 +113,4 @@ for(const id of [0,4]){
   run('player.attackCooldown=0;attack()');assert.equal(run(`fireZombies[${id}].hp`),3.5);
   run(`fireZombies[${id}].dizzy=0;fireZombies[${id}].hp=1;player.attackCooldown=0;attack()`);assert.equal(run(`fireZombies[${id}].alive`),false);
 }
-reset();console.log('PASS Fire: long opening parkour, outdoor zombies crossing coins and harmless trees, walkable volcano, crater gaps/checkpoint, looping maze and completion.');
+reset();console.log('PASS Fire: long opening parkour, outdoor zombies crossing coins and harmless trees, walkable volcano, crater gaps/checkpoint, looping maze and second-volcano exit.');
