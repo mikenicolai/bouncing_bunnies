@@ -55,7 +55,7 @@ arena();run("fireBunnyArrow();state='map';const x=bunnyArrows[0].x;update(.1)");
 run("state='playing';respawnFire()");assert.equal(run('bunnyArrows.length'),0);assert(run('fireArrow.owned'));assert(run('fireArrow.aiming'));
 reset();assert(!run('fireArrow.owned'));assert(!run('fireArrow.aiming'));assert.equal(run('bunnyArrows.length'),0);
 // The extra button works at the summit: stow restores jumping and punching, and never auto-equips.
-arena();run("window.listeners.keydown[1]({code:'KeyE',repeat:false,preventDefault(){}})");assert(!run('fireArrow.aiming'));
+arena();run("window.listeners.keydown[1]({code:'KeyZ',repeat:false,preventDefault(){}})");assert(!run('fireArrow.aiming'));
 run('attack()');assert.equal(run('bunnyArrows.length'),0);assert(run('player.attack>0'));assert(!run('fireArrow.aiming'));
 assert.equal(run('fireBunnyArrow()'),false);run('jump()');assert(!run('player.onGround'));assert(run('player.vy<0'));
 run('respawnFire()');assert(!run('fireArrow.aiming'),'checkpoint respects stowed arrow');
@@ -72,17 +72,23 @@ for(const fps of [30,60,120])for(const equipped of [false,true]){
  }
  run('toggleFireAim()');assert.equal(run('fireArrow.aiming'),!equipped,'maze can stow and equip');
 }
-// Render dispatch keeps the standing actor during normal movement; its accessory survives every pose.
+// Z replaces E, including repeat protection. Four distinct run frames keep all paws moving.
+arena();run("window.listeners.keydown[1]({code:'KeyE',repeat:false,preventDefault(){}})");assert(run('fireArrow.aiming'));
+run("window.listeners.keydown[1]({code:'KeyZ',repeat:true,preventDefault(){}})");assert(run('fireArrow.aiming'));
+run("window.listeners.keydown[1]({code:'KeyZ',repeat:false,preventDefault(){}})");assert(!run('fireArrow.aiming'));
+const gait=new Set();for(let phase=0;phase<4;phase++){run(`player.vx=260;player.onGround=true;player.run=${phase/1.1}`);gait.add(run('fourPawFrame()'));}assert.equal(gait.size,4);
+for(const [vy,frame] of [[-500,5],[0,6],[500,7]]){run(`player.onGround=false;player.vy=${vy}`);assert.equal(run('fourPawFrame()'),frame);}
+// Stowing uses the full four-paw actor outdoors and on the summit, with a visible arrow accessory.
 reset();run(`fireArrow.owned=true;fireArcherySheet.complete=true;fireArcherySheet.naturalWidth=1774;fourPawSheet.complete=true;fourPawSheet.naturalWidth=1200;
  var originalArmed=drawArmedBunny,originalNatural=drawNaturalPose,originalIcon=drawArrowIcon,originalFour=drawFourPawBunny,originalPlaceholder=drawPlaceholderBunny;
  var painted=[];drawArmedBunny=()=>painted.push('archer');drawFourPawBunny=()=>painted.push('crawl');drawNaturalPose=()=>painted.push('standing');drawPlaceholderBunny=()=>painted.push('standing');drawArrowIcon=()=>painted.push('arrow');
- ctx.save=ctx.restore=ctx.translate=ctx.scale=()=>{};`);
+ ctx.save=ctx.restore=ctx.translate=ctx.scale=ctx.rotate=()=>{};`);
 for(const mode of ['surface','maze','king'])for(const pose of ['idle','run','jump','punch','crouch']){
  run(`fireMode='${mode}';fireArrow.aiming=false;painted=[];Object.assign(player,{onGround:${pose!=='jump'},vx:${pose==='run'?260:0},attack:${pose==='punch'?.18:0},duck:${pose==='crouch'},duckVisual:0,invincible:0});`);
  // Avoid the procedural crouch fallback: normal production motion frames are already preloaded.
- run("motionSprites.length=8;drawBunny()");assert.equal(run("painted.includes('archer')||painted.includes('crawl')"),false,`${mode} ${pose} stays standing`);assert(run("painted.includes('arrow')"),`${mode} ${pose} shows arrow`);
+ run("motionSprites.length=8;drawBunny()");assert.equal(run("painted.includes('archer')"),false,`${mode} ${pose} stays stowed`);assert.equal(run("painted.includes('crawl')"),mode!=='maze'&&!['punch','crouch'].includes(pose),`${mode} ${pose} selects the correct movement`);assert(run("painted.includes('arrow')"),`${mode} ${pose} shows arrow`);
 }
-run("painted=[];fireMode='secondVolcano';player.attack=0;player.duck=false;drawBunny()");assert.equal(run("painted.join(',')"),'archer','hill uses painted carry poses without duplicate accessory');
+run("painted=[];fireMode='secondVolcano';player.attack=0;player.duck=false;drawBunny()");assert.equal(run("painted.join(',')"),'crawl,arrow','hill uses the full four-paw cycle and stowed arrow');
 run("painted=[];fireMode='king';fireArrow.aiming=true;drawBunny()");assert.equal(run("painted.join(',')"),'archer','equipped uses bow poses');
 run('drawArmedBunny=originalArmed;drawNaturalPose=originalNatural;drawArrowIcon=originalIcon;drawFourPawBunny=originalFour;drawPlaceholderBunny=originalPlaceholder;');
 console.log('PASS archery: relic/maze gate, carried and aim animation states, no-jump aiming, keys/touch/movement, matching preview parabola, arrows/cooldown/shield/swept hits, fireball interception, full ten-heart ranged fight at 30/60/120 FPS, pause/respawn/reset.');
