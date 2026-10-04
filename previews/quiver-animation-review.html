@@ -70,9 +70,9 @@ function updateControls(){play.textContent=playing?'Pause animation':'Play anima
 // travel backward on a fixed ground line; the returning paw bends and lifts.
 function footAt(cycle){
  const u=((cycle%1)+1)%1;
- if(u<.55)return {x:32-64*u/.55,y:303,angle:0};
- const q=(u-.55)/.45,s=q*q*(3-2*q);
- return {x:-32+64*s,y:303-24*Math.sin(Math.PI*q),angle:.22*Math.sin(Math.PI*q)};
+ if(u<.42)return {x:32-64*u/.42,y:302,angle:0};
+ const q=(u-.42)/.58,s=q*q*(3-2*q);
+ return {x:-32+64*s,y:302-24*Math.sin(Math.PI*q),angle:.22*Math.sin(Math.PI*q)};
 }
 function kneeAt(hip,foot){
  const dx=foot.x-hip.x,dy=foot.y-hip.y,d=Math.hypot(dx,dy),length=35;
@@ -87,17 +87,18 @@ function paw(ctx,x,y,rx,ry,color,angle=0){
  ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#191712';ctx.lineWidth=2.5;ctx.stroke();ctx.restore();
 }
 function leg(ctx,hip,foot,color){
- const knee=kneeAt(hip,foot);limb(ctx,[hip,knee,foot],color,18);paw(ctx,foot.x+7,foot.y,18,7,color,foot.angle);
+ const knee=kneeAt(hip,foot);limb(ctx,[hip,knee,foot],color,23);paw(ctx,foot.x+7,foot.y,20,8,color,foot.angle);
 }
 function arm(ctx,shoulder,cycle,color){
  // Forward leg pairs with backward arm. The other arm uses the opposite phase.
  const angle=-.78*Math.cos(cycle*Math.PI*2),elbow={x:shoulder.x+26*Math.sin(angle),y:shoulder.y+26*Math.cos(angle)};
  const hand={x:elbow.x+23*Math.sin(angle+1.02),y:elbow.y+23*Math.cos(angle+1.02)};
- limb(ctx,[shoulder,elbow,hand],color,15);paw(ctx,hand.x+2,hand.y,10,9,color);
+ limb(ctx,[shoulder,elbow,hand],color,20);paw(ctx,hand.x+2,hand.y,11,10,color);
 }
 function drawUpright(ctx){
- const cycle=phase/8,bob=2*Math.cos(cycle*Math.PI*4),hipY=248+bob;
- const near=footAt(cycle),far=footAt(cycle+.5),nearColor='#fff2da',farColor='#d6c3a1';
+ const cycle=phase/8,near=footAt(cycle),far=footAt(cycle+.5);
+ const flight=Math.min(302-near.y,302-far.y),bob=2*Math.cos(cycle*Math.PI*4)-flight*.5,hipY=248+bob;
+ const nearColor='#fff2da',farColor='#d6c3a1';
  ctx.save();ctx.translate(270,0);ctx.scale(mirror.checked?-1:1,1);
  leg(ctx,{x:3,y:hipY},far,farColor);arm(ctx,{x:14,y:210+bob},cycle+.5,farColor);
  leg(ctx,{x:-4,y:hipY},near,nearColor);
