@@ -33,11 +33,11 @@ for(const fps of [30,60,120]){
   assert.equal(run('lavaKing.phase'),'windup');assert.equal(run('lives'),3);
   run('jump()');for(let f=0;f<fps*.9;f++)run(`update(1/${fps})`);assert.equal(run('lives'),3,'jump clears the sword');
 }
-arena();run("lavaKingPhase('slash');player.x=lavaKing.x-120;player.y=-558;updateLavaKing(.05)");assert.equal(run('lives'),2);assert(!run('player.onGround'));
+arena();run("lavaKingPhase('slash');player.x=lavaKing.x-120;player.y=-558;updateLavaKing(.1)");assert.equal(run('lives'),2);assert(!run('player.onGround'));
 run('updateLavaKing(.05)');assert.equal(run('lives'),2,'slash immunity');
 // Cast has an .8 second warning. Fireballs move, can be jumped, cost one heart on contact.
 arena();run("lavaKingPhase('cast');updateLavaKing(.7)");assert.equal(run('lavaKingFireballs.length'),0);
-run('updateLavaKing(.11)');assert.equal(run('lavaKingFireballs.length'),1);const x=run('lavaKingFireballs[0].x');run('updateLavaKing(.1)');assert(run('lavaKingFireballs[0].x')<x);
+run('updateLavaKing(.11)');assert.equal(run('lavaKingFireballs.length'),1);const x=run('lavaKingFireballs[0].x'),y=run('lavaKingFireballs[0].y');run('updateLavaKing(.1)');assert(run('lavaKingFireballs[0].x')<x);assert(run('lavaKingFireballs[0].y')>y,'fireball descends from the throwing hand toward the ground');
 for(const fps of [30,60,120]){
   arena();run("player.x=10600;player.y=-558;player.onGround=true;lavaKingPhase('throw');jump()");
   for(let f=0;f<fps*.8;f++)run(`update(1/${fps})`);assert.equal(run('lives'),3,'jump clears a fireball');
