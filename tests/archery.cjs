@@ -54,4 +54,35 @@ for(const fps of [30,60,120]){
 arena();run("fireBunnyArrow();state='map';const x=bunnyArrows[0].x;update(.1)");assert.equal(run('bunnyArrows[0].x'),run('x'));
 run("state='playing';respawnFire()");assert.equal(run('bunnyArrows.length'),0);assert(run('fireArrow.owned'));assert(run('fireArrow.aiming'));
 reset();assert(!run('fireArrow.owned'));assert(!run('fireArrow.aiming'));assert.equal(run('bunnyArrows.length'),0);
+// The extra button works at the summit: stow restores jumping and punching, and never auto-equips.
+arena();run("window.listeners.keydown[1]({code:'KeyE',repeat:false,preventDefault(){}})");assert(!run('fireArrow.aiming'));
+run('attack()');assert.equal(run('bunnyArrows.length'),0);assert(run('player.attack>0'));assert(!run('fireArrow.aiming'));
+assert.equal(run('fireBunnyArrow()'),false);run('jump()');assert(!run('player.onGround'));assert(run('player.vy<0'));
+run('respawnFire()');assert(!run('fireArrow.aiming'),'checkpoint respects stowed arrow');
+run("fitTouchControls();canvas.listeners.pointerdown[0]({clientX:ACTIONS.ability2.x*960/W,clientY:ACTIONS.ability2.y*540/H,pointerId:71,preventDefault(){}})");assert(run('fireArcheryMode()'));
+run('jump()');assert(run('player.onGround'));run('fireBunnyArrow()');assert.equal(run('bunnyArrows.length'),1);
+run("canvas.listeners.pointerdown[0]({clientX:ACTIONS.ability2.x*960/W,clientY:ACTIONS.ability2.y*540/H,pointerId:72,preventDefault(){}})");assert(!run('fireArrow.aiming'));assert.equal(run('bunnyArrows.length'),1,'stowing leaves fired arrows in flight');
+// Climb one ladder cell up and down with both weapon states, at multiple frame rates.
+for(const fps of [30,60,120])for(const equipped of [false,true]){
+ reset();run(`beginFireMaze();fireArrow.owned=true;fireArrow.aiming=${equipped};fireZombies=[];player.mazeC=11;player.mazeR=11;player.x=mazeCenter(11,11).x-21;player.y=mazeCenter(11,11).y-29;`);
+ for(const [key,row] of [['ArrowUp',10],['ArrowDown',11]]){
+  run(`keys.add('${key}');update(1/${fps});keys.clear()`);
+  for(let f=0;f<fps*.6;f++)run(`update(1/${fps})`);
+  assert.equal(run('player.mazeR'),row);assert.equal(run('player.mazeC'),11);assert.equal(run('player.y'),run(`mazeCenter(11,${row}).y-29`));assert.equal(run('fireArrow.aiming'),equipped);assert(run('fireArrow.owned'));
+ }
+ run('toggleFireAim()');assert.equal(run('fireArrow.aiming'),!equipped,'maze can stow and equip');
+}
+// Render dispatch keeps the standing actor during normal movement; its accessory survives every pose.
+reset();run(`fireArrow.owned=true;fireArcherySheet.complete=true;fireArcherySheet.naturalWidth=1774;fourPawSheet.complete=true;fourPawSheet.naturalWidth=1200;
+ var originalArmed=drawArmedBunny,originalNatural=drawNaturalPose,originalIcon=drawArrowIcon,originalFour=drawFourPawBunny,originalPlaceholder=drawPlaceholderBunny;
+ var painted=[];drawArmedBunny=()=>painted.push('archer');drawFourPawBunny=()=>painted.push('crawl');drawNaturalPose=()=>painted.push('standing');drawPlaceholderBunny=()=>painted.push('standing');drawArrowIcon=()=>painted.push('arrow');
+ ctx.save=ctx.restore=ctx.translate=ctx.scale=()=>{};`);
+for(const mode of ['surface','maze','king'])for(const pose of ['idle','run','jump','punch','crouch']){
+ run(`fireMode='${mode}';fireArrow.aiming=false;painted=[];Object.assign(player,{onGround:${pose!=='jump'},vx:${pose==='run'?260:0},attack:${pose==='punch'?.18:0},duck:${pose==='crouch'},duckVisual:0,invincible:0});`);
+ // Avoid the procedural crouch fallback: normal production motion frames are already preloaded.
+ run("motionSprites.length=8;drawBunny()");assert.equal(run("painted.includes('archer')||painted.includes('crawl')"),false,`${mode} ${pose} stays standing`);assert(run("painted.includes('arrow')"),`${mode} ${pose} shows arrow`);
+}
+run("painted=[];fireMode='secondVolcano';player.attack=0;player.duck=false;drawBunny()");assert.equal(run("painted.join(',')"),'archer','hill uses painted carry poses without duplicate accessory');
+run("painted=[];fireMode='king';fireArrow.aiming=true;drawBunny()");assert.equal(run("painted.join(',')"),'archer','equipped uses bow poses');
+run('drawArmedBunny=originalArmed;drawNaturalPose=originalNatural;drawArrowIcon=originalIcon;drawFourPawBunny=originalFour;drawPlaceholderBunny=originalPlaceholder;');
 console.log('PASS archery: relic/maze gate, carried and aim animation states, no-jump aiming, keys/touch/movement, matching preview parabola, arrows/cooldown/shield/swept hits, fireball interception, full ten-heart ranged fight at 30/60/120 FPS, pause/respawn/reset.');
