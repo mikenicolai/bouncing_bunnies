@@ -3,14 +3,14 @@
 <title>Lava King · artwork and gameplay review</title>
 <style>body{margin:0;padding:20px;background:#291d2a;color:#fff0d8;font:16px system-ui}h1{margin:0 0 12px;font-size:25px}p{max-width:900px;line-height:1.5}button{font:inherit;padding:10px 14px;border:0;border-radius:10px;background:#ef9d60;color:#291d2a;margin:0 8px 10px 0;cursor:pointer}iframe{display:block;width:1100px;max-width:100%;height:820px;border:1px solid #bc654b;border-radius:14px}.art{width:880px;max-width:100%;display:block;background:#462e36;border-radius:12px;margin:15px 0}a{color:#ffd487}</style>
 <h1>The second volcano and Lava King</h1>
-<p>Your drawing turned upright: square helmet, red pointed collar, long brown arms, fiery sword and shield. Ten hearts, shield blocks, sword windups and fireballs. Leave the labyrinth, climb the second volcano and reach the summit.</p>
+<p>Your drawing turned upright: square helmet, red pointed collar, long brown arms, fiery sword and shield. Ten hearts, shield blocks, sword windups and fireballs. Find the labyrinth arrow to fight him: left/right move, up/down aim, X/F fires. Leave the labyrinth, climb the second volcano and reach the summit.</p>
 <button data-scene="exit">Labyrinth exit</button><button data-scene="climb">Second climb</button><button data-scene="shield">Shield block</button><button data-scene="windup">Sword windup</button><button data-scene="slash">Sword slash</button><button data-scene="cast">Fireball</button><button data-scene="defeated">Victory portal</button><button id="live">Play boss battle</button>
-<iframe src="../index.html?v=2026100401" title="Lava King game review"></iframe>
+<iframe src="../index.html?v=2026100402" title="Lava King game review"></iframe>
 <img class="art" src="../assets/lava-king-v1.png" alt="Eight upright Lava King animation poses from the original drawing">
 <script>
 const frame=document.querySelector('iframe');
 function show(scene){
- let code="level='fire';soundOn=false;start();state='review';beginSecondVolcano();player.x=10530;player.y=-558;player.onGround=true;player.facing=1;beginLavaKing();lavaKing.phase='"+(scene==='defeated'?'defeated':scene)+"';cameraX=player.x+21-W/3;cameraY=-500-H*.62;";
+ let code="level='fire';soundOn=false;start();state='review';fireArrow.owned=true;beginSecondVolcano();player.x=10380;player.y=-558;player.onGround=true;player.facing=1;beginLavaKing();lavaKing.phase='"+(scene==='defeated'?'defeated':scene)+"';cameraX=player.x+21-W/3;cameraY=-500-H*.62;";
  if(scene==='exit')code="level='fire';soundOn=false;start();state='review';beginFireMaze();player.mazeC=23;player.mazeR=1;player.x=6659;beginSecondVolcano();cameraX=player.x+21-W/3;cameraY=2050-H*.62;";
  if(scene==='climb')code="level='fire';soundOn=false;start();state='review';beginSecondVolcano();player.x=8260;player.y=fireSlopeY(8281)-58;player.onGround=true;player.vx=260;cameraX=8281-W/3;cameraY=fireSlopeY(8281)-H*.62;fireRollingStones=[{x:8460,y:fireSlopeY(8460)-25,r:18,speed:150,angle:.5,variant:1,alive:true}];";
  if(scene==='defeated')code+="lavaKing.hp=0;lavaKing.defeated=true;player.x=10920;cameraX=player.x+21-W/3;";

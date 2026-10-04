@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Labyrinth arrow · artwork and aiming review</title>
+<style>body{margin:0;padding:20px;background:#291d2a;color:#fff0d8;font:16px system-ui}h1{margin:0 0 12px;font-size:25px}p{max-width:950px;line-height:1.5}button{font:inherit;padding:10px 14px;border:0;border-radius:10px;background:#ef9d60;color:#291d2a;margin:0 8px 10px 0;cursor:pointer}button:disabled{opacity:.4;cursor:wait}iframe{display:block;width:1100px;max-width:100%;height:820px;border:1px solid #bc654b;border-radius:14px}.art{width:880px;max-width:100%;display:block;background:#462e36;border-radius:12px;margin:15px 0}</style>
+<h1>Find the arrow, aim at the Lava King</h1>
+<p>A reusable enchanted arrow waits in the labyrinth. Carry it up the second volcano, then move left/right, aim up/down and fire. Aiming disables jumps. The dotted arc shows its flight. Arrows can knock out fireballs; the king’s shield blocks shots from the front.</p>
+<button disabled data-scene="pickup">Find the arrow</button><button disabled data-scene="carry">Carry on the climb</button><button disabled data-scene="aim">Aim and flight guide</button><button disabled data-scene="up">Aim upward</button><button disabled data-scene="release">Fire an arrow</button><button disabled id="live">Play the ranged fight</button>
+<iframe src="../index.html?v=2026100402" title="Bunny arrow game review"></iframe>
+<p>Keyboard: ← → move, ↑ ↓ aim, X or F fire. On the second climb, E switches aim/walk mode. Touch: drag the stick to move and aim, then tap FIRE.</p>
+<img class="art" src="../assets/pink-ear-bunny-archery-v1.png" alt="Bunny carrying, running, jumping, aiming, walking and firing animation poses">
+<img class="art" src="../assets/ember-arrow-bow-v1.png" alt="Enchanted arrow, empty bow and drawn bow icons">
+<script>
+const frame=document.querySelector('iframe');let ready=false;
+function show(scene){
+ if(!ready)return;
+ let code="level='fire';soundOn=false;start();state='review';fireArrow.owned=true;beginSecondVolcano();player.x=10380;player.y=-558;player.onGround=true;player.facing=1;beginLavaKing();lavaKing.phase='recover';cameraX=player.x+21-W/3;cameraY=-500-H*.62;";
+ if(scene==='pickup')code="level='fire';soundOn=false;start();state='review';beginFireMaze();player.x=mazeCenter(10,11).x-21;player.y=mazeCenter(10,11).y-29;player.mazeC=10;player.mazeR=11;cameraX=player.x+21-W/3;cameraY=player.y-H*.48;";
+ if(scene==='carry')code="level='fire';soundOn=false;start();state='review';fireArrow.owned=true;beginSecondVolcano();player.x=8260;player.y=fireSlopeY(8281)-58;player.onGround=true;player.vx=260;player.run=1;cameraX=8281-W/3;cameraY=fireSlopeY(8281)-H*.62;";
+ if(scene==='up')code+="fireArrow.angle=.6;";
+ if(scene==='release')code+="state='playing';fireBunnyArrow();updateFireArchery(.08);fireArrow.release=.22;state='review';";
+ frame.contentWindow.eval(code);
+}
+frame.addEventListener('load',()=>{ready=true;document.querySelectorAll('button').forEach(b=>b.disabled=false);show('aim');});
+document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>show(b.dataset.scene));
+document.querySelector('#live').onclick=()=>{show('aim');frame.contentWindow.eval("state='playing';lavaKing.phase='patrol';lavaKing.age=0;");frame.contentWindow.focus();};
+</script></html>
