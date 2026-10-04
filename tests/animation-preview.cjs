@@ -13,4 +13,4 @@ for(const fps of [30,60,120])for(const scene of ['run','carry']){
  assert(!run('fireArrow.aiming'));assert(run('fireArrow.owned'));assert.equal(run('fireMode'),scene==='run'?'king':'secondVolcano');
 }
 sandbox.document.querySelector('#live').onclick();assert.equal(run('state'),'playing');assert(run('lavaKing.active'),'live fight restores actual hazards');
-console.log('PASS animated preview: real four-paw run/jump loops on flat ground and hills at 30/60/120 FPS, safe repetitions, stowed arrow and live encounter.');
+console.log('PASS animated preview: real upright run/jump loops on flat ground and hills at 30/60/120 FPS, safe repetitions, stowed arrow and live encounter.');
