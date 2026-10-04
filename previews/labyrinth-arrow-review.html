@@ -35,7 +35,7 @@ function animate(ms){
  if(ready){
   if(current==='run'||current==='carry'){
    elapsed+=dt;const nextCycle=Math.floor(elapsed/3.4),phase=elapsed%3.4;
-   let code="if(state==='review'){state='playing';lavaKing.active=false;keys.clear();keys.add('ArrowRight');";
+   let code="if(state==='review'){state='playing';lavaKing.active=false;fireRollingStones=[];fireStoneClock=999;keys.clear();keys.add('ArrowRight');";
    if(nextCycle!==cycle){cycle=nextCycle;code+=`player.x=${current==='carry'?8110:10340};player.y=fireSlopeY(player.x+21)-58;player.onGround=true;player.vy=0;player.vx=260;var previewJumped=false;`;}
    if(phase>=1.3)code+="if(!previewJumped){jump();previewJumped=true;}";
    code+=`update(${dt});state='review';render(${ms/1000});}`;
