@@ -6,16 +6,19 @@
 <p>A reusable enchanted arrow waits in the labyrinth. Carry it up the second volcano, then move left/right, aim up/down and fire. Stow the arrow to run and jump normally; its image stays on the bunny’s back. In the labyrinth, climb up/down with it equipped or stowed. Aiming disables jumps. The dotted arc shows its flight. Arrows can knock out fireballs; the king’s shield blocks shots from the front.</p>
 <button disabled data-scene="pickup">Find the arrow</button><button disabled data-scene="carry">Animated uphill run + jump</button><button disabled data-scene="run">Animated upright run + jump</button><button disabled data-scene="stow">Arrow put away</button><button disabled data-scene="climb">Labyrinth climbing</button><button disabled data-scene="aim">Aim and flight guide</button><button disabled data-scene="up">Aim upward</button><button disabled data-scene="release">Fire an arrow</button><button disabled id="live">Play the ranged fight</button>
 <p id="animationLabel" aria-live="polite">Running with the arrow stowed — jumping is available.</p>
-<canvas id="closeup" width="440" height="320" aria-label="Enlarged running and jumping animation" style="display:block;max-width:100%;border:1px solid #bc654b;border-radius:14px;margin-bottom:16px"></canvas>
-<iframe src="../index.html?v=2026100405" title="Bunny arrow game review"></iframe>
+<div style="display:flex;flex-wrap:wrap;gap:20px;margin-bottom:16px">
+<figure style="margin:0;max-width:100%"><figcaption style="margin-bottom:8px">Without the arrow</figcaption><canvas id="closeupWithout" width="440" height="320" aria-label="Upright running and jumping without the arrow" style="display:block;max-width:100%;border:1px solid #bc654b;border-radius:14px"></canvas></figure>
+<figure style="margin:0;max-width:100%"><figcaption id="arrowCaption" style="margin-bottom:8px">With the arrow stored on the back</figcaption><canvas id="closeup" width="440" height="320" aria-label="Upright running and jumping with the arrow" style="display:block;max-width:100%;border:1px solid #bc654b;border-radius:14px"></canvas></figure>
+</div>
+<iframe src="../index.html?v=2026100406" title="Bunny arrow game review"></iframe>
 <p>Keyboard: ← → move, ↑ ↓ aim, X or F fire. Z or the extra STOW/EQUIP button puts the arrow away or draws it in the labyrinth, on the second climb and at the summit. When stowed, ↑ or Space jumps on the hills and summit; ↑ ↓ climbs in the labyrinth. Touch: drag the stick to move or aim, tap FIRE to shoot and STOW to return to jumping.</p>
 <img class="art" src="../assets/pink-ear-bunny-upright-run-v1.png" alt="Eight upright two-leg running poses with arm swings and alternating steps">
 <img class="art" src="../assets/ember-arrow-bow-v1.png" alt="Enchanted arrow, empty bow and drawn bow icons">
 <script>
-const frame=document.querySelector('iframe'),closeup=document.querySelector('#closeup'),closeCtx=closeup.getContext('2d'),animationLabel=document.querySelector('#animationLabel');let ready=false,current='run',elapsed=0,last=0,cycle=-1;
+const frame=document.querySelector('iframe'),closeup=document.querySelector('#closeup'),closeCtx=closeup.getContext('2d'),withoutCtx=document.querySelector('#closeupWithout').getContext('2d'),arrowCaption=document.querySelector('#arrowCaption'),animationLabel=document.querySelector('#animationLabel');let ready=false,current='run',elapsed=0,last=0,cycle=-1;
 const labels={run:'Upright two-leg run and jump on flat ground · arrow stowed',carry:'Upright two-leg run and slope-aligned jump uphill · arrow stowed',climb:'Climbing the labyrinth · arrow carried',aim:'Equipped bow · aiming mode',stow:'Arrow stowed · normal jumping restored'};
 function show(scene){
- if(!ready)return;current=scene;elapsed=0;cycle=-1;animationLabel.textContent=labels[scene]||'Arrow and bow animation';
+ if(!ready)return;current=scene;elapsed=0;cycle=-1;animationLabel.textContent=labels[scene]||'Arrow and bow animation';arrowCaption.textContent=['aim','up','release'].includes(scene)?'With bow equipped':scene==='pickup'?'Before finding the arrow':'With the arrow stored on the back';
  let code="level='fire';soundOn=false;start();state='review';fireArrow.owned=true;beginSecondVolcano();player.x=10380;player.y=-558;player.onGround=true;player.facing=1;beginLavaKing();lavaKing.phase='recover';cameraX=player.x+21-W/3;cameraY=-500-H*.62;";
  if(scene==='pickup')code="level='fire';soundOn=false;start();state='review';beginFireMaze();player.x=mazeCenter(10,11).x-21;player.y=mazeCenter(10,11).y-29;player.mazeC=10;player.mazeR=11;cameraX=player.x+21-W/3;cameraY=player.y-H*.48;";
  if(scene==='carry')code="level='fire';soundOn=false;start();state='review';fireArrow.owned=true;beginSecondVolcano();player.x=8260;player.y=fireSlopeY(8281)-58;player.onGround=true;player.vx=260;player.run=1;cameraX=8281-W/3;cameraY=fireSlopeY(8281)-H*.62;";
@@ -43,6 +46,10 @@ function animate(ms){
   }
   const crop=frame.contentWindow.eval("({x:player.x+player.w/2-cameraX,y:player.y+player.h-cameraY})"),game=frame.contentDocument.querySelector('#game');
   closeCtx.clearRect(0,0,440,320);closeCtx.drawImage(game,crop.x-110,crop.y-135,220,160,0,0,440,320);
+  // Draw the exact same instant unarmed, then restore the real inventory before any input/update.
+  frame.contentWindow.eval(`var previewOwned=fireArrow.owned;fireArrow.owned=false;render(${ms/1000});`);
+  withoutCtx.clearRect(0,0,440,320);withoutCtx.drawImage(game,crop.x-110,crop.y-135,220,160,0,0,440,320);
+  frame.contentWindow.eval(`fireArrow.owned=previewOwned;render(${ms/1000});`);
  }
  requestAnimationFrame(animate);
 }requestAnimationFrame(animate);
