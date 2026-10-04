@@ -2,6 +2,8 @@
 
 Preview only. The game renderer remains unchanged.
 
+The review also displays eight equally spaced samples of its actual animated renderer, with exactly four leading poses per leg. The leading leg occupies 50% of the continuous cycle because the opposite leg is the same foot path shifted by half a cycle. Arm swing now derives directly from the difference in foot positions so the arm opposition follows the leading leg. At the default slow speed, each leg leads for one second of the two-second cycle. The caption updates this duration when playback speed changes.
+
 The upright preview now uses continuous limb motion: legs follow one shared foot path half a cycle apart, planted paws stay on the ground, knees bend during recovery, and the two arms use opposite swings. Each paw contacts the ground for 42% of its cycle, leaving a short flight phase between contacts. Bone lengths stay fixed, and the body follows the flight lift. Near limbs are cream; far limbs are shaded warm beige to make the alternation visible. Eight manual review poses sample the same continuous cycle. Review starts at half speed, with a two-second cycle.
 
 The unchanged, alpha-transparent body artwork was generated with the built-in ImageGen tool and saved as `previews/quiver-art/upright-quiver-body-v2.png`. Original: `/Users/mike/.codex/generated_images/01a0f81d-e540-7462-8853-e19774b7e891/exec-a9582116-3233-4246-b453-ee63e4ede88e.png`.

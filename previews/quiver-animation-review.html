@@ -26,12 +26,15 @@
   details { margin-top:24px; }
   summary { cursor:pointer; font-weight:600; }
   .sheet { width:100%; display:block; background:#342735; border-radius:12px; margin-top:12px; }
+  .balance { padding:12px 16px; border:1px solid #b9775f; border-radius:10px; background:#342735; color:#ffc080; }
+  .poses { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+  .poses figcaption { padding:10px 12px; font-size:13px; font-weight:500; }
   a { color:#ffc080; }
-  @media(max-width:700px) { body{padding:18px;} .grid{grid-template-columns:1fr;} }
+  @media(max-width:700px) { body{padding:18px;} .grid{grid-template-columns:1fr;} .poses{grid-template-columns:repeat(2,minmax(0,1fr));} }
 </style>
 </head>
 <body><main>
-<div class="eyebrow">Artwork draft · preview before integration</div>
+<div class="eyebrow">Updated review · equal leg timing · preview before integration</div>
 <h1>A quiver for both running styles</h1>
 <p>The arrows sit inside a leather <strong>quiver</strong> on the bunny’s back, held by a shoulder strap. Compare upright running on two paws with bounding on all four. This is a separate artwork preview; these quiver animations have not been added to the game.</p>
 <div class="controls">
@@ -43,11 +46,25 @@
   <button id="otherStep" disabled>Other leg forward</button>
   <label><input id="mirror" type="checkbox"> Face left</label>
 </div>
+<p class="balance" id="balanceSummary">Four poses for each leading leg · equal time for both legs.</p>
 <div class="grid">
   <figure><figcaption><span>Upright · two paws</span><span class="counter" id="uprightCounter">Pose 1 / 8</span></figcaption><canvas id="upright" width="540" height="360" aria-label="Upright running bunny wearing a quiver filled with arrows"></canvas><p class="note" id="strideLabel">Each leg takes a turn in front. The opposite arm swings forward.</p></figure>
   <figure><figcaption><span>Bounding · four paws</span><span class="counter" id="fourCounter">Pose 1 / 8</span></figcaption><canvas id="four" width="540" height="360" aria-label="Bunny running on all four paws with a quiver secured along its back"></canvas><p class="note">Gather, stretch and land. Quiver follows the back through each bound.</p></figure>
 </div>
 <p id="status" role="status">Loading both animation drafts…</p>
+<section aria-label="Eight upright poses with equal leg timing">
+<h2>Eight upright poses: four led by each leg</h2>
+<p>These are equally spaced moments from the animation above. Each pose gets the same amount of time. The cream leg and shaded leg take turns; their arms swing in opposition.</p>
+<div class="poses">
+<figure><canvas id="pose0" width="270" height="180" aria-label="Upright pose 1"></canvas><figcaption id="poseLabel0">Pose 1</figcaption></figure>
+<figure><canvas id="pose1" width="270" height="180" aria-label="Upright pose 2"></canvas><figcaption id="poseLabel1">Pose 2</figcaption></figure>
+<figure><canvas id="pose2" width="270" height="180" aria-label="Upright pose 3"></canvas><figcaption id="poseLabel2">Pose 3</figcaption></figure>
+<figure><canvas id="pose3" width="270" height="180" aria-label="Upright pose 4"></canvas><figcaption id="poseLabel3">Pose 4</figcaption></figure>
+<figure><canvas id="pose4" width="270" height="180" aria-label="Upright pose 5"></canvas><figcaption id="poseLabel4">Pose 5</figcaption></figure>
+<figure><canvas id="pose5" width="270" height="180" aria-label="Upright pose 6"></canvas><figcaption id="poseLabel5">Pose 6</figcaption></figure>
+<figure><canvas id="pose6" width="270" height="180" aria-label="Upright pose 7"></canvas><figcaption id="poseLabel6">Pose 7</figcaption></figure>
+<figure><canvas id="pose7" width="270" height="180" aria-label="Upright pose 8"></canvas><figcaption id="poseLabel7">Pose 8</figcaption></figure>
+</div></section>
 <details><summary>Inspect the source artwork</summary>
   <p>The upright bunny’s limbs now move continuously through each stride. The body and quiver use this artwork.</p>
   <img class="sheet" src="quiver-art/upright-quiver-body-v2.png" alt="Upright bunny body and quiver artwork for the moving arms and legs">
@@ -64,6 +81,7 @@ const fourLift=[0,0,9,13,0,0,9,0];
 const views=[{kind:'upright',image:uprightImage,canvas:document.querySelector('#upright'),counter:document.querySelector('#uprightCounter')},{kind:'four',image:fourImage,canvas:document.querySelector('#four'),anchors:fourAnchors,lift:fourLift,counter:document.querySelector('#fourCounter')}];
 const play=document.querySelector('#play'),speed=document.querySelector('#speed'),mirror=document.querySelector('#mirror'),status=document.querySelector('#status');
 const strideLabel=document.querySelector('#strideLabel'),CYCLE_FPS=8;
+const REVIEW_POSES=Array.from({length:8},(_,i)=>i);
 let loaded=false,playing=!matchMedia('(prefers-reduced-motion: reduce)').matches,phase=0,last=null;
 function updateControls(){play.textContent=playing?'Pause animation':'Play animation';}
 // Opposite legs follow the same path exactly half a cycle apart. Planted feet
@@ -89,14 +107,16 @@ function paw(ctx,x,y,rx,ry,color,angle=0){
 function leg(ctx,hip,foot,color){
  const knee=kneeAt(hip,foot);limb(ctx,[hip,knee,foot],color,23);paw(ctx,foot.x+7,foot.y,20,8,color,foot.angle);
 }
+function armSwing(cycle){return -.78*(footAt(cycle).x-footAt(cycle+.5).x)/64;}
+function leadingLeg(pose){return footAt(pose/8).x>footAt(pose/8+.5).x?'Cream':'Shaded';}
 function arm(ctx,shoulder,cycle,color){
  // Forward leg pairs with backward arm. The other arm uses the opposite phase.
- const angle=-.78*Math.cos(cycle*Math.PI*2),elbow={x:shoulder.x+26*Math.sin(angle),y:shoulder.y+26*Math.cos(angle)};
+ const angle=armSwing(cycle),elbow={x:shoulder.x+26*Math.sin(angle),y:shoulder.y+26*Math.cos(angle)};
  const hand={x:elbow.x+23*Math.sin(angle+1.02),y:elbow.y+23*Math.cos(angle+1.02)};
  limb(ctx,[shoulder,elbow,hand],color,20);paw(ctx,hand.x+2,hand.y,11,10,color);
 }
-function drawUpright(ctx){
- const cycle=phase/8,near=footAt(cycle),far=footAt(cycle+.5);
+function drawUpright(ctx,pose=phase){
+ const cycle=pose/8,near=footAt(cycle),far=footAt(cycle+.5);
  const flight=Math.min(302-near.y,302-far.y),bob=2*Math.cos(cycle*Math.PI*4)-flight*.5,hipY=248+bob;
  const nearColor='#fff2da',farColor='#d6c3a1';
  ctx.save();ctx.translate(270,0);ctx.scale(mirror.checked?-1:1,1);
@@ -104,25 +124,38 @@ function drawUpright(ctx){
  leg(ctx,{x:-4,y:hipY},near,nearColor);
  const scale=.195;ctx.drawImage(uprightImage,-630*scale,hipY-1010*scale,uprightImage.naturalWidth*scale,uprightImage.naturalHeight*scale);
  arm(ctx,{x:-17,y:210+bob},cycle,nearColor);ctx.restore();
- strideLabel.textContent=near.x>far.x?'Cream leg forward · shaded arm forward on the other side':'Shaded leg forward · cream arm forward on the other side';
 }
-function draw(view,time){
- const ctx=view.canvas.getContext('2d'),index=Math.floor(phase)%8;
+function draw(view,time,pose=phase){
+ const ctx=view.canvas.getContext('2d'),index=Math.floor(pose)%8;
  const sky=ctx.createLinearGradient(0,0,0,360);sky.addColorStop(0,'#452b40');sky.addColorStop(1,'#a35848');ctx.fillStyle=sky;ctx.fillRect(0,0,540,360);
  ctx.fillStyle='#754446';ctx.beginPath();ctx.moveTo(0,310);ctx.lineTo(80,224);ctx.lineTo(150,310);ctx.lineTo(385,183);ctx.lineTo(500,310);ctx.fill();
  ctx.fillStyle='#603339';ctx.fillRect(0,310,540,50);ctx.fillStyle='#cf7651';ctx.fillRect(0,309,540,5);
  ctx.fillStyle='#efaa69';for(let i=-1;i<12;i++){const x=i*55-(time*70)%55;ctx.fillRect(x,310,22,3);}
  ctx.fillStyle='#90483f';for(let i=-1;i<12;i++){const x=i*60-(time*70)%60;ctx.beginPath();ctx.ellipse(x,338+(i%2)*5,14,4,.12,0,Math.PI*2);ctx.fill();}
- if(loaded&&view.kind==='upright')drawUpright(ctx);
+ if(loaded&&view.kind==='upright')drawUpright(ctx,pose);
  else if(loaded){
   const col=index%4,row=Math.floor(index/4),image=view.image;
   const sx=Math.floor(col*image.naturalWidth/4),sy=Math.floor(row*image.naturalHeight/2),sw=Math.floor((col+1)*image.naturalWidth/4)-sx,sh=Math.floor((row+1)*image.naturalHeight/2)-sy;
   const [ax,ay]=view.anchors[index],scale=.56;
   ctx.save();ctx.translate(270,310-view.lift[index]);ctx.scale(mirror.checked?-1:1,1);ctx.drawImage(image,sx,sy,sw,sh,-ax*scale,-ay*scale,sw*scale,sh*scale);ctx.restore();
  }
- view.counter.textContent=`Pose ${index+1} / 8`;
+ if(view.counter)view.counter.textContent=`Pose ${index+1} / 8`;
 }
-function render(){views.forEach(view=>draw(view,phase/CYCLE_FPS));}
+function render(){
+ views.forEach(view=>draw(view,phase/CYCLE_FPS));
+ strideLabel.textContent=leadingLeg(phase)==='Cream'?'Cream leg forward · shaded arm swings forward':'Shaded leg forward · cream arm swings forward';
+}
+function updateBalance(){
+ const cream=REVIEW_POSES.filter(pose=>leadingLeg(pose)==='Cream').length,shaded=8-cream;
+ const seconds=(8/CYCLE_FPS/Number(speed.value)/2).toFixed(2);
+ document.querySelector('#balanceSummary').textContent=`Cream leg: ${cream} of 8 poses · ${seconds}s leading. Shaded leg: ${shaded} of 8 poses · ${seconds}s leading. Equal 50/50 timing.`;
+}
+function renderPoseGrid(){
+ for(const pose of REVIEW_POSES){
+  const canvas=document.querySelector('#pose'+pose),ctx=canvas.getContext('2d');ctx.save();ctx.scale(.5,.5);draw({kind:'upright',canvas},pose/CYCLE_FPS,pose);ctx.restore();
+  document.querySelector('#poseLabel'+pose).textContent=`${pose+1} · ${leadingLeg(pose)} leg leads`;
+ }
+}
 function step(direction){playing=false;phase=(Math.floor(phase)+direction+8)%8;updateControls();render();}
 function showStep(pose){playing=false;phase=pose;updateControls();render();}
 play.onclick=()=>{playing=!playing;last=null;updateControls();};
@@ -130,9 +163,10 @@ document.querySelector('#previous').onclick=()=>step(-1);
 document.querySelector('#next').onclick=()=>step(1);
 document.querySelector('#firstStep').onclick=()=>showStep(0);
 document.querySelector('#otherStep').onclick=()=>showStep(4);
-mirror.onchange=render;
+mirror.onchange=()=>{render();if(loaded)renderPoseGrid();};
+speed.onchange=updateBalance;
 async function init(){
- try{await Promise.all([uprightImage.decode(),fourImage.decode()]);loaded=true;document.querySelectorAll('button,select').forEach(control=>control.disabled=false);status.textContent='Slower review: one full cycle every two seconds. Compare “First leg forward” and “Other leg forward”, or step through eight points in the cycle.';updateControls();render();}
+ try{await Promise.all([uprightImage.decode(),fourImage.decode()]);loaded=true;document.querySelectorAll('button,select').forEach(control=>control.disabled=false);status.textContent='Equal steps: both legs lead for the same time. Compare the two steps or inspect all eight poses below.';updateControls();updateBalance();render();renderPoseGrid();}
  catch(error){status.textContent='The artwork did not load. Reload this preview to try again.';}
 }
 function animate(ms){if(last!==null&&loaded&&playing)phase=(phase+Math.min(.05,(ms-last)/1000)*CYCLE_FPS*Number(speed.value))%8;last=ms;render();requestAnimationFrame(animate);}
