@@ -36,7 +36,7 @@
 <body><main>
 <div class="eyebrow">Painted artwork · equal steps · running and jumping · preview before integration</div>
 <h1>Painted paws, running and jumping</h1>
-<p>The bunny now uses painted arms, legs and paws with the original cream shading and hand-drawn outlines. The <strong>quiver</strong> stays attached through walking, running, takeoff and landing. This is a separate artwork preview before game integration.</p>
+<p>The bunny now uses painted arms, legs and paws with the original cream shading and hand-drawn outlines. Its ears gently flap a little behind each bounce, then settle after landing. The <strong>quiver</strong> stays attached through walking, running, takeoff and landing. This is a separate artwork preview before game integration.</p>
 <div class="controls">
   <button id="play" disabled>Pause animation</button>
   <label>Animation <select id="movement" disabled><option value="walk">Walking</option><option value="run">Running</option><option value="runJump" selected>Running + jumping</option></select></label>
@@ -46,6 +46,7 @@
   <button id="firstStep" disabled>First leg forward</button>
   <button id="otherStep" disabled>Other leg forward</button>
   <label><input id="mirror" type="checkbox"> Face left</label>
+  <label><input id="earBounce" type="checkbox" checked> Ear bounce</label>
 </div>
 <p class="balance" id="balanceSummary">Four poses for each leading leg · equal time for both legs.</p>
 <p id="motionLabel" aria-live="polite">Running, then jumping…</p>
@@ -86,6 +87,10 @@ uprightImage.src='quiver-art/upright-quiver-body-v2.png';
 fourImage.src='quiver-art/four-paws-quiver-v1.png';
 partsImage.src='quiver-art/painted-limb-parts-v1.png';
 let shadedParts=null;
+const earSurfaces={upright:document.createElement('canvas'),four:document.createElement('canvas')};
+// Only the upper ear tips bend. These boundaries stop before the head or
+// arrow fletchings, keeping the face, quiver and ear roots fixed to the body.
+const fourEarRoots=[168,205,200,195,143,138,145,158];
 // The source PNG stays unchanged; these crops contain the six painted parts.
 const PAINTED_PARTS=[
  {crop:[117,70,234,438],a:[210,148],b:[263,446]},
@@ -101,6 +106,7 @@ const fourLift=[0,0,9,13,0,0,9,0];
 const views=[{kind:'upright',image:uprightImage,canvas:document.querySelector('#upright'),counter:document.querySelector('#uprightCounter')},{kind:'four',image:fourImage,canvas:document.querySelector('#four'),anchors:fourAnchors,lift:fourLift,counter:document.querySelector('#fourCounter')}];
 const play=document.querySelector('#play'),speed=document.querySelector('#speed'),mirror=document.querySelector('#mirror'),status=document.querySelector('#status');
 const movement=document.querySelector('#movement'),motionLabel=document.querySelector('#motionLabel');
+const earBounce=document.querySelector('#earBounce');
 const strideLabel=document.querySelector('#strideLabel'),CYCLE_FPS=8;
 const REVIEW_POSES=Array.from({length:8},(_,i)=>i);
 let loaded=false,playing=!matchMedia('(prefers-reduced-motion: reduce)').matches,phase=0,motionTime=0,last=null;
@@ -142,6 +148,30 @@ function arm(ctx,shoulder,cycle,far=false,gait='run',jumpBlend=0){
  paintedPaw(ctx,5,hand,Math.atan2(hand.y-elbow.y,hand.x-elbow.x)-Math.atan2(96,120),far);
 }
 function smooth(v){return v*v*(3-2*v);}
+function earFlutter(cycle,gait,jump,seconds){
+ if(!earBounce.checked)return 0;
+ // Two footfalls per stride; the ear response lags the body's bounce.
+ const running=(gait==='walk'?20:38)*Math.sin(cycle*Math.PI*4-.7);
+ const t=((seconds%3.6)+3.6)%3.6;
+ let jumping=0;
+ if(jump.stage==='Takeoff')jumping=20*jump.blend;
+ else if(jump.height>0)jumping=-28*Math.sin(Math.PI*(t-1.3)/.9);
+ else if(jump.stage==='Landing'){const q=(t-2.2)/.25;jumping=30*Math.sin(q*Math.PI*3)*Math.exp(-3*q);}
+ return Math.max(-38,Math.min(38,running*(1-jump.blend)+jumping));
+}
+function drawEarBend(ctx,image,sx,sy,sw,sh,x,y,scale,root,bend,kind){
+ if(!bend){ctx.drawImage(image,sx,sy,sw,sh,x,y,sw*scale,sh*scale);return;}
+ const surface=earSurfaces[kind];
+ if(surface.width!==sw||surface.height!==root){surface.width=sw;surface.height=root;}
+ const patch=surface.getContext('2d');patch.clearRect(0,0,sw,root);
+ // Bend the existing painted pixels, preserving their shading and outline.
+ // Integer source rows avoid cracks between bands when the patch is scaled.
+ for(let row=0;row<root;row+=2){const h=Math.min(2,root-row),weight=(1-(row+h/2)/root)**2;
+  const shift=Math.round(bend*weight);patch.drawImage(image,sx,sy+row,sw,h,shift,row,sw,h);
+ }
+ ctx.drawImage(surface,x,y,sw*scale,root*scale);
+ ctx.drawImage(image,sx,sy+root,sw,sh-root,x,y+root*scale,sw*scale,(sh-root)*scale);
+}
 function jumpAt(seconds){
  const t=((seconds%3.6)+3.6)%3.6;
  if(t<1.1||t>=2.45)return {stage:'Running',height:0,compress:0,tuck:0,blend:0};
@@ -162,7 +192,8 @@ function drawUpright(ctx,pose=phase,motion='run',seconds=0){
  ctx.save();ctx.translate(270,-jump.height);ctx.scale(mirror.checked?-1:1,1);
  leg(ctx,{x:3,y:hipY},far,true);arm(ctx,{x:14,y:210+bob},cycle+.5,true,gait,jump.blend);
  leg(ctx,{x:-4,y:hipY},near);
- const scale=.195;ctx.drawImage(uprightImage,-630*scale,hipY-1010*scale,uprightImage.naturalWidth*scale,uprightImage.naturalHeight*scale);
+ const scale=.195,bend=earFlutter(cycle,gait,jump,seconds);
+ drawEarBend(ctx,uprightImage,0,0,uprightImage.naturalWidth,uprightImage.naturalHeight,-630*scale,hipY-1010*scale,scale,360,bend,'upright');
  arm(ctx,{x:-17,y:210+bob},cycle,false,gait,jump.blend);ctx.restore();
 }
 function draw(view,time,pose=phase,motion='run',seconds=0){
@@ -178,7 +209,8 @@ function draw(view,time,pose=phase,motion='run',seconds=0){
   const col=quadIndex%4,row=Math.floor(quadIndex/4),image=view.image;
   const sx=Math.floor(col*image.naturalWidth/4),sy=Math.floor(row*image.naturalHeight/2),sw=Math.floor((col+1)*image.naturalWidth/4)-sx,sh=Math.floor((row+1)*image.naturalHeight/2)-sy;
   const [ax,ay]=view.anchors[quadIndex],scale=.56;
-  ctx.save();ctx.translate(270,310-view.lift[quadIndex]-jump.height+jump.compress*.5);ctx.scale(mirror.checked?-1:1,1);ctx.drawImage(image,sx,sy,sw,sh,-ax*scale,-ay*scale,sw*scale,sh*scale);ctx.restore();
+  const bend=earFlutter(pose/8,motion==='walk'?'walk':'run',jump,seconds)*.28;
+  ctx.save();ctx.translate(270,310-view.lift[quadIndex]-jump.height+jump.compress*.5);ctx.scale(mirror.checked?-1:1,1);drawEarBend(ctx,image,sx,sy,sw,sh,-ax*scale,-ay*scale,scale,fourEarRoots[quadIndex],bend,'four');ctx.restore();
  }
  if(view.counter)view.counter.textContent=`Pose ${index+1} / 8`;
 }
@@ -209,13 +241,14 @@ document.querySelector('#next').onclick=()=>step(1);
 document.querySelector('#firstStep').onclick=()=>showStep(0);
 document.querySelector('#otherStep').onclick=()=>showStep(4);
 mirror.onchange=()=>{render();if(loaded)renderPoseGrid();};
+earBounce.onchange=()=>{render();if(loaded)renderPoseGrid();};
 speed.onchange=updateBalance;
 movement.onchange=()=>{phase=0;motionTime=0;last=null;playing=true;updateControls();render();};
 async function init(){
  try{await Promise.all([uprightImage.decode(),fourImage.decode(),partsImage.decode()]);
  shadedParts=document.createElement('canvas');shadedParts.width=partsImage.naturalWidth;shadedParts.height=partsImage.naturalHeight;
  const shade=shadedParts.getContext('2d');shade.drawImage(partsImage,0,0);shade.globalCompositeOperation='source-atop';shade.fillStyle='rgba(55,35,0,.16)';shade.fillRect(0,0,shadedParts.width,shadedParts.height);
- loaded=true;document.querySelectorAll('button,select').forEach(control=>control.disabled=false);status.textContent='Painted artwork, with the same equal steps. Choose walking, running, or running + jumping; inspect the jump phases below.';updateControls();updateBalance();render();renderPoseGrid();}
+ loaded=true;document.querySelectorAll('button,select').forEach(control=>control.disabled=false);status.textContent='Painted artwork, equal steps and gentle ear flaps. Choose walking, running, or running + jumping; toggle Ear bounce to compare.';updateControls();updateBalance();render();renderPoseGrid();}
  catch(error){status.textContent='The artwork did not load. Reload this preview to try again.';}
 }
 function animate(ms){if(last!==null&&loaded&&playing){const dt=Math.min(.05,(ms-last)/1000)*Number(speed.value);phase=(phase+dt*CYCLE_FPS)%8;motionTime=(motionTime+dt)%36;}last=ms;render();requestAnimationFrame(animate);}
