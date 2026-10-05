@@ -6,7 +6,8 @@ const place=(mode,x)=>run(`fireMode='${mode}';player.x=${x};player.y=fireSlopeY(
 for(const [mode,x,four] of [['volcano',3300,true],['volcano',4620,false],['secondVolcano',6890,false],['secondVolcano',8110,true],['secondVolcano',10300,false],['king',10400,false]]){
  reset();place(mode,x);assert.equal(run('fireHillCrawlMode()'),four);
  assert.equal(run('paintedBunnyPose().name'),four?'fourRun':'actions');
- run('player.vx=260');assert.equal(run('paintedBunnyPose().name'),four?'fourRun':'uprightRun');
+ run('player.vx=260');assert.equal(run('paintedBunnyPose().name'),four?'fourRun':'uprightWalk');
+ run("keys.add('ShiftLeft')");assert.equal(run('paintedBunnyPose().name'),four?'fourRun':'uprightRun');run('keys.clear()');
  run('jump()');assert(!run('player.onGround'));assert.equal(run('paintedBunnyPose().name'),'uprightJump');assert(!run('fireHillCrawlMode()'));
 }
 // Walking speed stays usable; either Shift key makes the bunny faster, and releasing it restores walking.
