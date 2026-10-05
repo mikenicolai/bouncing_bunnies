@@ -4,7 +4,7 @@ const reset=()=>run("level='fire';resetGame();fireFinished=false;");
 const arena=()=>{reset();run("fireArrow.owned=true;beginSecondVolcano();player.x=10340;player.y=-558;player.onGround=true;player.facing=1;beginLavaKing();");};
 // The relic is reachable and collected by walking, cannot be collected by zombies, and persists through respawn.
 reset();assert(run('mazeOpen(FIRE_ARROW_CELL.c,FIRE_ARROW_CELL.r)'));assert(run('mazeNext({c:1,r:1},FIRE_ARROW_CELL)'));
-run('beginFireMaze();player.mazeC=23;player.mazeR=1;player.x=6659;player.y=1991;update(1/60)');assert.equal(run('fireMode'),'maze','exit requires the relic');
+run('beginFireMaze();player.mazeC=24;player.mazeR=1;player.x=6739;player.y=1991;update(1/60)');assert.equal(run('fireMode'),'maze','exit requires the relic');
 run('player.x=mazeCenter(11,11).x-21;player.y=mazeCenter(11,11).y-29;player.mazeC=11;player.mazeR=11;update(1/60)');assert(run('fireArrow.owned'));assert.equal(run('score'),0,'inventory is separate from coins');
 run('respawnFire()');assert(run('fireArrow.owned'));run('resetGame()');assert(!run('fireArrow.owned'));assert.equal(run('bunnyArrows.length'),0);
 // Before acquisition, punching cannot damage the king and shooting is unavailable.

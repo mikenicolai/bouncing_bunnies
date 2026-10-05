@@ -3,8 +3,8 @@ const {run}=require('./air.cjs');
 const reset=()=>run("level='fire';resetGame();fireFinished=false;");
 const arena=()=>{reset();run("fireArrow.owned=true;beginSecondVolcano();player.x=10340;player.y=-558;player.onGround=true;beginLavaKing();");};
 // Exiting the labyrinth after finding the arrow starts the second outdoor climb.
-reset();run('beginFireMaze();fireArrow.owned=true;player.mazeC=23;player.mazeR=1;player.x=mazeCenter(23,1).x-21;player.y=mazeCenter(23,1).y-29;update(1/60)');
-assert.equal(run('fireMode'),'secondVolcano');assert.equal(run('fireUnderground'),false);assert.equal(run('fireFinished'),false);assert.equal(run('player.y+58'),2050);assert.equal(run('checkpoint.mode'),'secondVolcano');assert(run('mazeOpen(24,1)'));
+reset();run('beginFireMaze();fireArrow.owned=true;player.mazeC=24;player.mazeR=1;player.x=mazeCenter(24,1).x-21;player.y=mazeCenter(24,1).y-29;update(1/60)');
+assert.equal(run('fireMode'),'secondVolcano');assert.equal(run('fireUnderground'),false);assert.equal(run('fireFinished'),false);assert.equal(run('player.y+58'),2060);assert.equal(run('checkpoint.mode'),'secondVolcano');assert(run('mazeOpen(24,1)'));
 // Traverse the entire second slope with normal movement and jumps before aiming at the summit.
 for(const width of [480,960])for(const fps of [30,60,120]){
  reset();run(`fireArrow.owned=true;W=${width};player.x=6659;beginSecondVolcano();keys.add('ArrowRight')`);let jumps=0;

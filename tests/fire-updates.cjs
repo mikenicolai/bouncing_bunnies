@@ -65,3 +65,28 @@ run('updateLavaKing(.06)');assert.equal(run('lavaKingFireballs.length'),1);asser
 run("state='map';var pausedKingY=lavaKing.y,pausedBallX=lavaKingFireballs[0].x;update(.2)");assert.equal(run('lavaKing.y'),run('pausedKingY'));assert.equal(run('lavaKingFireballs[0].x'),run('pausedBallX'));
 run("state='playing';respawnFire()");assert.equal(run('lavaKingFireballs.length'),0);assert.equal(run('lavaKing.flightClock'),0);
 console.log('PASS fire update: slope-only paws/upright jumping, Shift movement and ladders, zombie arrows and wall occlusion, vertical shooting/Z, low camera, flying/moving/shooting boss, airborne hits, faster fireballs, pause/respawn.');
+
+// Crater tracking leaves 80% of the view below the falling bunny at every frame rate.
+for(const [width,height] of [[960,540],[480,920]])for(const fps of [30,60,120]){
+ reset();run(`W=${width};H=${height};fireMode='dropper';player.x=5000;player.y=-900;player.vy=300;player.onGround=false;cameraY=-1500`);
+ for(let f=0;f<fps*.6;f++){
+  run(`update(1/${fps})`);
+  assert.equal(run('fireMode'),'dropper');
+  assert(Math.abs(run('player.y+player.h/2-cameraY')-height*.2)<1e-9,'no tracking lag hides the approaching ledge');
+ }
+ assert.equal(run('lives'),3);
+}
+// The final ladder remains inside the maze; the second ground begins at its outside edge.
+assert.equal(run('FIRE_SECOND_VOLCANO[0][0]'),run('FIRE_MAZE.x+FIRE_MAZE.rows[0].length*FIRE_MAZE.tile'));
+assert.equal(run('FIRE_SECOND_VOLCANO[0][1]'),run('FIRE_MAZE.y+2*FIRE_MAZE.tile'));
+for(const fps of [30,60,120]){
+ reset();run("W=960;H=540;beginFireMaze();fireArrow.owned=true;player.mazeC=23;player.mazeR=3;player.x=mazeCenter(23,3).x-21;player.y=mazeCenter(23,3).y-29;keys.add('ArrowUp')");
+ for(let f=0;f<fps*1.1;f++)run(`update(1/${fps})`);
+ assert.equal(run('player.mazeR'),1);assert.equal(run('fireMode'),'maze');
+ run("keys.clear();keys.add('ArrowRight')");
+ for(let f=0;f<fps*1.5;f++)run(`update(1/${fps})`);
+ assert.equal(run('fireMode'),'secondVolcano');assert.equal(run('lives'),3);assert(run('player.onGround'));
+ assert(run('player.x>FIRE_SECOND_VOLCANO[0][0]'));assert.equal(run('player.y+player.h'),2060);
+ assert(!run('fireHillCrawlMode()'));
+}
+console.log('PASS crater camera: 20% high tracking at desktop/portrait sizes and 30/60/120 FPS; clear final ladder and continuous outer-edge exit.');

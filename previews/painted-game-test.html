@@ -5,15 +5,16 @@
 :root{color-scheme:dark;font:16px system-ui;background:#241c29;color:#fff1d8}body{margin:0;padding:16px}main{max-width:1100px;margin:auto}h1{font-size:24px;margin:0 0 8px}p{line-height:1.45;margin:8px 0}a{color:#ffc080}nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}button{font:inherit;padding:9px 12px;border:1px solid #b9775f;border-radius:9px;background:#efad76;color:#261c25;cursor:pointer}button[aria-pressed=true]{background:#fff1d8;outline:2px solid #efad76}button:disabled{opacity:.5;cursor:wait}iframe{display:block;width:100%;height:clamp(280px,calc(100dvh - 280px),620px);border:1px solid #b9775f;border-radius:14px;box-sizing:border-box}#status{color:#ffc080;font-size:14px}canvas{display:block;width:300px;max-width:100%;border:1px solid #b9775f;border-radius:12px;margin:12px 0}details{margin:12px 0}summary{cursor:pointer}kbd{font:inherit;font-weight:700}
 </style></head><body><main>
 <h1>Play with the painted bunny</h1>
-<p>Four paws only while grounded on a slope; upright on flat ground and during every jump. Choose a practice area, then click the game to play. <a href="../index.html?v=2026100504">Play the full game →</a></p>
+<p>A smaller bunny, with four paws only on slopes and upright jumps. The crater fall keeps you high so you can see below. Choose a practice area, then click the game to play. <a href="../index.html?v=2026100505">Play the full game →</a></p>
 <nav aria-label="Practice area">
 <button disabled data-scene="plain">Upright · no quiver</button><button disabled data-scene="quiver">Upright · with quiver</button>
-<button disabled data-scene="slopePlain">Volcano · no quiver</button><button disabled data-scene="slopeQuiver">Volcano · with quiver</button><button disabled data-scene="maze">Find arrows in the labyrinth</button>
+<button disabled data-scene="slopePlain">Volcano · no quiver</button><button disabled data-scene="slopeQuiver">Volcano · with quiver</button><button disabled data-scene="dropper">Volcano fall</button><button disabled data-scene="maze">Find arrows in the labyrinth</button>
 <button disabled data-scene="afterMaze">Flat ground after labyrinth</button><button disabled data-scene="stones">Jump over rolling stones</button><button disabled data-scene="zombies">Arrows against zombies</button><button disabled data-scene="king">Fight the flying Lava King</button>
+<button disabled data-scene="mazeExit">Last labyrinth ladder</button>
 </nav>
 <p><kbd>← →</kbd> / <kbd>A D</kbd> move · <kbd>Shift + arrows</kbd> run · <kbd>Space</kbd> jump · <kbd>Z</kbd> equip/stow · equipped: <kbd>↑ ↓</kbd> aim, <kbd>X</kbd> fire. Touch controls are inside the game.</p>
 <p id="status" role="status">Loading both sets of paintings…</p>
-<iframe src="../index.html?v=2026100504" title="Playable painted bunny game" tabindex="0"></iframe>
+<iframe src="../index.html?v=2026100505" title="Playable painted bunny game" tabindex="0"></iframe>
 <details open><summary>Live close-up of your bunny</summary><canvas id="closeup" width="360" height="260" aria-label="Magnified live game artwork"></canvas></details>
 <p>Practice uses the real game controls, movement, jump physics and artwork, with clear paths for the first four buttons. The stone, zombie and king buttons use live hazards and combat. The full game includes the normal hazards and arrow collection.</p>
 <p><a href="painted-pose-animation-review.html?v=2026100502">Approved eight-pose artwork</a> · <a href="../assets/bunny-painted-runtime-prompts.md">Painted asset prompts</a></p>
@@ -21,9 +22,13 @@
 const frame=document.querySelector('iframe'),status=document.querySelector('#status'),closeup=document.querySelector('#closeup'),closeCtx=closeup.getContext('2d');let ready=false;
 function show(scene){
  if(!ready)return;
- const owned=['quiver','slopeQuiver','afterMaze','stones','zombies','king'].includes(scene),slope=scene.startsWith('slope')||scene==='stones';
+ const owned=['quiver','slopeQuiver','afterMaze','stones','zombies','king','mazeExit'].includes(scene),slope=scene.startsWith('slope')||scene==='stones';
  let code="level='fire';soundOn=false;start();fireZombies=[];fireArrow.aiming=false;lavaKing.active=false;";
- if(scene==='maze'||scene==='zombies'){
+ if(scene==='dropper'){
+  code+="fireMode='dropper';fireUnderground=true;checkpoint={x:4650,y:-1108,mode:'volcano',stage:6};player.x=4900-player.w/2;player.y=-900;player.vy=300;player.onGround=false;cameraX=4900-W/2;cameraY=fireCameraTargetY();";
+ }else if(scene==='mazeExit'){
+  code+="beginFireMaze();fireArrow.owned=true;player.mazeC=23;player.mazeR=3;player.x=mazeCenter(23,3).x-player.w/2;player.y=mazeCenter(23,3).y-player.h/2;cameraX=player.x+player.w/2-W/3;cameraY=fireCameraTargetY();";
+ }else if(scene==='maze'||scene==='zombies'){
   const col=scene==='zombies'?11:10;
   code+=`beginFireMaze();player.mazeC=${col};player.mazeR=11;player.x=mazeCenter(${col},11).x-21;player.y=mazeCenter(${col},11).y-29;cameraX=player.x+21-W/3;cameraY=fireCameraTargetY();`;
   if(scene==='zombies')code+="fireArrow.owned=true;fireArrow.aiming=true;fireArrow.angle=0;var practiceZombie=mazeCenter(14,11);fireZombies=[{c:14,r:11,x:practiceZombie.x-24,y:practiceZombie.y-36,w:48,h:72,hp:2,dizzy:0,alive:true,progress:0,patrolTurn:0,target:null,phase:0,facing:-1}];";
@@ -35,7 +40,7 @@ function show(scene){
  }
  frame.contentWindow.eval(code);
  document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===scene)));
- const labels={maze:'Walk right to find the arrow; ↑ ↓ climb; Z draws or stows it.',afterMaze:'Flat ground after the labyrinth: upright walking, Shift running and jumping.',stones:'Live rolling stones: four paws on the slope, upright jumps. Space jumps; Z stows the bow if equipped.',zombies:'Live zombie: X fires arrows; Z equips/stows. ↑ ↓ climbs and points the bow up/down.',king:'Live flying Lava King: Shift + arrows runs to either side, ↑ ↓ aims, X fires, Z stows for jumping.'};
+ const labels={dropper:'Live crater fall: the bunny stays 20% from the top. Move left/right through the alternating gaps.',mazeExit:'Climb ↑ up the final ladder, then move → through EXIT onto the flat ground.',maze:'Walk right to find the arrow; ↑ ↓ climb; Z draws or stows it.',afterMaze:'Flat ground after the labyrinth: upright walking, Shift running and jumping.',stones:'Live rolling stones: four paws on the slope, upright jumps. Space jumps; Z stows the bow if equipped.',zombies:'Live zombie: X fires arrows; Z equips/stows. ↑ ↓ climbs and points the bow up/down.',king:'Live flying Lava King: Shift + arrows runs to either side, ↑ ↓ aims, X fires, Z stows for jumping.'};
  status.textContent=labels[scene]||`${slope?'Grounded slope movement on four paws':'Upright running'} · ${owned?'quiver on the back; Z equips/stows the bow':'without a quiver'} · every jump is upright.`;
  frame.contentWindow.focus();
 }

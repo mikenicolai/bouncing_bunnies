@@ -13,7 +13,7 @@ const rows=Array.from(run('FIRE_MAZE.rows'));
 function canExit(blocked){
   const queue=[[1,1]],seen=new Set(['1,1']);
   while(queue.length){
-    const [c,r]=queue.shift();if(c===23&&r===1)return true;
+    const [c,r]=queue.shift();if(c===24&&r===1)return true;
     for(const [nc,nr] of [[c+1,r],[c-1,r],[c,r+1],[c,r-1]]){
       const id=`${nc},${nr}`;
       if(rows[nr]?.[nc]==='.'&&id!==blocked&&!seen.has(id)){seen.add(id);queue.push([nc,nr]);}
@@ -96,8 +96,8 @@ for(let i=0;i<35;i++)run('update(1/60)');assert.equal(run('player.mazeR'),2);
 assert(run('fireZombies.filter(z=>z.alert&&!z.surface).length<=2'));
 assert(run('fireZombies.filter(z=>!z.surface).every(z=>!z.target||mazeNeighbors(z.c,z.r).some(([c,r])=>c===z.target.c&&r===z.target.r))'));
 let cell={c:1,r:2},down=false,up=false,steps=0;
-while(cell.c!==23||cell.r!==1){
-  const next=run(`mazeNext({c:${cell.c},r:${cell.r}},{c:23,r:1})`);assert(next);
+while(cell.c!==24||cell.r!==1){
+  const next=run(`mazeNext({c:${cell.c},r:${cell.r}},{c:24,r:1})`);assert(next);
   const dc=next.c-cell.c,dr=next.r-cell.r;down||=dr>0;up||=dr<0;
   const key=dc>0?'ArrowRight':dc<0?'ArrowLeft':dr>0?'ArrowDown':'ArrowUp';
   run(`keys.add('${key}');update(1/60);keys.clear()`);
