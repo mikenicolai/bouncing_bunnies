@@ -109,3 +109,22 @@ for(const fps of [30,60,120]){
  assert(!run('fireHillCrawlMode()'));
 }
 console.log('PASS crater camera: 20% high tracking at desktop/portrait sizes and 30/60/120 FPS; clear final ladder and continuous outer-edge exit.');
+// The outdoor summit must not be covered by the crater's outer soil rectangle.
+run(`var craterSoils=[],backdropTextures=[],cavernOpacity=[];
+ctx.createLinearGradient=()=>({addColorStop(){}});
+for(const method of ['save','restore','beginPath','closePath','fill','stroke','clip','fillRect','fillText','arc','ellipse'])ctx[method]=()=>{};
+for(const method of ['moveTo','lineTo'])ctx[method]=(...values)=>{if(!values.every(Number.isFinite))throw new Error('Non-finite backdrop coordinate');};
+ctx.drawImage=(image)=>backdropTextures.push(image);
+drawFireSoilBlock=p=>craterSoils.push(p);drawFireGround=drawFireCliffFace=drawFireCliffCap=drawFireShaftCrystal=drawPlatform=()=>{};
+fireGroundSheet.complete=false;fireCliffSheet.complete=false;
+level='fire';W=960;H=540;cameraX=10200;cameraY=-932;drawFireVolcano();`);
+assert(run('craterSoils.every(p=>p.x+p.w<=FIRE_SECOND_VOLCANO[0][0])'),'crater soil stops before the outdoor second volcano');
+assert(run('craterSoils.every(p=>p.x+p.w<cameraX || p.y>cameraY+H || p.y+p.h<cameraY)'),'crater soil cannot hide the Lava King skyline');
+run('var originalCavernBackground=drawFireCavernBackground;drawFireCavernBackground=opacity=>{cavernOpacity.push(opacity);originalCavernBackground(opacity);};fireGroundSheet.complete=true;fireGroundSheet.naturalWidth=1024;fireGroundSheet.naturalHeight=1536;');
+for(const [width,height] of [[960,540],[480,920]])for(const underground of [false,true]){
+ run(`W=${width};H=${height};fireUnderground=${underground};fireMode='${underground?'maze':'king'}';player.y=2000;backdropTextures=[];cavernOpacity=[];drawFireBackground();`);
+ assert.equal(run('backdropTextures.length'),0,'walkable earth texture is never used as the sky or cavern wallpaper');
+ assert.equal(run('cavernOpacity.length'),underground?1:0,'outdoors and underground use separate backdrops');
+ if(underground)assert.equal(run('cavernOpacity[0]'),1);
+}
+console.log('PASS fire scenery: crater soil never covers the outdoor summit; distinct sky/cavern backgrounds without ground-texture wallpaper, at desktop and portrait sizes.');
