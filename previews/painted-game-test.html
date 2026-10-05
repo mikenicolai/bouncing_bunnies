@@ -5,7 +5,7 @@
 :root{color-scheme:dark;font:16px system-ui;background:#241c29;color:#fff1d8}body{margin:0;padding:16px}main{max-width:1100px;margin:auto}h1{font-size:24px;margin:0 0 8px}p{line-height:1.45;margin:8px 0}a{color:#ffc080}nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}button{font:inherit;padding:9px 12px;border:1px solid #b9775f;border-radius:9px;background:#efad76;color:#261c25;cursor:pointer}button[aria-pressed=true]{background:#fff1d8;outline:2px solid #efad76}button:disabled{opacity:.5;cursor:wait}iframe{display:block;width:100%;height:clamp(280px,calc(100dvh - 280px),620px);border:1px solid #b9775f;border-radius:14px;box-sizing:border-box}#status{color:#ffc080;font-size:14px}canvas{display:block;width:300px;max-width:100%;border:1px solid #b9775f;border-radius:12px;margin:12px 0}details{margin:12px 0}summary{cursor:pointer}kbd{font:inherit;font-weight:700}
 </style></head><body><main>
 <h1>Play with the painted bunny</h1>
-<p>Painted volcanic terrain through the crater, with a new stone-and-earth join at the labyrinth exit. Choose a practice area, then click the game to play. <a href="../index.html?v=2026100506">Play the full game →</a></p>
+<p>Painted cliff corners on both sides of the crater, with volcanic crystal scenery. Choose a practice area, then click the game to play. <a href="../index.html?v=2026100507">Play the full game →</a></p>
 <nav aria-label="Practice area">
 <button disabled data-scene="plain">Upright · no quiver</button><button disabled data-scene="quiver">Upright · with quiver</button>
 <button disabled data-scene="slopePlain">Volcano · no quiver</button><button disabled data-scene="slopeQuiver">Volcano · with quiver</button><button disabled data-scene="dropper">Volcano fall</button><button disabled data-scene="maze">Find arrows in the labyrinth</button>
@@ -15,7 +15,7 @@
 </nav>
 <p><kbd>← →</kbd> / <kbd>A D</kbd> move · <kbd>Shift + arrows</kbd> run · <kbd>Space</kbd> jump · <kbd>Z</kbd> equip/stow · equipped: <kbd>↑ ↓</kbd> aim, <kbd>X</kbd> fire. Touch controls are inside the game.</p>
 <p id="status" role="status">Loading both sets of paintings…</p>
-<iframe src="../index.html?v=2026100506" title="Playable painted bunny game" tabindex="0"></iframe>
+<iframe src="../index.html?v=2026100507" title="Playable painted bunny game" tabindex="0"></iframe>
 <details open><summary>Live close-up of your bunny</summary><canvas id="closeup" width="360" height="260" aria-label="Magnified live game artwork"></canvas></details>
 <p>Practice uses the real game controls, movement, jump physics and artwork, with clear paths for the first four buttons. The stone, zombie and king buttons use live hazards and combat. The full game includes the normal hazards and arrow collection.</p>
 <p><a href="painted-pose-animation-review.html?v=2026100502">Approved eight-pose artwork</a> · <a href="../assets/bunny-painted-runtime-prompts.md">Painted asset prompts</a></p>
@@ -43,14 +43,14 @@ function show(scene){
  }
  frame.contentWindow.eval(code);
  document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===scene)));
- const labels={craterRim:'Painted soil continues around the crater rim and down both walls. Move → to descend.',dropper:'Live crater fall: the bunny stays 20% from the top. Move left/right through the alternating gaps.',mazeExit:'Climb ↑ up the final ladder, then move → through EXIT onto the flat ground.',maze:'Walk right to find the arrow; ↑ ↓ climb; Z draws or stows it.',afterMaze:'Flat ground after the labyrinth: upright walking, Shift running and jumping.',stones:'Live rolling stones: four paws on the slope, upright jumps. Space jumps; Z stows the bow if equipped.',zombies:'Live zombie: X fires arrows; Z equips/stows. ↑ ↓ climbs and points the bow up/down.',king:'Live flying Lava King: Shift + arrows runs to either side, ↑ ↓ aims, X fires, Z stows for jumping.'};
+ const labels={craterRim:'Inspect both painted crater corners and the crystal scenery. Move → to descend.',dropper:'Live crater fall: the bunny stays 20% from the top. Move left/right through the alternating gaps.',mazeExit:'Climb ↑ up the final ladder, then move → through EXIT onto the flat ground.',maze:'Walk right to find the arrow; ↑ ↓ climb; Z draws or stows it.',afterMaze:'Flat ground after the labyrinth: upright walking, Shift running and jumping.',stones:'Live rolling stones: four paws on the slope, upright jumps. Space jumps; Z stows the bow if equipped.',zombies:'Live zombie: X fires arrows; Z equips/stows. ↑ ↓ climbs and points the bow up/down.',king:'Live flying Lava King: Shift + arrows runs to either side, ↑ ↓ aims, X fires, Z stows for jumping.'};
  status.textContent=labels[scene]||`${slope?'Grounded slope movement on four paws':'Upright running'} · ${owned?'quiver on the back; Z equips/stows the bow':'without a quiver'} · every jump is upright.`;
  frame.contentWindow.focus();
 }
 frame.addEventListener('load',async()=>{
  const doc=frame.contentDocument,style=doc.createElement('style');
  style.textContent='html,body{margin:0;padding:0;background:#241c29}.game-shell,main{width:100%;max-width:none;padding:0;margin:0}header,footer,#worldMap{display:none}main>.game-frame{width:min(100vw,177.777778vh);margin:auto;border:0;border-radius:0;box-shadow:none}main>.game-frame:not(.expanded){min-height:0}';doc.head.append(style);
- try{await frame.contentWindow.eval("Promise.all([...Object.values(PAINTED_BUNNY).flatMap(s=>[s.plain,s.quiver]),fireArcherySheet,fireGroundSheet,fireMazeJoinSheet].map(i=>i.decode()))");ready=true;document.querySelectorAll('button').forEach(b=>b.disabled=false);show('plain');}catch(error){console.error('Painted game test setup failed',error);status.textContent='Some artwork did not load. Reload this page to try again.';}
+ try{await frame.contentWindow.eval("Promise.all([...Object.values(PAINTED_BUNNY).flatMap(s=>[s.plain,s.quiver]),fireArcherySheet,fireGroundSheet,fireMazeJoinSheet,fireCliffSheet,fireCrystalSheet].map(i=>i.decode()))");ready=true;document.querySelectorAll('button').forEach(b=>b.disabled=false);show('plain');}catch(error){console.error('Painted game test setup failed',error);status.textContent='Some artwork did not load. Reload this page to try again.';}
 });
 document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>show(b.dataset.scene));
 function magnify(){if(ready){const crop=frame.contentWindow.eval("({x:player.x+player.w/2-cameraX,y:player.y+player.h-cameraY})"),game=frame.contentDocument.querySelector('#game');closeCtx.clearRect(0,0,360,260);closeCtx.drawImage(game,crop.x-90,crop.y-125,180,130,0,0,360,260);}requestAnimationFrame(magnify);}requestAnimationFrame(magnify);

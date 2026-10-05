@@ -53,7 +53,7 @@ run("player.invincible=0;level='meadow';draws=[];drawBunny()");assert(run('draws
 for(const stance of ['upright','four'])for(const move of ['run','jump']){
  const dims=[];for(const gear of ['plain','quiver']){const p=`assets/bunny-painted-${stance}-${move}-${gear}-v1.png`,b=fs.readFileSync(p);assert.equal(b[25],6,'RGBA PNG');dims.push([b.readUInt32BE(16),b.readUInt32BE(20)]);}assert.deepEqual(dims[0],dims[1]);
 }
-const review=fs.readFileSync('previews/painted-game-test.html','utf8');assert(review.includes('../index.html?v=2026100506'));assert(review.includes('i.decode()'));assert(!review.includes('update('),'test page does not replace or double-drive physics');
+const review=fs.readFileSync('previews/painted-game-test.html','utf8');assert(review.includes('../index.html?v=2026100507'));assert(review.includes('i.decode()'));assert(!review.includes('update('),'test page does not replace or double-drive physics');
 // One common transform makes every complete pose and its bow/quiver 70% size, with the feet planted.
 run('var artScales=[];ctx.scale=(...v)=>artScales.push(v)');
 for(const mode of ['king','volcano','dropper','maze'])for(const owned of [false,true]){
