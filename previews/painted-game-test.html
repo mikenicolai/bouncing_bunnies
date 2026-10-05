@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painted bunny · play test</title>
+<style>
+:root{color-scheme:dark;font:16px system-ui;background:#241c29;color:#fff1d8}body{margin:0;padding:16px}main{max-width:1100px;margin:auto}h1{font-size:24px;margin:0 0 8px}p{line-height:1.45;margin:8px 0}a{color:#ffc080}nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}button{font:inherit;padding:9px 12px;border:1px solid #b9775f;border-radius:9px;background:#efad76;color:#261c25;cursor:pointer}button[aria-pressed=true]{background:#fff1d8;outline:2px solid #efad76}button:disabled{opacity:.5;cursor:wait}iframe{display:block;width:100%;aspect-ratio:16/9;border:1px solid #b9775f;border-radius:14px;box-sizing:border-box}#status{color:#ffc080;font-size:14px}canvas{display:block;width:300px;max-width:100%;border:1px solid #b9775f;border-radius:12px;margin:12px 0}details{margin:12px 0}summary{cursor:pointer}kbd{font:inherit;font-weight:700}
+</style></head><body><main>
+<h1>Play with the painted bunny</h1>
+<p>Four paws on volcano slopes, upright elsewhere. Choose a practice area, then click the game to play. <a href="../index.html?v=2026100503">Play the full game →</a></p>
+<nav aria-label="Practice area">
+<button disabled data-scene="plain">Upright · no quiver</button><button disabled data-scene="quiver">Upright · with quiver</button>
+<button disabled data-scene="slopePlain">Volcano · no quiver</button><button disabled data-scene="slopeQuiver">Volcano · with quiver</button><button disabled data-scene="maze">Find arrows in the labyrinth</button>
+</nav>
+<p><kbd>← →</kbd> / <kbd>A D</kbd> move · <kbd>Space</kbd> jump · <kbd>Z</kbd> equip/stow · equipped: <kbd>↑ ↓</kbd> aim, <kbd>X</kbd> fire. Touch controls are inside the game.</p>
+<p id="status" role="status">Loading both sets of paintings…</p>
+<iframe src="../index.html?v=2026100503" title="Playable painted bunny game" tabindex="0"></iframe>
+<details open><summary>Live close-up of your bunny</summary><canvas id="closeup" width="360" height="260" aria-label="Magnified live game artwork"></canvas></details>
+<p>Practice uses the real game controls, movement, jump physics and artwork, with enemies and rolling stones cleared. The full game includes the normal hazards and arrow collection.</p>
+<p><a href="painted-pose-animation-review.html?v=2026100502">Approved eight-pose artwork</a> · <a href="../assets/bunny-painted-runtime-prompts.md">Painted asset prompts</a></p>
+</main><script>
+const frame=document.querySelector('iframe'),status=document.querySelector('#status'),closeup=document.querySelector('#closeup'),closeCtx=closeup.getContext('2d');let ready=false;
+function show(scene){
+ if(!ready)return;
+ const owned=scene==='quiver'||scene==='slopeQuiver',slope=scene.startsWith('slope');
+ let code="level='fire';soundOn=false;start();fireZombies=[];fireArrow.aiming=false;lavaKing.active=false;";
+ if(scene==='maze')code+="beginFireMaze();player.mazeC=10;player.mazeR=11;player.x=mazeCenter(10,11).x-21;player.y=mazeCenter(10,11).y-29;cameraX=player.x+21-W/3;cameraY=player.y-H*.48;";
+ else code+=`fireArrow.owned=${owned};beginSecondVolcano();fireMode='${slope?'secondVolcano':'king'}';player.x=${slope?8110:10360};player.y=fireSlopeY(player.x+21)-58;player.onGround=true;player.landingPaint=0;fireStoneClock=999;cameraX=player.x+21-W/3;cameraY=fireSlopeY(player.x+21)-H*.62;`;
+ frame.contentWindow.eval(code);
+ document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===scene)));
+ status.textContent=scene==='maze'?'Walk right to collect the arrow; ↑ ↓ climb; Z draws or stows it.':`${slope?'Four-paw volcano climb':'Upright running'} · ${owned?'quiver on the back; Z equips/stows the bow':'without a quiver'} · running and jumping are playable.`;
+ frame.contentWindow.focus();
+}
+frame.addEventListener('load',async()=>{
+ const doc=frame.contentDocument,style=doc.createElement('style');
+ style.textContent='html,body{margin:0;padding:0;background:#241c29}.game-shell,main{width:100%;max-width:none;padding:0;margin:0}header,footer,#worldMap{display:none}main>.game-frame{border:0;border-radius:0;box-shadow:none}main>.game-frame:not(.expanded){min-height:0}';doc.head.append(style);
+ try{await frame.contentWindow.eval("Promise.all([...Object.values(PAINTED_BUNNY).flatMap(s=>[s.plain,s.quiver]),fireArcherySheet].map(i=>i.decode()))");ready=true;document.querySelectorAll('button').forEach(b=>b.disabled=false);show('plain');}catch(error){console.error('Painted game test setup failed',error);status.textContent='Some artwork did not load. Reload this page to try again.';}
+});
+document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>show(b.dataset.scene));
+function magnify(){if(ready){const crop=frame.contentWindow.eval("({x:player.x+player.w/2-cameraX,y:player.y+player.h-cameraY})"),game=frame.contentDocument.querySelector('#game');closeCtx.clearRect(0,0,360,260);closeCtx.drawImage(game,crop.x-90,crop.y-125,180,130,0,0,360,260);}requestAnimationFrame(magnify);}requestAnimationFrame(magnify);
+</script></body></html>
