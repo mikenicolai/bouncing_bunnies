@@ -72,9 +72,27 @@ for(const [width,height] of [[960,540],[480,920]])for(const fps of [30,60,120]){
  for(let f=0;f<fps*.6;f++){
   run(`update(1/${fps})`);
   assert.equal(run('fireMode'),'dropper');
-  assert(Math.abs(run('player.y+player.h/2-cameraY')-height*.2)<1e-9,'no tracking lag hides the approaching ledge');
+  assert(Math.abs(run('(player.y+player.h/2-cameraY)*fireViewSize().scale')-height*.2)<1e-9,'no tracking lag hides the approaching ledge');
  }
  assert.equal(run('lives'),3);
+}
+// Entering the real crater never teleports the view; the settled walls do not follow steering.
+for(const [width,height] of [[960,540],[480,920]])for(const fps of [30,60,120]){
+ reset();run(`W=${width};H=${height};fireMode='volcano';player.x=4730;player.y=-1108;player.vx=260;player.onGround=true;cameraX=player.x+21-W/3;cameraY=fireCameraTargetY();keys.add('ArrowRight')`);
+ let largestStep=0,previous=run('cameraY');
+ for(let f=0;f<fps*1.7;f++){
+  run(`update(1/${fps})`);
+  largestStep=Math.max(largestStep,Math.abs(run('cameraY')-previous)*run('fireViewSize().scale'));previous=run('cameraY');
+ }
+ assert.equal(run('fireMode'),'dropper');assert.equal(run('lives'),3);
+ assert(largestStep<40*30/fps,`smooth crater entry at ${width}/${fps}: ${largestStep}`);
+ assert(Math.abs(run('(player.y+player.h/2-cameraY)*fireViewSize().scale')-height*.2)<1e-8);
+ const wallX=run('(FIRE_DROPPER.left-cameraX)*fireViewSize().scale');
+ const opposite=run('(FIRE_DROPPER.right-cameraX)*fireViewSize().scale');
+ assert(wallX>0&&opposite<width,'both shaft walls fit the view, including portrait');
+ run("keys.clear();keys.add('ArrowLeft')");for(let f=0;f<fps*.15;f++)run(`update(1/${fps})`);
+ assert(Math.abs(run('(FIRE_DROPPER.left-cameraX)*fireViewSize().scale')-wallX)<1e-8,'steering does not pan the walls');
+ run('resetGame()');assert.equal(run('fireCraterViewBlend'),0);assert.equal(run('fireDropCamera'),null);
 }
 // The final ladder remains inside the maze; the second ground begins at its outside edge.
 assert.equal(run('FIRE_SECOND_VOLCANO[0][0]'),run('FIRE_MAZE.x+FIRE_MAZE.rows[0].length*FIRE_MAZE.tile'));

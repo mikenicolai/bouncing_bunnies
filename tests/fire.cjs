@@ -67,7 +67,7 @@ for(const width of [480,960])for(const fps of [30,60,120]){
   assert.equal(run('fireMode'),'maze',`crater route ${width}/${fps}`);
   assert.equal(run('lives'),lives,'alternating gaps allow a damage-free descent');
   assert.equal(run('checkpoint.mode'),'maze');assert.equal(run('player.mazeC'),1);assert.equal(run('player.mazeR'),1);
-  assert(run('cameraY>1400'));assert.equal(run('fireFinished'),false);
+  assert(run('((player.y+player.h/2-cameraY)*fireViewSize().scale)>0&&((player.y+player.h/2-cameraY)*fireViewSize().scale)<H'),'maze entrance remains in the viewport after the zoomed descent');assert.equal(run('fireFinished'),false);
 }
 // A crater collision costs one life and returns to its summit checkpoint.
 fireReset();run("fireMode='dropper';checkpoint={x:4650,y:-1108,mode:'volcano',stage:6};player.x=4700;player.y=-430;player.vy=300;update(1/60)");

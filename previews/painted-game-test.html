@@ -5,18 +5,18 @@
 :root{color-scheme:dark;font:16px system-ui;background:#241c29;color:#fff1d8}body{margin:0;padding:16px}main{max-width:1100px;margin:auto}h1{font-size:24px;margin:0 0 8px}p{line-height:1.45;margin:8px 0}a{color:#ffc080}nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}button{font:inherit;padding:9px 12px;border:1px solid #b9775f;border-radius:9px;background:#efad76;color:#261c25;cursor:pointer}button[aria-pressed=true]{background:#fff1d8;outline:2px solid #efad76}button:disabled{opacity:.5;cursor:wait}iframe{display:block;width:100%;height:clamp(280px,calc(100dvh - 280px),620px);border:1px solid #b9775f;border-radius:14px;box-sizing:border-box}#status{color:#ffc080;font-size:14px}canvas{display:block;width:300px;max-width:100%;border:1px solid #b9775f;border-radius:12px;margin:12px 0}details{margin:12px 0}summary{cursor:pointer}kbd{font:inherit;font-weight:700}
 </style></head><body><main>
 <h1>Play with the painted bunny</h1>
-<p>Painted crystals inside the volcano shaft and natural pit boundaries across the game. Choose a practice area, then click the game to play. <a href="../index.html?v=2026100508">Play the full game →</a></p>
+<p>Continuous lava, enclosed crater walls, and smooth camera movement into the fall. Choose a practice area, then click the game to play. <a href="../index.html?v=2026100509">Play the full game →</a></p>
 <nav aria-label="Practice area">
 <button disabled data-scene="plain">Upright · no quiver</button><button disabled data-scene="quiver">Upright · with quiver</button>
 <button disabled data-scene="slopePlain">Volcano · no quiver</button><button disabled data-scene="slopeQuiver">Volcano · with quiver</button><button disabled data-scene="dropper">Volcano fall</button><button disabled data-scene="maze">Find arrows in the labyrinth</button>
 <button disabled data-scene="afterMaze">Flat ground after labyrinth</button><button disabled data-scene="stones">Jump over rolling stones</button><button disabled data-scene="zombies">Arrows against zombies</button><button disabled data-scene="king">Fight the flying Lava King</button>
 <button disabled data-scene="mazeExit">Last labyrinth ladder</button>
 <button disabled data-scene="craterRim">Crater rim texture</button>
-<button disabled data-scene="crystals">Shaft crystal obstacles</button><button id="pauseArtwork" disabled>Pause artwork</button><button disabled data-scene="firePits">Fire pit edges</button><button disabled data-scene="meadowPits">Meadow pit edges</button><button disabled data-scene="shorePits">Shoreline edges</button><button disabled data-scene="forestEdges">Forest cliffs</button>
+<button disabled data-scene="entry">Enter the crater</button><button disabled data-scene="landing">Crater landing</button><button disabled data-scene="crystals">Shaft crystal obstacles</button><button id="pauseArtwork" disabled>Pause artwork</button><button disabled data-scene="firePits">Fire pit edges</button><button disabled data-scene="meadowPits">Meadow pit edges</button><button disabled data-scene="shorePits">Shoreline edges</button><button disabled data-scene="forestEdges">Forest cliffs</button>
 </nav>
 <p><kbd>← →</kbd> / <kbd>A D</kbd> move · <kbd>Shift + arrows</kbd> run · <kbd>Space</kbd> jump · <kbd>Z</kbd> equip/stow · equipped: <kbd>↑ ↓</kbd> aim, <kbd>X</kbd> fire. Touch controls are inside the game.</p>
 <p id="status" role="status">Loading both sets of paintings…</p>
-<iframe src="../index.html?v=2026100508" title="Playable painted bunny game" tabindex="0"></iframe>
+<iframe src="../index.html?v=2026100509" title="Playable painted bunny game" tabindex="0"></iframe>
 <details open><summary>Live close-up of your bunny</summary><canvas id="closeup" width="360" height="260" aria-label="Magnified live game artwork"></canvas></details>
 <p>Practice uses the real game controls, movement, jump physics and artwork, with clear paths for the first four buttons. The stone, zombie and king buttons use live hazards and combat. The full game includes the normal hazards and arrow collection.</p>
 <p><a href="painted-pose-animation-review.html?v=2026100502">Approved eight-pose artwork</a> · <a href="../assets/bunny-painted-runtime-prompts.md">Painted asset prompts</a></p>
@@ -32,12 +32,16 @@ function show(scene){
  }else if(scene==='firePits'||scene==='meadowPits'||scene==='shorePits'){
   const world=scene==='meadowPits'?'meadow':scene==='shorePits'?'water':'fire';
   code=`level='${world}';soundOn=false;start();fireZombies=[];enemies=[];player.x=${world==='water'?565:480};player.y=${world==='water'?402:world==='fire'?392:412};player.onGround=true;cameraX=150;cameraY=${world==='fire'?18:0};`;
+ }else if(scene==='entry'){
+  code+="fireMode='volcano';player.x=4710;player.y=-1108;player.vx=260;player.onGround=true;fireStoneClock=999;cameraX=player.x+21-W/3;cameraY=fireCameraTargetY();keys.add('ArrowRight');setTimeout(()=>keys.delete('ArrowRight'),450);";
+ }else if(scene==='landing'){
+  code+="fireMode='landing';fireUnderground=true;fireCraterViewBlend=1;player.x=4760;player.y=1842;player.onGround=true;cameraX=(FIRE_DROPPER.left+FIRE_DROPPER.right-fireViewSize().width)/2;cameraY=fireCameraTargetY();";
  }else if(scene==='crystals'){
-  code+="fireMode='dropper';fireUnderground=true;checkpoint={x:4650,y:-1108,mode:'volcano',stage:6};player.x=5090;player.y=-575;player.vy=0;player.onGround=false;cameraX=4900-W/2;cameraY=fireCameraTargetY();";
+  code+="fireMode='dropper';fireUnderground=true;fireCraterViewBlend=1;checkpoint={x:4650,y:-1108,mode:'volcano',stage:6};player.x=5090;player.y=-575;player.vy=0;player.onGround=false;cameraX=(FIRE_DROPPER.left+FIRE_DROPPER.right-fireViewSize().width)/2;cameraY=fireCameraTargetY();";
  }else if(scene==='craterRim'){
   code+="fireMode='volcano';player.x=4700;player.y=fireSlopeY(player.x+player.w/2)-player.h;player.onGround=true;fireStoneClock=999;cameraX=player.x+player.w/2-W/3;cameraY=fireCameraTargetY();";
  }else if(scene==='dropper'){
-  code+="fireMode='dropper';fireUnderground=true;checkpoint={x:4650,y:-1108,mode:'volcano',stage:6};player.x=4900-player.w/2;player.y=-900;player.vy=300;player.onGround=false;cameraX=4900-W/2;cameraY=fireCameraTargetY();";
+  code+="fireMode='dropper';fireUnderground=true;fireCraterViewBlend=1;checkpoint={x:4650,y:-1108,mode:'volcano',stage:6};player.x=4900-player.w/2;player.y=-900;player.vy=300;player.onGround=false;cameraX=(FIRE_DROPPER.left+FIRE_DROPPER.right-fireViewSize().width)/2;cameraY=fireCameraTargetY();";
  }else if(scene==='mazeExit'){
   code+="beginFireMaze();fireArrow.owned=true;player.mazeC=23;player.mazeR=3;player.x=mazeCenter(23,3).x-player.w/2;player.y=mazeCenter(23,3).y-player.h/2;cameraX=player.x+player.w/2-W/3;cameraY=fireCameraTargetY();";
  }else if(scene==='maze'||scene==='zombies'){
@@ -52,7 +56,7 @@ function show(scene){
  }
  frame.contentWindow.eval(code);
  document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===scene)));
- const labels={forestEdges:'Painted mossy corners and roots on the forest ground cliffs.',crystals:'Inside the volcano: steer left/right around the painted crystal banks.',firePits:'Both sides of the small fire pits have painted soil, roots and eroded edges.',meadowPits:'Painted grassy corners on both sides of meadow gaps.',shorePits:'Painted sandy shore edges around the opening gaps.',craterRim:'Inspect both painted crater corners and the crystal scenery. Move → to descend.',dropper:'Live crater fall: the bunny stays 20% from the top. Move left/right through the alternating gaps.',mazeExit:'Climb ↑ up the final ladder, then move → through EXIT onto the flat ground.',maze:'Walk right to find the arrow; ↑ ↓ climb; Z draws or stows it.',afterMaze:'Flat ground after the labyrinth: upright walking, Shift running and jumping.',stones:'Live rolling stones: four paws on the slope, upright jumps. Space jumps; Z stows the bow if equipped.',zombies:'Live zombie: X fires arrows; Z equips/stows. ↑ ↓ climbs and points the bow up/down.',king:'Live flying Lava King: Shift + arrows runs to either side, ↑ ↓ aims, X fires, Z stows for jumping.'};
+ const labels={entry:'Live entry: the camera eases into the shaft, then holds both walls steady.',landing:'More painted earth on the left, with the labyrinth entrance open.',forestEdges:'Painted mossy corners and roots on the forest ground cliffs.',crystals:'Inside the volcano: steer left/right around the painted crystal banks.',firePits:'Both sides of the small fire pits have painted soil, roots and eroded edges.',meadowPits:'Painted grassy corners on both sides of meadow gaps.',shorePits:'Painted sandy shore edges around the opening gaps.',craterRim:'Inspect both painted crater corners and the crystal scenery. Move → to descend.',dropper:'Live crater fall: the bunny stays 20% from the top. Move left/right through the alternating gaps.',mazeExit:'Climb ↑ up the final ladder, then move → through EXIT onto the flat ground.',maze:'Walk right to find the arrow; ↑ ↓ climb; Z draws or stows it.',afterMaze:'Flat ground after the labyrinth: upright walking, Shift running and jumping.',stones:'Live rolling stones: four paws on the slope, upright jumps. Space jumps; Z stows the bow if equipped.',zombies:'Live zombie: X fires arrows; Z equips/stows. ↑ ↓ climbs and points the bow up/down.',king:'Live flying Lava King: Shift + arrows runs to either side, ↑ ↓ aims, X fires, Z stows for jumping.'};
  status.textContent=labels[scene]||`${slope?'Grounded slope movement on four paws':'Upright running'} · ${owned?'quiver on the back; Z equips/stows the bow':'without a quiver'} · every jump is upright.`;
  frame.contentWindow.focus();
 }
@@ -63,5 +67,5 @@ frame.addEventListener('load',async()=>{
 });
 document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>show(b.dataset.scene));
 document.querySelector('#pauseArtwork').onclick=()=>{const paused=frame.contentWindow.eval("state==='playing'?(state='artworkReview',true):(state='playing',false)");document.querySelector('#pauseArtwork').textContent=paused?'Resume play':'Pause artwork';};
-function magnify(){if(ready){const crop=frame.contentWindow.eval("({x:player.x+player.w/2-cameraX,y:player.y+player.h-cameraY})"),game=frame.contentDocument.querySelector('#game');closeCtx.clearRect(0,0,360,260);closeCtx.drawImage(game,crop.x-90,crop.y-125,180,130,0,0,360,260);}requestAnimationFrame(magnify);}requestAnimationFrame(magnify);
+function magnify(){if(ready){const crop=frame.contentWindow.eval("({x:(player.x+player.w/2-cameraX)*fireViewSize().scale,y:(player.y+player.h-cameraY)*fireViewSize().scale})"),game=frame.contentDocument.querySelector('#game');closeCtx.clearRect(0,0,360,260);closeCtx.drawImage(game,crop.x-90,crop.y-125,180,130,0,0,360,260);}requestAnimationFrame(magnify);}requestAnimationFrame(magnify);
 </script></body></html>
