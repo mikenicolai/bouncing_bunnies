@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painted bunny poses · animation review</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#241c29;color:#fff1d8}body{margin:0;padding:28px}main{max-width:1140px;margin:auto}h1{font-size:clamp(25px,4vw,36px);margin:8px 0 12px}p{max-width:950px;line-height:1.55}.eyebrow{color:#ffc080;font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}.controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:22px 0}button,select{font:inherit;padding:10px 16px;border:1px solid #b9775f;border-radius:9px;background:#efad76;color:#261c25;cursor:pointer}button:disabled,select:disabled{opacity:.5;cursor:wait}button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #fff1d8;outline-offset:3px}label{display:flex;align-items:center;gap:8px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}figure{margin:0;border:1px solid #925b54;border-radius:16px;background:#342735;overflow:hidden}figcaption{padding:15px 18px;display:flex;justify-content:space-between;gap:8px;font-weight:700}.counter{font-size:13px;font-weight:400;color:#e6c0a8}canvas{width:100%;display:block}.poses{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.poses figcaption{padding:10px 12px;font-size:13px;font-weight:500}.balance{padding:12px 16px;border:1px solid #b9775f;border-radius:10px;background:#342735;color:#ffc080}#status{color:#ffc080}details{margin-top:24px}summary{cursor:pointer;font-weight:600}.sheet{width:100%;display:block;margin:14px 0;background:#342735;border-radius:12px}a{color:#ffc080}@media(max-width:700px){body{padding:18px}.grid{grid-template-columns:1fr}.poses{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</head>
+<body><main>
+<div class="eyebrow">Complete painted poses · animation review before integration</div>
+<h1>Eight painted running poses, plus jumping</h1>
+<p>Every frame is a complete painted bunny, with smooth connected arms and legs, a quiver and gently flapping ears. The run alternates equally between the cream leg and the shaded leg. Each jump has eight paintings: crouch, push-off, rise, tuck, unfold, reach, land and recover.</p>
+<div class="controls">
+<button id="play" disabled>Pause animation</button>
+<label>Animation <select id="movement" disabled><option value="run">Running</option><option value="runJump" selected>Running + jumping</option><option value="jump">Jump sequence</option></select></label>
+<label>Speed <select id="speed" disabled><option value=".25">Very slow · ¼ speed</option><option value=".5" selected>Slow · ½ speed</option><option value="1">Normal</option></select></label>
+<button id="previous" disabled>Previous pose</button><button id="next" disabled>Next pose</button>
+<button id="firstStep" disabled>Cream leg forward</button><button id="otherStep" disabled>Shaded leg forward</button>
+<label><input id="mirror" type="checkbox"> Face left</label>
+</div>
+<p class="balance">Eight complete run paintings · four led by each leg · equal time per frame.</p>
+<p id="motionLabel" aria-live="polite">Loading paintings…</p>
+<div class="grid">
+<figure><figcaption><span>Upright · two paws</span><span class="counter" id="uprightCounter"></span></figcaption><canvas id="upright" width="540" height="360" aria-label="Whole painted upright bunny running and jumping with a quiver"></canvas></figure>
+<figure><figcaption><span>Bounding · four paws</span><span class="counter" id="fourCounter"></span></figcaption><canvas id="four" width="540" height="360" aria-label="Whole painted four-paw bunny running and jumping with a quiver"></canvas></figure>
+</div>
+<p id="status" role="status">Loading the complete artwork…</p>
+<section><h2>All eight painted running poses</h2><p>One, two, one, two. Inspect the complete paintings in their playback order.</p><div class="poses" id="runPoses"></div></section>
+<section><h2>Eight upright jump poses</h2><div class="poses" id="uprightJumpPoses"></div></section>
+<section><h2>Eight four-paw jump poses</h2><div class="poses" id="fourJumpPoses"></div></section>
+<details><summary>See the original painted sheets</summary>
+<p>These are the saved complete paintings used by this preview.</p>
+<img class="sheet" src="quiver-art/upright-whole-run-v1.png" alt="Eight complete painted upright running bunnies">
+<img class="sheet" src="quiver-art/upright-whole-jump-v1.png" alt="Eight complete painted upright jumping bunnies">
+<img class="sheet" src="quiver-art/four-paws-whole-jump-v1.png" alt="Eight complete painted four-paw jumping bunnies">
+<p><a href="quiver-art/whole-pose-prompts.md">Artwork prompts</a></p>
+</details>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const LEADS=['Cream','Cream','Shaded','Shaded','Shaded','Shaded','Cream','Cream'];
+const JUMP_LABELS=['Crouch','Push-off','Rising','Tucked at the apex','Unfolding','Ready to land','Landing','Recovery'];
+const JUMP_HEIGHTS=[0,15,45,64,57,28,0,0];
+const sheets={
+ uprightRun:{image:new Image(),src:'quiver-art/upright-whole-run-v1.png',scale:.5,anchorX:[218,220,217,210,220,221,217,210],anchorY:[483,479,484,483,457,457,458,456],lift:[0,0,0,4,0,0,0,4]},
+ uprightJump:{image:new Image(),src:'quiver-art/upright-whole-jump-v1.png',scale:.5,anchorX:[240,225,237,244,251,253,250,225],anchorY:[490,484,489,488,454,458,490,452]},
+ fourRun:{image:new Image(),src:'quiver-art/four-paws-quiver-v1.png',scale:.56,anchorX:[220,234,225,230,236,232,232,225],anchorY:[427,427,412,408,378,362,374,378],lift:[0,0,9,13,0,0,9,0]},
+ fourJump:{image:new Image(),src:'quiver-art/four-paws-whole-jump-v1.png',scale:.56,anchorX:[262,255,268,249,269,283,272,249],anchorY:[447,452,416,424,381,402,392,395],rowSplit:487}
+};
+for(const sheet of Object.values(sheets))sheet.image.src=sheet.src;
+const views=[{kind:'upright',canvas:$('upright'),counter:$('uprightCounter')},{kind:'four',canvas:$('four'),counter:$('fourCounter')}];
+const play=$('play'),movement=$('movement'),speed=$('speed'),mirror=$('mirror');
+let loaded=false,playing=!matchMedia('(prefers-reduced-motion: reduce)').matches,phase=0,motionTime=0,last=null;
+function jumpAt(seconds){
+ const t=((seconds%3.6)+3.6)%3.6;
+ if(t<1.1||t>=2.45)return null;
+ const ends=[1.3,1.42,1.6,1.83,2.02,2.2,2.32,2.45],index=ends.findIndex(end=>t<end);
+ const q=Math.max(0,Math.min(1,(t-1.3)/.9));
+ return {index,height:t>=1.3&&t<2.2?64*4*q*(1-q):0};
+}
+function activePose(){
+ if(movement.value==='jump'){const index=Math.floor(phase)%8;return {set:'Jump',index,height:JUMP_HEIGHTS[index]};}
+ if(movement.value==='runJump'){const jump=jumpAt(motionTime);if(jump)return {set:'Jump',...jump};}
+ return {set:'Run',index:Math.floor(phase)%8,height:0};
+}
+function drawPainting(ctx,kind,set,index,height){
+ const sheet=sheets[kind+set],image=sheet.image,w=image.naturalWidth,h=image.naturalHeight;
+ const col=index%4,row=Math.floor(index/4),sx=Math.floor(col*w/4),right=Math.floor((col+1)*w/4);
+ // The four-paw jump sheet has an uneven transparent row gutter. Cropping
+ // at that gutter keeps each entire painting intact, including its paws.
+ const split=sheet.rowSplit||Math.floor(h/2),sy=row?split:0,sh=row?h-split:split,sw=right-sx;
+ const sourceRow=Math.floor(row*h/2),anchorY=sourceRow+sheet.anchorY[index]-sy;
+ const scale=sheet.scale,lift=sheet.lift?.[index]||0;
+ ctx.save();ctx.translate(270,310-height-lift);ctx.scale(mirror.checked?-1:1,1);
+ // Exactly one bitmap draw for the whole bunny; no limb parts or ear warp.
+ ctx.drawImage(image,sx,sy,sw,sh,-sheet.anchorX[index]*scale,-anchorY*scale,sw*scale,sh*scale);ctx.restore();
+}
+function draw(view,set,index,height=0,time=0){
+ const ctx=view.canvas.getContext('2d'),sky=ctx.createLinearGradient(0,0,0,360);sky.addColorStop(0,'#452b40');sky.addColorStop(1,'#a35848');ctx.fillStyle=sky;ctx.fillRect(0,0,540,360);
+ ctx.fillStyle='#754446';ctx.beginPath();ctx.moveTo(0,310);ctx.lineTo(80,224);ctx.lineTo(150,310);ctx.lineTo(385,183);ctx.lineTo(500,310);ctx.fill();
+ ctx.fillStyle='#603339';ctx.fillRect(0,310,540,50);ctx.fillStyle='#cf7651';ctx.fillRect(0,309,540,5);
+ ctx.fillStyle='#efaa69';for(let i=-1;i<12;i++){const x=i*55-(time*70)%55;ctx.fillRect(x,310,22,3);}
+ ctx.fillStyle='#90483f';for(let i=-1;i<12;i++){const x=i*60-(time*70)%60;ctx.beginPath();ctx.ellipse(x,338+(i%2)*5,14,4,.12,0,Math.PI*2);ctx.fill();}
+ if(loaded)drawPainting(ctx,view.kind,set,index,height);
+ if(view.counter)view.counter.textContent=`${set==='Run'?'Run':'Jump'} ${index+1} / 8`;
+}
+function render(){const pose=activePose();for(const view of views)draw(view,pose.set,pose.index,pose.height,motionTime);$('motionLabel').textContent=pose.set==='Jump'?JUMP_LABELS[pose.index]:`${LEADS[pose.index]} leg leads`;}
+function updateControls(){play.textContent=playing?'Pause animation':'Play animation';}
+function poseGrid(id,kind,set){
+ for(let index=0;index<8;index++){
+  const figure=document.createElement('figure'),canvas=document.createElement('canvas'),caption=document.createElement('figcaption');
+  canvas.width=270;canvas.height=180;canvas.setAttribute('aria-label',`${kind==='upright'?'Upright':'Four-paw'} ${set.toLowerCase()} pose ${index+1}`);
+  caption.textContent=`${index+1} · ${set==='Run'?LEADS[index]+' leg leads':JUMP_LABELS[index]}`;figure.append(canvas,caption);$(id).append(figure);
+  const ctx=canvas.getContext('2d');ctx.save();ctx.scale(.5,.5);draw({kind,canvas},set,index,set==='Jump'?JUMP_HEIGHTS[index]:0);ctx.restore();
+ }
+}
+function renderGrids(){for(const id of ['runPoses','uprightJumpPoses','fourJumpPoses'])$(id).replaceChildren();poseGrid('runPoses','upright','Run');poseGrid('uprightJumpPoses','upright','Jump');poseGrid('fourJumpPoses','four','Jump');}
+function step(direction){playing=false;if(movement.value==='runJump')movement.value='run';phase=(Math.floor(phase)+direction+8)%8;updateControls();render();}
+play.onclick=()=>{playing=!playing;last=null;updateControls();};
+$('previous').onclick=()=>step(-1);$('next').onclick=()=>step(1);
+function showStep(index){playing=false;movement.value='run';phase=index;updateControls();render();}
+$('firstStep').onclick=()=>showStep(0);$('otherStep').onclick=()=>showStep(4);
+mirror.onchange=()=>{render();if(loaded)renderGrids();};
+movement.onchange=()=>{phase=0;motionTime=0;last=null;playing=true;updateControls();render();};
+async function init(){try{await Promise.all(Object.values(sheets).map(sheet=>sheet.image.decode()));loaded=true;document.querySelectorAll('button,select').forEach(control=>control.disabled=false);$('status').textContent='Complete painted frames. The quiver and ear flaps are part of each painting. Preview only, before game integration.';updateControls();render();renderGrids();}catch(error){$('status').textContent='The artwork did not load. Reload this preview to try again.';}}
+function animate(ms){if(last!==null&&loaded&&playing){const dt=Math.min(.05,(ms-last)/1000)*Number(speed.value);phase=(phase+dt*8)%8;motionTime=(motionTime+dt)%36;}last=ms;render();requestAnimationFrame(animate);}
+init();requestAnimationFrame(animate);
+</script>
+</body></html>
