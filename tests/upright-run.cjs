@@ -41,12 +41,9 @@ for(const fps of [30,60,120])for(const slope of [false,true]){
  }
  assert(landed);assert.deepEqual([...frames].sort(),[0,1,2,3,4,5,6,7],`${fps} FPS ${slope?'slope':'flat'} jump`);
 }
-// The apex is relative to the slope, and the asymmetric gutter retains complete jumping paws.
+// The apex remains relative to the slope, while the entire airborne painting is upright.
 run("fireMode='secondVolcano';player.x=8260;player.vx=260;player.vy=fireSlopeGrade(8281)*260;player.onGround=false;player.jumpAge=.3;player.landingPaint=0;player.attack=0;player.duck=false;player.duckVisual=0;player.invincible=0;fireArrow.owned=true");assert.equal(run('paintedJumpFrame()'),3);
-for(const f of [0,1,2,3,4,5,6,7]){
- run(`var savedJump=paintedJumpFrame;paintedJumpFrame=()=>${f};draws=[];drawBunny();paintedJumpFrame=savedJump`);
- assert.equal(run('draws[0][2]'),f<4?0:487);assert.equal(run('draws[0][4]'),f<4?487:400);
-}
+run('draws=[];rotations=[];drawBunny()');assert(run('draws[0][0]===PAINTED_BUNNY.uprightJump.quiver'));assert.equal(run('rotations.length'),0);
 // Equipping switches to the quivered archer; Z stows it and restores the painted jumping bunny.
 run("fireMode='king';player.x=10360;player.y=-558;player.onGround=true;fireArrow.aiming=false;fireArcherySheet.complete=true;fireArcherySheet.naturalWidth=1774;fireArcherySheet.naturalHeight=887;var armed=0,originalArmed=drawArmedBunny;drawArmedBunny=()=>armed++;toggleFireAim();drawBunny()");assert.equal(run('armed'),1);run('jump()');assert(run('player.onGround'));
 run("window.listeners.keydown[1]({code:'KeyZ',repeat:false,preventDefault(){}});drawArmedBunny=originalArmed;draws=[];jump();drawBunny()");assert.equal(run('draws.length'),1);assert(run('draws[0][0]===PAINTED_BUNNY.uprightJump.quiver'));
@@ -56,5 +53,5 @@ run("player.invincible=0;level='meadow';draws=[];drawBunny()");assert(run('draws
 for(const stance of ['upright','four'])for(const move of ['run','jump']){
  const dims=[];for(const gear of ['plain','quiver']){const p=`assets/bunny-painted-${stance}-${move}-${gear}-v1.png`,b=fs.readFileSync(p);assert.equal(b[25],6,'RGBA PNG');dims.push([b.readUInt32BE(16),b.readUInt32BE(20)]);}assert.deepEqual(dims[0],dims[1]);
 }
-const review=fs.readFileSync('previews/painted-game-test.html','utf8');assert(review.includes('../index.html?v=2026100503'));assert(review.includes('i.decode()'));assert(!review.includes('update('),'test page does not replace or double-drive physics');
+const review=fs.readFileSync('previews/painted-game-test.html','utf8');assert(review.includes('../index.html?v=2026100504'));assert(review.includes('i.decode()'));assert(!review.includes('update('),'test page does not replace or double-drive physics');
 console.log('PASS complete painted runtime: both inventory variants, eight equal run frames, full jump/landing cycle at 30/60/120 FPS, slope/facing/cropping, idle/crouch/punch, Z equip/stow, damage blink, paired PNGs and live practice page.');

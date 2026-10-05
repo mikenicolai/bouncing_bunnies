@@ -36,19 +36,29 @@ for(const [side,phase,hp] of [[-1,'shield',10],[1,'shield',9],[-1,'recover',9]])
 // Swept hits cannot tunnel through a fireball or boss at a long frame interval.
 arena();run("player.x=10600;fireArrow.angle=0;fireBunnyArrow();const b=bunnyArrows[0];lavaKingFireballs=[{x:b.x+45,y:b.y,r:13,vx:0,age:0,alive:true}];updateFireArchery(.1)");assert.equal(run('lavaKingFireballs.length'),0);assert.equal(run('bunnyArrows.length'),0);assert.equal(run('lavaKing.hp'),10);
 arena();run("player.x=10600;fireArrow.angle=.1;lavaKing.phase='recover';fireBunnyArrow();updateFireArchery(.3)");assert.equal(run('lavaKing.hp'),9);
-// A complete ten-heart fight uses ranged attacks and walking, never jump or direct health changes.
+// Win the actual fight by sprinting during flight and aiming at the moving boss
+// or intercepting incoming projectiles. No health or hit results are forced.
 for(const fps of [30,60,120]){
- arena();let shots=0;
- for(let f=0;f<fps*100&&!run('lavaKing.defeated')&&run("state==='playing'");f++){
-   if(run("lavaKing.phase==='recover'&&lavaKing.dizzy<=0&&!lavaKing.recoveryHit&&fireArrow.cooldown===0")){run('attack()');shots++;}
-   // Retreat from incoming fireballs and shoot them at ground height.
-   if(run('lavaKingFireballs.some(b=>b.x>player.x&&b.x-player.x<420)')){
-     run("keys.add('ArrowLeft');fireArrow.angle=.18;if(fireArrow.cooldown===0)attack()");
-   }else run("keys.clear();fireArrow.angle=.1;");
-   run(`update(1/${fps})`);
+ arena();let shots=0,direction=1,priorK=null,sawFlight=false;
+for(let f=0;f<fps*100&&!run('lavaKing.defeated')&&run("state==='playing'");f++){
+ const q=JSON.parse(run('JSON.stringify({p:player,k:lavaKing,balls:lavaKingFireballs})')),p=q.p,k=q.k;
+ const flight=k.phase==='flight'||k.y+k.h<-550;if(flight)sawFlight=true;
+ if(p.x<10320)direction=1;if(p.x>11140)direction=-1;
+ let movement=flight?direction:Math.abs(p.x+21-(k.x+45))<240?(p.x<k.x?-1:1):0;
+ if(!flight&&p.x<10300&&movement<0||!flight&&p.x>11150&&movement>0)movement=0;
+ run(`keys.clear();keys.add('ShiftLeft');${movement?`keys.add('${movement<0?'ArrowLeft':'ArrowRight'}');`:''}`);
+ let ball=q.balls.filter(b=>Math.sign(b.vx)===Math.sign(p.x+21-b.x)&&Math.abs(b.x-(p.x+21))<440).sort((a,b)=>Math.abs(a.x-p.x)-Math.abs(b.x-p.x))[0];
+ if(!run('fireArrow.cooldown')&&(ball||k.phase!=='shield'&&k.dizzy<=0)){
+  const target=ball||{x:k.x+45,y:k.y+65,vx:priorK?(k.x-priorK.x)*fps:0,vy:priorK?(k.y-priorK.y)*fps:0};
+  const distance=Math.abs(target.x-p.x-21),lead=Math.min(.65,distance/900),tx=target.x+(target.vx||0)*lead,ty=target.y+(target.vy||0)*lead;
+  const facing=tx>p.x+21?1:-1;let angle=.1;
+  for(let i=0;i<5;i++){const ox=p.x+21+facing*(34+14*Math.cos(angle)),oy=p.y+p.h-35-14*Math.sin(angle),dx=Math.max(1,Math.abs(tx-ox)),time=dx/(900*Math.cos(angle));angle=Math.max(-.45,Math.min(1.3,Math.atan2(oy-ty+150*time*time,dx)));}
+  run(`player.facing=${facing};fireArrow.angle=${angle};attack()`);shots++;
  }
- assert(run('lavaKing.defeated'),`ranged fight ${fps}`);assert.equal(run('lives'),3);assert(shots>=10);
- assert(!run('fireArcheryMode()'));run('player.x=FIRE_EXIT_X-21;update(1/60)');assert.equal(run('state'),'map');assert(run('fireFinished'));
+ priorK=k;run(`update(1/${fps})`);
+}
+ assert(run('lavaKing.defeated'),`ranged flight fight ${fps}`);assert.equal(run('lives'),3);assert(shots>=10);assert(sawFlight);
+ assert(!run('fireArcheryMode()'));if(run("state==='playing'"))run('player.x=FIRE_EXIT_X-21;update(1/60)');assert.equal(run('state'),'map');assert(run('fireFinished'));
 }
 // Pause freezes projectiles and input; respawn clears projectiles without dropping the relic.
 arena();run("fireBunnyArrow();state='map';const x=bunnyArrows[0].x;update(.1)");assert.equal(run('bunnyArrows[0].x'),run('x'));
