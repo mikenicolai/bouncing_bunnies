@@ -4,7 +4,7 @@ Generated with the built-in ImageGen tool. Each sprite is a complete painted cha
 
 ## Selected upright running sheet
 
-Saved asset: `upright-whole-run-v1.png`
+Saved asset: `upright-whole-run-v2.png` (refined from `upright-whole-run-v1.png`).
 
 Use case: style-transfer. Repaint the EIGHT ordered bunny silhouettes from input image 1 as a polished full-body animation sheet. Image 1 is the exact pose reference, image 2 is the identity and painted-fur style reference. This is an artwork repaint, NOT a new gait design.
 Output: transparent 4 columns x 2 rows sprite sheet, exactly eight FULL connected bunnies, one in each equal cell, in precisely the order of image 1. Remove ALL UI, lettering, headings, frames, ground, scene and backgrounds from image 1. Increase the size and painted detail of each bunny to fill about 80% of its cell vertically with generous clear padding. No text.
@@ -48,3 +48,8 @@ Eight ordered distinct poses:
 8 recovery: hind paws land under body and all four paws prepare the next bound, softly bent limbs.
 Each whole pose fully painted as a continuous body silhouette, no overlapping cutout seams.
 
+
+## Final running correction
+
+Use case: precise-object-edit. Edit the supplied 8-pose full-painted bunny run sheet. Make ONE small correction to the SECOND bunny only (top row, second column). Keep the entire sheet 1536 x 1024, equal 4x2 grid, true transparency, every other pose unchanged, same identity, outlines, shading, ears, head, torso, arms, tail, quiver and arrows.
+In the second bunny ONLY, the near LIGHT CREAM leg must be the leading planted leg. It bends naturally under the body and its cream paw must be slightly farther RIGHT than the far beige paw. The far shaded/beige leg swings forward from behind but does NOT pass the near cream foot yet: move its paw a little LEFT behind the cream paw, partly occluded, with a smoothly painted connected knee and calf. Preserve the bent-knee/down phase, don't spread the legs like pose 1. Keep exactly TWO legs, no detachable limbs, seamless connected silhouette. This correction makes poses 1,2,7,8 lead with the cream leg and poses 3,4,5,6 with the beige leg. Change only this foot/leg placement in cell 2; leave the other seven full paintings unchanged. No backdrop, gridlines, text, floor, glow or shadows.
