@@ -67,6 +67,9 @@ run('player.y=850;player.vy=0;player.air=.01');step();
 assert.equal(run('lives'),2);assert.equal(run('player.air'),15);
 assert(run('player.y<=WATER_SURFACE-20'));
 
+// The shallow-water shark stays above the sloping seabed throughout patrol.
+reset();run('player.inWater=true;player.x=2634;player.y=570;player.invincible=30');
+for(let i=0;i<720;i++){step();assert(run('waterSharks.every(s=>s.y+s.h<=waterFloorY(s.x+s.w/2)-19)'));}
 // Hits remove one of each enemy's two hearts and stun between attacks.
 reset();run('player.inWater=true;player.x=waterSharks[0].x-39;player.y=waterSharks[0].y;player.facing=1;attack()');
 assert.equal(run('waterSharks[0].hp'),1);
