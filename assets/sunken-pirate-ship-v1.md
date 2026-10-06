@@ -1,0 +1,10 @@
+# Sunken pirate ship v1
+
+Generated with the built-in image-generation tool on 6 October 2026. Saved as `assets/sunken-pirate-ship-v1.png`. Original RGBA output is preserved. Runtime rendering retains its aspect ratio and clips the keel into the seabed. Two cabin air pockets, open deck hatches, treasure coins and a lower swim passage are implemented in the game.
+
+## Final prompt
+
+Use case: stylized-concept. Asset: one transparent side-view CUTAWAY SUNKEN PIRATE SHIP for the Bouncing Bunnies 2D underwater platform game.
+Input image1 is STYLE ONLY: same warm storybook painted brush texture, rich carved material detail and softly outlined playful game artwork. Replace its sand subject with an old wooden pirate wreck.
+Composition: landscape1536x1024, a very wide low wreck roughly2.4:1 aspect silhouette centred in the image with generous transparent margins, no seabed or water background. Broad weathered curved wooden hull, copper and turquoise barnacles, seaweed tendrils, broken low mast and torn small red pennant. NO tall mast. The hull is cut away so the player sees and swims through a roomy lower interior. Wide broken openings at BOTH left and right ends and a continuous open passage between them. TWO roomy upper cabins retain little dry air spaces; arched wooden roof, beams and portholes, blue-green shaded rear walls. Interior opening colour is pale subtle teal with partial transparency, not an opaque black wall. Small golden treasure chests, coins, barrels and a ship wheel tucked to the rear/bottom so they don't block the passage. Side-on orthographic gameplay view, no perspective tilt. A connected complete painted illustration, detailed rounded timber, deep warm brown wooden beams, faded ochre planks, teal moss. Clear distinct left entry, right exit and two upper air cabins. No characters, monsters, human skeletons, text, labels, UI, bubbles, ground, water plane, underwater scene background, halo or external drop shadow. Genuine transparent background around the whole ship and inside the broken door openings.
+

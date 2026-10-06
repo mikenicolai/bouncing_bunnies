@@ -1,0 +1,24 @@
+const assert=require('node:assert/strict');
+const {run}=require('./air.cjs');
+// Swim the complete route with ordinary controls and oxygen, at three frame rates.
+// Enemy damage is disabled here so this measures traversal and breath spacing.
+for(const fps of [30,60,120]){
+ run("level='water';waterFinished=false;resetGame();soundOn=false;waterSharks=[];waterPirates=[];player.inWater=true;player.x=1800;player.y=348;player.vx=0;player.vy=0");
+ const route=[[2320,740],[2634,740],[2634,565],[2634,875],[2920,875],[2920,930],[3604,930],[3604,670],[3604,1075],[4549,1075],[4549,735],[4549,1130],[5584,1130],[5584,905],[5584,1130],[6429,1130],[6429,935],[6429,1130],[7529,1130],[7529,890],[7529,1320],[8529,1320],[8529,960],[8529,1280],[9519,1280],[9519,930],[9519,1120],[10539,1120],[10539,850],[10539,1110],[11300,1110]];
+ for(const [x,y] of route){
+  let reached=false;
+  for(let f=0;f<fps*14;f++){
+   const p=run('({x:player.x,y:player.y,vx:player.vx,vy:player.vy})');
+   if(Math.abs(p.x-x)<9&&Math.abs(p.y-y)<9){reached=true;break;}
+   // Brake near each destination rather than teleporting or zeroing velocity.
+   const dx=x-p.x-p.vx*.16,dy=y-p.y-p.vy*.16;
+   run(`keys.clear();${Math.abs(dx)>4?`keys.add('${dx>0?'ArrowRight':'ArrowLeft'}');`:''}${Math.abs(dy)>4?`keys.add('${dy>0?'ArrowDown':'ArrowUp'}');`:''}update(1/${fps})`);
+   assert.equal(run('lives'),3,`${fps} FPS: air expired en route to ${x},${y}`);
+   if(run('waterFinished')){reached=true;break;}
+  }
+  assert(reached,`${fps} FPS: blocked en route to ${x},${y}; actual ${run('JSON.stringify({x:player.x,y:player.y,air:player.air})')}`);
+ }
+ assert(run('waterFinished'),`${fps} FPS: gate reached`);
+ assert(run('coins.filter(c=>c.taken&&c.x>5200&&c.x<6900).length>=4'),'treasure is collected through the ship hold');
+}
+console.log('PASS: full 11,500-unit water route, reefs, both ship hatches, air pockets and tide gate at 30/60/120 FPS.');
