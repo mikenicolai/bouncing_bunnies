@@ -8,7 +8,7 @@ for(let i=0;i<run('waterAirPockets.length');i++){
  if(run(`waterAirPockets[${i}].ship`))continue;
  reset();run(`var pocket=waterAirPockets[${i}];player.inWater=true;player.x=pocket.x+pocket.w/2-player.w/2;player.y=pocket.surface-15;player.air=2;player.invincible=30;update(1/60)`);
  assert(run('player.air<2'),'head beneath the chamber waterline cannot breathe');
- run('player.y=pocket.surface-35;player.vy=0;update(1/60)');assert.equal(run('player.air'),15);
+ run('player.y=pocket.surface-WATER_FLOAT_HEAD;player.vy=0;update(1/60)');assert.equal(run('player.air'),15);
  run('jump()');assert(!run('player.breaching'),'a roof pocket gives a stroke, not an airborne leap');
 }
 for(const fps of [30,60,120]){
@@ -26,6 +26,15 @@ for(const fps of [30,60,120]){
   assert(run('waterPirates.every(p=>Math.abs(Math.hypot(waterPirateAnkle(p).x-waterPirateAnchor(p).x,waterPirateAnkle(p).y-waterPirateAnchor(p).y)-p.chainLength)<.01)'));
   assert(run('waterPirates.every(p=>p.y+p.h<waterFloorY(p.anchorX+24)-100&&!waterShipDeck.some(d=>overlap(p,d)))'));
  }
+}
+// Shift running must also clear the larger painted cacti with single jumps.
+for(const fps of [30,60,120]){
+ reset();run("player.onGround=true;keys.add('ArrowRight');keys.add('ShiftLeft')");let jumps=0;
+ for(let i=0;i<fps*7&&run('player.x<1440');i++){
+  if(run('player.onGround&&waterCacti.some(c=>player.x<c.x&&player.x+player.w>=c.x-20)')){run('jump()');jumps++;}
+  run(`update(1/${fps})`);assert.equal(run('lives'),3,`Shift cactus jumps at ${fps} FPS`);
+ }
+ assert(run('player.x>1420'));assert.equal(jumps,3);
 }
 reset();run('player.x=waterCacti[0].x+30;player.y=292;player.onGround=true;update(1/60)');assert.equal(run('lives'),2,'walking into cactus spines costs a heart');
 // An intact chain and iron ballast are physical obstacles. Defeating its pirate

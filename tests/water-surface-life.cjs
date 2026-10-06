@@ -8,14 +8,17 @@ for(const fps of [30,60,120])for(let index=0;index<9;index++){
  for(let frame=0;frame<fps*3;frame++){
   if(frame%fps===0)run('jump()');
   run(`update(1/${fps})`);
-  assert(run('player.y>=pocket.surface-20'),'swimming cannot lift the body into dry air');
+  assert(run('player.y>=pocket.surface-WATER_FLOAT_HEAD'),'swimming cannot lift the body into dry air');
   assert(!run('player.breaching'),'strokes cannot become air jumps inside recesses');
  }
  assert(run('waterBreathing() && player.air===WATER_AIR'),'surface contact replenishes breath');
  run('keys.clear();player.y=pocket.surface+80;player.vy=0;player.air=.001');run(`update(1/${fps})`);
  assert.equal(run('lives'),2);
- assert(run('waterBreathing()&&player.y===pocket.surface-20'),'respawn floats at the saved waterline');
+ assert(run('waterBreathing()&&player.y===pocket.surface-WATER_FLOAT_HEAD'),'respawn floats at the saved waterline');
 }
+// The old floating position leaves the painted face submerged: no air there.
+reset();run('var pocket=waterAirPockets[0];player.inWater=true;player.x=pocket.x+pocket.w/2-player.w/2;player.y=pocket.surface-30;player.air=2;update(1/60)');
+assert(run('player.air<2'),'breath only refills once the head is out of the water');
 // A two-minute sweep covers every school through its full oscillation.
 reset();const collision=run(`(()=>{
  for(let frame=0;frame<7200;frame++)for(let school=0;school<21;school++)for(let i=0;i<5;i++){
