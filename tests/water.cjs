@@ -30,7 +30,7 @@ run('player.attack=.04');assert.equal(run('swimFrame()'),7);
 
 // Walking down the real shoreline enters swimming without sticking at the tide.
 for(const fps of [30,60,120]){
-  reset();run("player.x=1390;player.y=312;player.onGround=true;player.invincible=30;keys.add('ArrowRight')");
+  reset();run("player.x=1390;player.y=292;player.onGround=true;player.invincible=30;keys.add('ArrowRight')");
   for(let i=0;i<fps*3;i++)run(`update(1/${fps})`);
   assert(run('player.inWater && player.x>1850'),`the shallow shore flows into swimming at ${fps} FPS`);
 }
@@ -68,7 +68,7 @@ assert.equal(run('lives'),2);assert.equal(run('player.air'),15);
 assert(run('player.y<=WATER_SURFACE-20'));
 
 // The shallow-water shark stays above the sloping seabed throughout patrol.
-reset();run('player.inWater=true;player.x=2634;player.y=570;player.invincible=30');
+reset();run('player.inWater=true;player.x=2634;player.y=waterAirPockets[0].surface-42;player.invincible=30');
 for(let i=0;i<720;i++){step();assert(run('waterSharks.every(s=>s.y+s.h<=waterFloorY(s.x+s.w/2)-19)'));}
 // Hits remove one of each enemy's two hearts and stun between attacks.
 reset();run('player.inWater=true;player.x=waterSharks[0].x-39;player.y=waterSharks[0].y;player.facing=1;attack()');
@@ -77,16 +77,16 @@ run('player.attackCooldown=0;attack()');assert.equal(run('waterSharks[0].hp'),1)
 run('waterSharks[0].dizzy=0;player.attackCooldown=0;attack()');assert.equal(run('waterSharks[0].hp'),0);
 reset();run('player.inWater=true;player.x=waterPirates[0].x-39;player.y=waterPirates[0].y;player.facing=1;attack()');
 assert.equal(run('waterPirates[0].hp'),1);
-assert(run('waterPirates.every(p=>Math.abs(p.y+p.h-waterFloorY(p.x+p.w/2))<2)'),'pirates stay on the sea floor');
+assert(run('waterPirates.every(p=>p.y+p.h<waterFloorY(p.anchorX+24)-110)'),'pirates float above their ballast anchors');
 
 // A nearby bunny triggers a hook-to-cutlass sequence while feet remain grounded.
 reset();run('player.inWater=true;player.x=waterPirates[0].x+75;player.y=waterPirates[0].y-80;player.invincible=30;waterPirates[0].swingCooldown=0');step();
 assert(run('waterPirates[0].swing>0'));
 assert.equal(run('pirateFrame(waterPirates[0])'),4);
 step(30);assert(run('pirateFrame(waterPirates[0])>=6'));
-assert(run('Math.abs(waterPirates[0].x-waterPirates[0].anchorX)<=30'));
+assert(run('Math.abs(waterPirates[0].x-waterPirates[0].anchorX-12)<=waterPirates[0].chainLength*.5'));
 reset();run('player.inWater=true;player.x=1850;player.y=348;player.invincible=30');step(360);
-assert(run('waterPirates.every(p=>Math.abs(p.x-p.anchorX)<=30&&Math.abs(p.y+p.h-waterFloorY(p.x+p.w/2))<2)'));
+assert(run('waterPirates.every(p=>Math.abs(Math.hypot(waterPirateAnkle(p).x-waterPirateAnchor(p).x,waterPirateAnkle(p).y-waterPirateAnchor(p).y)-p.chainLength)<.01)'),'floating pirates remain on their chain length');
 
 // Both the left hook and right cutlass can hit beyond the pirate's body.
 for(const [swing,side] of [[.65,-45],[.16,72]]){
@@ -98,7 +98,7 @@ reset();run('player.inWater=true;player.x=waterPirates[0].x-39;player.y=waterPir
 assert.equal(run('waterPirates[0].swing'),0,'a landed punch interrupts the swing');
 
 // Cave pockets replenish air, but a stroke cannot leap through the rock roof.
-reset();run('player.inWater=true;player.x=2634;player.y=570;player.air=1');step();
+reset();run('player.inWater=true;player.x=2634;player.y=waterAirPockets[0].surface-42;player.air=1');step();
 assert.equal(run('player.air'),15);assert(run('checkpoint.water'));
 run('jump()');assert(!run('player.breaching'));assert(run('player.stroke>0'));
 run('player.x=2840;player.y=850;player.vy=0;player.air=.01');step();

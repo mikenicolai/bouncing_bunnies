@@ -3,8 +3,9 @@ const {run}=require('./air.cjs');
 // Swim the complete route with ordinary controls and oxygen, at three frame rates.
 // Enemy damage is disabled here so this measures traversal and breath spacing.
 for(const fps of [30,60,120]){
- run("level='water';waterFinished=false;resetGame();soundOn=false;waterSharks=[];waterPirates=[];player.inWater=true;player.x=1800;player.y=348;player.vx=0;player.vy=0");
- const route=[[2320,740],[2634,740],[2634,565],[2634,875],[2920,875],[2920,930],[3604,930],[3604,670],[3604,1075],[4549,1075],[4549,735],[4549,1130],[5584,1130],[5584,905],[5584,1130],[6429,1130],[6429,935],[6429,1130],[7529,1130],[7529,890],[7529,1320],[8529,1320],[8529,960],[8529,1280],[9519,1280],[9519,930],[9519,1120],[10539,1120],[10539,850],[10539,1110],[11300,1110]];
+ run("level='water';waterFinished=false;resetGame();soundOn=false;waterSharks=[];waterPirates.forEach(p=>p.swingCooldown=999);player.invincible=999;player.inWater=true;player.x=1800;player.y=348;player.vx=0;player.vy=0");
+ const airY=i=>run(`waterAirPockets[${i}].surface-50`);
+ const route=[[2320,740],[2634,740],[2634,airY(0)],[2634,875],[2920,875],[2920,930],[3604,930],[3604,airY(1)],[3604,1075],[4549,1075],[4549,airY(2)],[4549,1130],[5150,1130],[5150,1030],[5584,1030],[5584,905],[5584,1130],[6429,1130],[6429,935],[6429,1050],[7000,1050],[7529,1130],[7529,airY(5)],[7529,1320],[8529,1320],[8529,airY(6)],[8529,1280],[9519,1280],[9519,airY(7)],[9519,875],[10190,875],[10190,820],[10539,820],[10539,airY(8)],[10539,1110],[11300,1110]];
  for(const [x,y] of route){
   let reached=false;
   for(let f=0;f<fps*14;f++){
