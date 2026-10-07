@@ -113,9 +113,9 @@ assert(run('player.y>=1007'),'solid deck blocks upward swimming');
 run('keys.clear();player.x=5544;player.y=1080;player.vx=0;player.vy=0;keys.add("ArrowUp")');step(90);
 assert(run('waterAirPocket()?.ship'),'open hatch reaches cabin air');
 run('keys.clear()');
-reset();run('W=480;H=900;canvas.width=480;canvas.height=900;player.inWater=true;player.x=8700;player.y=1442;player.invincible=30');step(120);
-assert(run('waterFloorY(player.x)-cameraY<H-220'),'sea floor remains above portrait touch controls');
-run('W=960;H=540;canvas.width=960;canvas.height=540');
+reset();run('W=480;H=900;canvas.width=480;canvas.height=900;touchDockHeight=220;player.inWater=true;player.x=8700;player.y=1442;player.invincible=30');step(120);
+assert(run('waterFloorY(player.x)-cameraY<playfieldHeight()'),'sea floor remains above portrait touch controls');
+run('W=960;H=540;canvas.width=960;canvas.height=540;touchDockHeight=0');
 // Render both the dry shoreline and the deep scene with a minimal Canvas spy.
 run(`for(const method of ['save','restore','beginPath','closePath','moveTo','lineTo','quadraticCurveTo','bezierCurveTo','arc','ellipse','rect','roundRect','fillRect','fill','stroke','clip','translate','scale','rotate','transform','fillText','strokeText','drawImage'])ctx[method]=()=>{};
 ctx.createLinearGradient=()=>({addColorStop(){}});`);
