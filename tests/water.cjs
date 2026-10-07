@@ -110,7 +110,7 @@ run('keys.clear()');
 // The wreck deck is solid except for the real cabin hatches.
 reset();run('player.inWater=true;player.invincible=30;player.x=5400;player.y=1080;keys.add("ArrowUp")');step(90);
 assert(run('player.y>=1007'),'solid deck blocks upward swimming');
-run('keys.clear();player.x=5584;player.y=1080;player.vx=0;player.vy=0;keys.add("ArrowUp")');step(90);
+run('keys.clear();player.x=5544;player.y=1080;player.vx=0;player.vy=0;keys.add("ArrowUp")');step(90);
 assert(run('waterAirPocket()?.ship'),'open hatch reaches cabin air');
 run('keys.clear()');
 reset();run('W=480;H=900;canvas.width=480;canvas.height=900;player.inWater=true;player.x=8700;player.y=1442;player.invincible=30');step(120);

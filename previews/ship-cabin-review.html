@@ -1,0 +1,41 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ship cabins · open and blocked</title>
+<style>
+body{margin:0;padding:22px;background:#102b39;color:#eafff4;font:16px system-ui}main{max-width:1200px;margin:auto}h1{margin:0;font-size:28px}p{line-height:1.5}nav{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}button{font:inherit;background:#a3e5d9;color:#153743;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}button:disabled{opacity:.4}iframe{width:100%;height:650px;border:1px solid #639da9;border-radius:14px;display:block}.legend{display:flex;gap:24px;flex-wrap:wrap}.solid{color:#ff9e8b}.open{color:#8ff9c7}#status{color:#ffe2a3}@media(max-width:600px){body{padding:12px}h1{font-size:24px}iframe{height:520px}}
+</style><main>
+<h1>A ship you can swim into</h1>
+<p>The cabin sides, roofs, deck and keel are solid. Enter the lower hold through the broken bow or stern, then swim up a floor hatch to breathe. Dive through either hatch to leave. The water above the wreck remains an optional bypass, but it gives no cabin air or key.</p>
+<p class="legend"><span class="solid">Coral overlay: BLOCKED timber</span><span class="open">Mint overlay: OPEN hatches and side passages</span></p>
+<nav><button data-scene="overview" disabled>Whole ship artwork</button><button id="bounds" disabled>Show blocked / open</button><button data-scene="entry" disabled>Enter through a hatch</button><button data-scene="cabin" disabled>Cabin air and key</button><button data-scene="exit" disabled>Leave through the other hatch</button><button id="play" disabled>Play this scene</button></nav>
+<p id="status" role="status">Loading painted cabins…</p>
+<iframe src="../index.html?v=2026100706" title="Painted ship and actual collision boundaries"></iframe>
+</main><script>
+const frame=document.querySelector('iframe'),status=document.querySelector('#status');let ready=false,showBounds=false;
+const cabinBoundaryPainting=`if(state!=='playing'&&cabinReviewBounds){
+    ctx.save();ctx.translate(-cameraX,-cameraY);ctx.fillStyle='rgba(255,107,89,.33)';ctx.strokeStyle='#ffab94';ctx.lineWidth=3;
+    for(const b of waterShipSolids()){ctx.fillRect(b.x,b.y,b.w,b.h);ctx.strokeRect(b.x,b.y,b.w,b.h);}
+    ctx.fillStyle='rgba(96,255,173,.27)';ctx.strokeStyle='#9bffd0';ctx.lineWidth=4;
+    for(const h of WATER_SHIP_HATCHES){ctx.fillRect(h.x,h.y,h.w,80);ctx.strokeRect(h.x,h.y,h.w,80);const x=h.x+h.w/2;ctx.beginPath();ctx.moveTo(x,h.y+65);ctx.lineTo(x,h.y-15);ctx.lineTo(x-12,h.y);ctx.moveTo(x,h.y-15);ctx.lineTo(x+12,h.y);ctx.stroke();}
+    for(const x of [5180,6780]){ctx.fillRect(x,1070,45,150);ctx.strokeRect(x,1070,45,150);}
+    ctx.restore();}`;
+function overlay(){frame.contentWindow.eval(`cabinReviewBounds=${showBounds};render(1)`);}
+function show(scene){
+  if(!ready)return;
+  const overview=scene==='overview',x=scene==='exit'?5732:5531,y=scene==='entry'?1120:916;
+  frame.contentWindow.eval(`level='water';soundOn=false;start();player.inWater=true;player.x=${x};player.y=${y};player.vx=0;player.vy=0;waterPortalKeyTaken=${scene==='exit'};W=${overview?2060:960};H=${overview?720:540};canvas.width=W;canvas.height=H;canvas.style.setProperty('--game-aspect',W+' / '+H);cameraX=${overview?4950:5300};cameraY=${overview?620:760};waterCheckpoint();state='review';render(1);`);
+  frame.style.height=overview?Math.max(240,frame.clientWidth*720/2060+50)+'px':'650px';
+  overlay();status.textContent=overview?'Two sealed air cabins, four floor hatches and a solid lower hull. Toggle the overlay to see exactly what blocks movement.':scene==='entry'?'Hold Up to swim through this open floor hatch. Solid timber on either side blocks entry.':scene==='exit'?'Hold Down to leave through the second hatch. The other cabin and its two hatches work the same way.':'The bunny’s head is above the cabin waterline. Swim right to collect the key, then dive through a hatch to leave.';
+}
+frame.addEventListener('load',async()=>{
+  const doc=frame.contentDocument,style=doc.createElement('style');style.textContent='html,body{margin:0;padding:0}.game-shell,main{width:100%;max-width:none;padding:0;margin:0}header,footer,#worldMap{display:none}main>.game-frame{width:100%;margin:0;border:0;border-radius:0;box-shadow:none;min-height:0}';doc.head.append(style);
+  try{
+    await frame.contentWindow.eval('Promise.all([waterCabinSheet,waterShipSheet,waterKeySheet,waterCaveSheet,swimSheet].map(i=>i.decode()))');
+    frame.contentWindow.eval("const cabinReviewViewport=fitGameViewport;fitGameViewport=function(){if(state==='playing')cabinReviewViewport()};const cabinReviewTouch=drawTouchControls,cabinReviewHUD=drawHUD;drawTouchControls=function(){if(state==='playing')cabinReviewTouch()};drawHUD=function(){if(state==='playing')cabinReviewHUD()};");
+    frame.contentWindow.eval("var cabinReviewBounds=false;const cabinReviewRender=render;render=function(t){cabinReviewRender(t);"+cabinBoundaryPainting+"};");
+    ready=true;document.querySelectorAll('button').forEach(b=>b.disabled=false);show('overview');
+  }catch(error){status.textContent='Artwork could not load. Reload this page to try again.';console.error(error);}
+});
+document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>show(b.dataset.scene));
+document.querySelector('#bounds').onclick=()=>{showBounds=!showBounds;frame.contentWindow.eval("state='review';render(1)");overlay();document.querySelector('#bounds').textContent=showBounds?'Hide blocked / open':'Show blocked / open';};
+document.querySelector('#play').onclick=()=>{showBounds=false;show('entry');frame.contentWindow.eval("state='playing';clearInputs()");frame.contentWindow.focus();status.textContent='Playing the real ship: arrow keys swim, Space gives a stroke. Swim up a hatch, find the key, then dive out.';};
+</script></html>

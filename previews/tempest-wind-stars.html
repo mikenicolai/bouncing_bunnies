@@ -8,11 +8,11 @@ body{margin:0;padding:22px;background:#102938;color:#effffb;font:16px system-ui}
 <main>
 <img class="art" src="../assets/wind-ninja-star-v1.png" alt="Glowing painted turquoise wind ninja star">
 <h1>Tempest · Wind stars</h1>
-<p>Ten hearts. Five wind stars. Tempest recharges once, from five hearts to seven, then sends paired gusts and summons cloud monsters. Jump over gusts or hold Down to duck beneath them.</p>
+<p>Ten hearts. Eight wind stars. Tempest recharges once, from five hearts to seven, then sends paired gusts and summons cloud monsters. Jump over gusts or hold Down to duck beneath them.</p>
 <p>X / F throws a star. Z stows or equips the stars, letting you punch monsters. Misses settle on nearby clouds: touch them to collect them again. Stars that hit Tempest stay embedded. All five successful hits defeat him.</p>
 <div class="toolbar"><button data-scene="nook" disabled>Find the hidden ledge</button><button data-scene="fight" disabled>Play Tempest fight</button><button data-scene="strong" disabled>Play stronger phase</button><button data-scene="strong-art" disabled>Second-phase artwork</button><button data-scene="miss" disabled>Recover a missed star</button><button data-scene="overview" disabled>Pause artwork</button><button id="resume" disabled>Resume play</button></div>
 <p id="status" role="status">Loading artwork…</p>
-<iframe src="../index.html?v=2026100705" title="Actual Air level with wind-star combat"></iframe>
+<iframe src="../index.html?v=2026100706" title="Actual Air level with wind-star combat"></iframe>
 </main>
 <script>
 const frame=document.querySelector('iframe'),status=document.querySelector('#status');
@@ -25,7 +25,7 @@ function show(scene){
     code+="windStars.owned=true;windStars.equipped=true;bossAwake=true;";
     if(scene.startsWith('strong')){
       code+="tempest.hp=7;tempest.regenerated=true;tempest.enraged=true;tempest.lodged=2;windStars.slots[0].state='lodged';windStars.slots[1].state='lodged';tempest.shotCooldown=1.2;";
-      status.textContent='Practice the second phase with three remaining stars. Stow them with Z to punch summoned monsters.';
+      status.textContent='Practice the second phase with six remaining stars. Stow them with Z to punch summoned monsters.';
     }else if(scene==='miss'){
       code+="bossAwake=false;player.facing=-1;attack();";
       status.textContent='The missed star settles on a nearby cloud. Walk back and touch it to recover it.';

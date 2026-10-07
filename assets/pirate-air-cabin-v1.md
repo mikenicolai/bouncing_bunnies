@@ -1,0 +1,14 @@
+# Enclosed pirate air cabin
+
+Generated with the built-in imagegen tool on 7 October 2026. The transparent PNG is preserved unchanged. It overlays both upper rooms of `sunken-pirate-ship-v1.png`; timber samples also cover the ship's physical deck, side posts and keel.
+
+The painted frame bounds are x48..1504, y158..816 in the 1549×1015 image. Runtime scales the complete painting to a 460×210 frame. The floor's open cutouts align with two bottom hatches per room: offsets 87..177 and 293..374. Side walls are solid 32-pixel posts. The deck closes every other gap. Water is rendered below each cabin's local waterline, with breathable air inside its sealed upper chamber. A collision overlay in the ship review shows solid timber in coral and open passages in mint.
+
+## Exact prompt
+
+Use case: stylized-concept
+Asset type: one transparent cutaway pirate-ship air-cabin sprite for the Bouncing Bunnies underwater platform game.
+Primary request: Paint a complete wide rectangular wooden cabin with a strong solid timber roof, completely sealed solid vertical left and right walls, and a thick wooden floor with TWO clearly OPEN swim hatches through the bottom. The two openings are the only entrances: no doors or holes through the side walls or roof. This should read as part of a sunken pirate wreck, not a building on land.
+Composition: strict flat side-on orthographic cutaway, outer rectangle aspect 320:210, front wall removed to show the interior. All four outer edges are straight and aligned, though the timber is organically chipped. The floor is three solid timber sections: left 30/320 of width, middle 80/320, right 30/320. Between them two genuinely transparent holes, each 90/320 of the width, reaching down through the entire floor. The first hole occupies horizontal coordinates 30–120 out of 320; second hole 200–290 out of 320. Floor thickness 28/210 of the height. Roof thickness 22/210; side walls thickness 16/320 of width. Fill the upper rear interior wall with dark warm brown wooden planks, a sealed blue brass porthole, a small golden treasure chest in the back and a little lantern. Keep both floor openings uncluttered and immediately recognizable with worn rounded wooden rims. Do not paint water or air labels; the game adds its water surface inside the room.
+Style: detailed hand-painted storybook fantasy game art, chunky weathered brown timber, warm ochre highlights, small teal barnacles and seaweed on the outer corners, subtle pencil-like dark outlines, rich brushed material texture. Match a painted submerged pirate wreck. No photorealism or vector look.
+Framing: one cabin alone centered, entire sprite visible with small equal transparent margins. Outer silhouette must be a simple wide rectangle so collision aligns with the artwork. Genuine transparent background and transparent bottom hatch openings. No characters, sharks, arrows, labels, text, UI, background landscape or extra ships.

@@ -19,7 +19,7 @@ for(const fps of [30,60,120]){
  }
  assert(run('player.x<6350'),'the upper bypass also permits returning toward the ship');
  // The timber roof prevents diving straight through into the key cabin.
- reset();run("player.inWater=true;player.x=5584;player.y=750;keys.add('ArrowDown')");
+ reset();run("player.inWater=true;player.x=5544;player.y=750;keys.add('ArrowDown')");
  for(let frame=0;frame<fps*2;frame++)run(`update(1/${fps})`);
  assert(run('player.y+player.h<=waterShipRoofs[0].y&&!waterPortalKeyTaken'));
  // The closed gate blocks the entire cave height, including routes above/below the lock.
@@ -29,7 +29,7 @@ for(const fps of [30,60,120]){
   assert(run("waterGate.phase==='locked'&&player.x+player.w<=WATER_GATE.x&&!waterFinished"));
  }
  // Swim up the actual left hatch, refill air and travel along the waterline.
- reset();run("player.inWater=true;player.x=5584;player.y=1080;player.air=8;keys.add('ArrowUp')");
+ reset();run("player.inWater=true;player.x=5544;player.y=1080;player.air=8;keys.add('ArrowUp')");
  for(let frame=0;frame<fps*2;frame++)run(`update(1/${fps})`);
  assert(run('waterAirPocket()===waterAirPockets[3]&&player.air===WATER_AIR'));
  assert(!run('waterPortalKeyTaken'),'entering the cabin alone does not grant the key');
@@ -58,5 +58,5 @@ for(const fps of [30,60,120]){
  run('player.inWater=true;player.x=WATER_PORTAL_KEY.x-player.w/2;player.y=waterAirPockets[3].surface+20');run(`update(1/${fps})`);
  assert(!run('waterPortalKeyTaken'));
 }
-assert(run('WATER_SHIP_HATCHES.every(h=>waterAirPockets.some(p=>p.ship&&h.x>=p.x&&h.x+h.w<=p.x+p.w&&h.y===p.surface))'),'both hatches open directly into their cabin waterline');
+assert(run('WATER_SHIP_HATCHES.every(h=>waterAirPockets.some(p=>p.ship&&h.x>=p.x&&h.x+h.w<=p.x+p.w&&h.y>p.surface&&h.pocket===p))'),'four floor hatches lead into the two enclosed cabins');
 console.log('PASS: upper ship bypass and return without air/key, solid cabin roofs, closed gate without key, reachable ship key via real hatch and surface swimming, retained key after drowning, key inserts before upward gate movement and rightward passage, restart restores collectible, no pickup through floor at 30/60/120 FPS.');

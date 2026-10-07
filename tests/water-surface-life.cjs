@@ -4,7 +4,7 @@ const reset=()=>run("level='water';resetGame();soundOn=false");
 // Hold Up and swim strokes in every breathing chamber. The head reaches air,
 // while the swimming body remains in water, even after a drowning respawn.
 for(const fps of [30,60,120])for(let index=0;index<9;index++){
- reset();run(`var pocket=waterAirPockets[${index}];player.inWater=true;player.invincible=99;player.x=pocket.x+pocket.w/2-player.w/2;player.y=pocket.surface+60;player.air=5;keys.add('ArrowUp')`);
+ reset();run(`var pocket=waterAirPockets[${index}];player.inWater=true;player.invincible=99;player.x=pocket.ship?WATER_SHIP_HATCHES.find(h=>h.pocket===pocket).x+45-player.w/2:pocket.x+pocket.w/2-player.w/2;player.y=pocket.ship?1120:pocket.surface+60;player.air=5;keys.add('ArrowUp')`);
  for(let frame=0;frame<fps*3;frame++){
   if(frame%fps===0)run('jump()');
   run(`update(1/${fps})`);
@@ -23,7 +23,7 @@ assert(run('player.air<2'),'breath only refills once the head is out of the wate
 reset();const collision=run(`(()=>{
  for(let frame=0;frame<7200;frame++)for(let school=0;school<21;school++)for(let i=0;i<5;i++){
   const p=waterFishPose(school,i,frame/60),box={x:p.x-20,y:p.y-8,w:40,h:16};
-  if([...waterReefs,...waterShipDeck].some(r=>overlap(box,r)))return {frame,school,i,p};
+  if([...waterReefs,...waterShipSolids()].some(r=>overlap(box,r)))return {frame,school,i,p};
   for(const x of [box.x,p.x,box.x+box.w]){
    const roof=x<WATER_CAVE_START?WATER_SURFACE:waterProfileY(WATER_ROOF,x);
    if(box.y<roof||box.y+box.h>waterFloorY(x))return {frame,school,i,p,boundary:true};

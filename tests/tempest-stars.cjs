@@ -14,7 +14,7 @@ for(const width of [480,960])for(const fps of [30,60,120]){
   assert(landed,`nook reachable at ${fps}`);assert.equal(run('lives'),3);
   run("keys.clear();keys.add('ArrowRight')");
   for(let i=0;i<fps*3&&!run('windStars.owned');i++)run(`update(1/${fps})`);
-  assert(run('windStars.owned&&windStars.equipped'));assert.equal(run("windStars.slots.filter(s=>s.state==='ready').length"),5);
+  assert(run('windStars.owned&&windStars.equipped'));assert.equal(run("windStars.slots.filter(s=>s.state==='ready').length"),8);
   assert.equal(run('checkpoint.y'),-1748,'hidden nook preserves the summit checkpoint');
   // Walk back out from below the overhanging cloud; jump onto the blue cloud.
   run("keys.clear();keys.add('ArrowLeft')");
@@ -44,8 +44,13 @@ for(const width of [480,960])for(const fps of [30,60,120]){
     assert.equal(run('tempest.lodged'),hit+1);assert.equal(run("windStars.slots.filter(s=>s.state==='lodged').length"),hit+1);
     if(hit===1)assert(run('tempest.enraged&&tempest.regenerated'));
   }
+  assert.equal(run("windStars.slots.filter(s=>s.state==='ready').length"),3,'five accurate hits leave three spare stars');
   assert.equal(run('tempestWinds.length'),0);assert(run('airMonsters.filter(m=>m.summoned).every(m=>m.hp===0)'));
   run('player.x=5950;player.y=-1748;updateDescent()');assert(run('descentStarted'),'victory opens downdraft');
+  reset();run('windStars.owned=true;windStars.equipped=true;player.x=4950;player.y=-1748');
+  for(let i=0;i<8;i++){run('player.attackCooldown=0');assert(run('throwWindStar()'));}
+  run('player.attackCooldown=0');assert(!run('throwWindStar()'),'eight-star inventory cannot fire a ninth');
+  assert.equal(run("windStars.slots.filter(s=>s.state==='flying').length"),8);
   // A miss settles on a solid cloud and can be physically collected and thrown again.
   reset();run('windStars.owned=true;windStars.equipped=true;player.x=4860;player.y=-1748;player.facing=1;attack()');tick(1.1,'updateWindStars');
   assert.equal(run('windStars.slots[0].state'),'dropped');
