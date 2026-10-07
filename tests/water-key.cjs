@@ -22,10 +22,12 @@ for(const fps of [30,60,120]){
  reset();run("player.inWater=true;player.x=5584;player.y=750;keys.add('ArrowDown')");
  for(let frame=0;frame<fps*2;frame++)run(`update(1/${fps})`);
  assert(run('player.y+player.h<=waterShipRoofs[0].y&&!waterPortalKeyTaken'));
- // A locked portal never finishes the level, even after crossing its centre.
- reset();run('player.inWater=true;player.x=WATER_GATE_X+20;player.y=1100');
- for(let frame=0;frame<fps*2;frame++)run(`update(1/${fps})`);
- assert(!run('waterFinished'));assert.equal(run('state'),'playing');
+ // The closed gate blocks the entire cave height, including routes above/below the lock.
+ for(const y of [800,1067,1260]){
+  reset();run(`player.inWater=true;player.x=WATER_GATE.x-player.w-8;player.y=${y};keys.add('ArrowRight')`);
+  for(let frame=0;frame<fps*2;frame++)run(`update(1/${fps})`);
+  assert(run("waterGate.phase==='locked'&&player.x+player.w<=WATER_GATE.x&&!waterFinished"));
+ }
  // Swim up the actual left hatch, refill air and travel along the waterline.
  reset();run("player.inWater=true;player.x=5584;player.y=1080;player.air=8;keys.add('ArrowUp')");
  for(let frame=0;frame<fps*2;frame++)run(`update(1/${fps})`);
@@ -37,12 +39,24 @@ for(const fps of [30,60,120]){
  // A lost heart retains the inventory and returns to breathable cabin water.
  run('keys.clear();player.y=waterAirPockets[3].surface+80;player.vx=0;player.vy=0;player.air=.001');run(`update(1/${fps})`);
  assert.equal(run('lives'),2);assert(run('waterPortalKeyTaken&&waterBreathing()'));
- run('player.x=WATER_GATE_X+20;player.y=1100;player.vx=0;player.vy=0');run(`update(1/${fps})`);
- assert(run('waterFinished'),'the same portal opens after collecting the key');
+ // Carrying the key alone doesn't remove the physical barrier. Swim to the lock.
+ run("player.x=WATER_GATE.lockX-60;player.y=WATER_GATE.lockY-player.h/2;player.vx=0;player.vy=0;keys.add('ArrowRight')");
+ for(let frame=0;frame<fps*.4;frame++)run(`update(1/${fps})`);
+ assert.equal(run('waterGate.phase'),'inserting');assert.equal(run('waterGate.lift'),0);
+ assert(run('player.x+player.w<=WATER_GATE.x&&!waterFinished'),'key insertion does not allow early passage');
+ for(let frame=0;frame<fps*1.1;frame++)run(`update(1/${fps})`);
+ assert.equal(run('waterGate.phase'),'lifting');assert(run('waterGate.lift>0&&waterGate.lift<1'));
+ assert(run('player.x+player.w<=WATER_GATE.x&&!waterFinished'),'rising gate still blocks the passage');
+ for(let frame=0;frame<fps*1.3;frame++)run(`update(1/${fps})`);
+ assert.equal(run('waterGate.phase'),'open');assert.equal(run('waterGate.lift'),1);
+ assert(!run('waterFinished'),'opening alone does not finish: swim through to the right');
+ for(let frame=0;frame<fps*3&&!run('waterFinished');frame++)run(`update(1/${fps})`);
+ assert(run('waterFinished'),'passing through the raised gate completes the level');
  reset();assert(!run('waterPortalKeyTaken'),'restarting a run restores the key collectible');
+ assert.equal(run('waterGate.phase'),'locked');assert.equal(run('waterGate.lift'),0);
  // Swimming below the hanging key cannot collect it through the cabin floor.
  run('player.inWater=true;player.x=WATER_PORTAL_KEY.x-player.w/2;player.y=waterAirPockets[3].surface+20');run(`update(1/${fps})`);
  assert(!run('waterPortalKeyTaken'));
 }
 assert(run('WATER_SHIP_HATCHES.every(h=>waterAirPockets.some(p=>p.ship&&h.x>=p.x&&h.x+h.w<=p.x+p.w&&h.y===p.surface))'),'both hatches open directly into their cabin waterline');
-console.log('PASS: upper ship bypass and return without air/key, solid cabin roofs, closed gate without key, reachable ship key via real hatch and surface swimming, retained key after drowning, key opens portal, restart restores collectible, no pickup through floor at 30/60/120 FPS.');
+console.log('PASS: upper ship bypass and return without air/key, solid cabin roofs, closed gate without key, reachable ship key via real hatch and surface swimming, retained key after drowning, key inserts before upward gate movement and rightward passage, restart restores collectible, no pickup through floor at 30/60/120 FPS.');
