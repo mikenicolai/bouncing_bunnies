@@ -17,7 +17,7 @@ for(const fps of [30,60,120]){
  run('updateAirMonsters(0)');assert.equal(run('lives'),2,'contact respects immunity');
  // A complete descent through the production movement/collision integrator.
  for(const width of [480,960]){
-  reset();run(`W=${width};H=${width===480?960:540};`);place(5900,-1748);step(2);
+  reset();run(`W=${width};H=${width===480?960:540};tempest.hp=0;`);place(5900,-1748);step(2);
   let blueJump=false;let minLives=3;let cleared=0;
   for(let f=0;f<fps*30&&run("state==='playing'");f++){
    const feet=run('player.y+player.h');

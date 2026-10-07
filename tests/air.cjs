@@ -49,7 +49,7 @@ reset();run('bossAwake=true;bossTime=29.9;updateTempest(0)');place(run('tempest.
 reset();run('bossAwake=true;bossTime=31;updateTempest(0)');place(run('tempest.x+20'),-1748);run("keys.add('KeyS');updateDuck();updateTempest(0)");assert.equal(run('lives'),3,'after 30 seconds the tail stays high enough to crawl under');
 run('keys.clear();updateDuck();updateTempest(0)');assert.equal(run('lives'),2,'standing under the lifted tail is unsafe');
 for(const fps of [30,60,120]){
-  reset();run("bossAwake=true;bossTime=31;updateTempest(0);player.x=tempest.x-player.w-5;player.y=airPlatforms[19].y-player.h;player.onGround=true;player.airCloud=airPlatforms[19];keys.add('ArrowDown');keys.add('ArrowRight')");
+  reset();run("bossAwake=true;bossTime=31;tempest.shotCooldown=Infinity;updateTempest(0);player.x=tempest.x-player.w-5;player.y=airPlatforms[19].y-player.h;player.onGround=true;player.airCloud=airPlatforms[19];keys.add('ArrowDown');keys.add('ArrowRight')");
   for(let frame=0;frame<fps*8;frame++)run(`update(1/${fps})`);
   assert.equal(run('lives'),3,`crawling beneath Tempest stays safe at ${fps} FPS`);
   assert(run('player.x>tempest.x+tempest.w+100'),`the bunny can pass Tempest at ${fps} FPS`);
@@ -57,17 +57,12 @@ for(const fps of [30,60,120]){
 // A landed punch stuns the boss before contact can trigger retaliation.
 reset();run('bossAwake=true;bossTime=0;updateTempest(0)');
 run("player.x=tempest.x-72;player.y=tempest.y+45;player.facing=1;attack();player.x=tempest.x+10;updateTempest(0)");
-assert.equal(run('tempest.hp'),4);assert.equal(run('lives'),3);
+assert.equal(run('tempest.hp'),10);assert.equal(run('lives'),3);
 run('updateTempest(1)');assert.equal(run('lives'),3,'stun gives time to move away');
 run('updateTempest(.6)');assert.equal(run('lives'),2,'body contact becomes dangerous when stun ends');
-// One punch per recovery window removes one of the five displayed hearts.
-reset();run('bossAwake=true;bossTime=0;updateTempest(0)');
-for(let hit=1;hit<=5;hit++){
-  run("player.x=tempest.x-72;player.y=tempest.y+45;player.facing=1;player.attackCooldown=0;tempest.dizzy=0;attack()");
-  assert.equal(run('tempest.hp'),5-hit);
-  if(hit<5){run('player.attackCooldown=0;attack()');assert.equal(run('tempest.hp'),5-hit,'repeated punches during stun do not count');}
-}
-assert.equal(run('tempest.hp'),0);
+// Punches stun the storm but its ten-heart core needs the wind stars.
+assert.equal(run('tempest.hp'),10);
+reset();assert.equal(run('tempest.hp'),10);
 // Death uses a known solid checkpoint, game over stops, restart resets.
 reset();place(850,137);step(3);assert.equal(run('checkpoint.x'),845);place(1000,700);step();assert.equal(run('lives'),2);assert.equal(run('player.x'),845);
 run('lives=1');place(1000,700);step();assert.equal(run('state'),'lost');run('start()');assert.equal(run('lives'),3);assert.equal(run('level'),'air');
@@ -86,5 +81,5 @@ run("window.listeners.keydown[1]({code:'KeyM',repeat:false,preventDefault(){}})"
 assert.equal(run('state'),'map');assert.equal(node('#worldMap').hidden,false);
 assert.equal(run('mapReturnState'),'playing');
 assert(!html.includes('const airSigns='),'Air tutorial panels should be absent');
-console.log('PASS: syntax; blue cloud; spring; duck; lightning; Tempest contact, 30-second crouch opening and safe first hit; descent/win; meadow regression.');
+console.log('PASS: syntax; blue cloud; spring; duck; lightning; Tempest contact, 30-second crouch opening and safe punch stun; boss-gated descent/win; meadow regression.');
 module.exports={run,reset,place,step};

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tempest · Wind stars</title>
+<style>
+body{margin:0;padding:22px;background:#102938;color:#effffb;font:16px system-ui}main{max-width:1100px;margin:auto}h1{margin:0;font-size:28px}p{line-height:1.5}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:#9eece7;color:#123140;cursor:pointer}button:disabled{opacity:.4}iframe{width:100%;height:850px;border:1px solid #71aebc;border-radius:16px;display:block}.art{width:130px;float:right;margin:0 0 12px 16px}#status{color:#b5f4ef;min-height:24px}@media(max-width:600px){body{padding:12px}.art{width:90px}h1{font-size:24px}}
+</style>
+<main>
+<img class="art" src="../assets/wind-ninja-star-v1.png" alt="Glowing painted turquoise wind ninja star">
+<h1>Tempest · Wind stars</h1>
+<p>Ten hearts. Five wind stars. Tempest recharges once, from five hearts to seven, then sends paired gusts and summons cloud monsters. Jump over gusts or hold Down to duck beneath them.</p>
+<p>X / F throws a star. Z stows or equips the stars, letting you punch monsters. Misses settle on nearby clouds: touch them to collect them again. Stars that hit Tempest stay embedded. All five successful hits defeat him.</p>
+<div class="toolbar"><button data-scene="nook" disabled>Find the hidden ledge</button><button data-scene="fight" disabled>Play Tempest fight</button><button data-scene="strong" disabled>Play stronger phase</button><button data-scene="strong-art" disabled>Second-phase artwork</button><button data-scene="miss" disabled>Recover a missed star</button><button data-scene="overview" disabled>Pause artwork</button><button id="resume" disabled>Resume play</button></div>
+<p id="status" role="status">Loading artwork…</p>
+<iframe src="../index.html?v=2026100705" title="Actual Air level with wind-star combat"></iframe>
+</main>
+<script>
+const frame=document.querySelector('iframe'),status=document.querySelector('#status');
+function show(scene){
+  let code="level='air';soundOn=false;start();soundButton.textContent='Sound: off';player.x=W<600?5180:4970;player.y=-1748;player.onGround=true;player.airCloud=airPlatforms[19];checkpoint={x:4685,y:-1748};cameraX=player.x-W*.28;cameraY=-2060;";
+  if(scene==='nook'){
+    code="level='air';soundOn=false;start();soundButton.textContent='Sound: off';player.x=4690;player.y=-1748;player.onGround=true;player.airCloud=airPlatforms[19];checkpoint={x:4685,y:-1748};cameraX=player.x-W*.55;cameraY=-1900;";
+    status.textContent='Turn back off the left lip of the summit cloud. Drop to the lower island, then explore beneath the overhang. Jump back left to the blue cloud to return.';
+  }else{
+    code+="windStars.owned=true;windStars.equipped=true;bossAwake=true;";
+    if(scene.startsWith('strong')){
+      code+="tempest.hp=7;tempest.regenerated=true;tempest.enraged=true;tempest.lodged=2;windStars.slots[0].state='lodged';windStars.slots[1].state='lodged';tempest.shotCooldown=1.2;";
+      status.textContent='Practice the second phase with three remaining stars. Stow them with Z to punch summoned monsters.';
+    }else if(scene==='miss'){
+      code+="bossAwake=false;player.facing=-1;attack();";
+      status.textContent='The missed star settles on a nearby cloud. Walk back and touch it to recover it.';
+    }else status.textContent='Jump and duck stay available with stars equipped. Five lodged hits are needed; his second hit triggers the one-time recharge.';
+    if(scene==='overview')code+="state='review';spawnTempestWind();tempestWinds[0].x=5150;";
+    if(scene==='strong-art')code+="state='review';spawnTempestWind();tempestWinds.forEach(w=>w.x=player.x+170);updateTempestSummons(0);tempestSummon.age=1.1;updateTempestSummons(0);airMonsters.find(m=>m.summoned).x=player.x+245;";
+  }
+  frame.contentWindow.eval(code+'render(1)');frame.contentWindow.focus();
+}
+frame.addEventListener('load',async()=>{
+  try{
+    await frame.contentWindow.eval("Promise.all([windStarSheet,tempestSheet,islandSheet].map(i=>i.decode()))");
+    document.querySelectorAll('button').forEach(b=>b.disabled=false);show('overview');
+  }catch(error){status.textContent='Artwork is still loading. Reload this page to try again.';}
+});
+document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>show(b.dataset.scene));
+document.querySelector('#resume').onclick=()=>{frame.contentWindow.eval("state='playing';clearInputs()");frame.contentWindow.focus();status.textContent='Playing the actual Air level. X / F throws, Z stows, Up / Space jumps, Down ducks.';};
+</script>
+</html>
