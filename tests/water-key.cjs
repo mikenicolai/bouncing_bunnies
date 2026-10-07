@@ -2,6 +2,26 @@ const assert=require('node:assert/strict');
 const {run}=require('./air.cjs');
 const reset=()=>run("level='water';waterFinished=false;resetGame();soundOn=false;player.invincible=99");
 for(const fps of [30,60,120]){
+ // Cross both cabin widths in the water ABOVE their roofs, then turn back.
+ // Previously the cabin ceiling blocked this visibly open upper route.
+ reset();run("player.inWater=true;player.x=5300;player.y=750;player.air=15;keys.add('ArrowRight')");
+ for(let frame=0;frame<fps*8;frame++){
+  run("if(player.y<745)keys.add('ArrowDown');if(player.y>755)keys.delete('ArrowDown')");
+  run(`update(1/${fps})`);
+  assert(run('player.y<800'),'upper route must not snap the bunny into cabin air');
+  assert(!run('waterAirPocket()||waterPortalKeyTaken'),'passing above a cabin gives neither air nor its key');
+ }
+ assert(run('player.x>6880'),'both ship cabin boundaries can be crossed');
+ assert(run('player.air<8&&lives===3'),'bypass consumes oxygen normally');
+ run("keys.clear();keys.add('ArrowLeft')");
+ for(let frame=0;frame<fps*4;frame++){
+  run("if(player.y<745)keys.add('ArrowDown');if(player.y>755)keys.delete('ArrowDown')");run(`update(1/${fps})`);
+ }
+ assert(run('player.x<6350'),'the upper bypass also permits returning toward the ship');
+ // The timber roof prevents diving straight through into the key cabin.
+ reset();run("player.inWater=true;player.x=5584;player.y=750;keys.add('ArrowDown')");
+ for(let frame=0;frame<fps*2;frame++)run(`update(1/${fps})`);
+ assert(run('player.y+player.h<=waterShipRoofs[0].y&&!waterPortalKeyTaken'));
  // A locked portal never finishes the level, even after crossing its centre.
  reset();run('player.inWater=true;player.x=WATER_GATE_X+20;player.y=1100');
  for(let frame=0;frame<fps*2;frame++)run(`update(1/${fps})`);
@@ -25,4 +45,4 @@ for(const fps of [30,60,120]){
  assert(!run('waterPortalKeyTaken'));
 }
 assert(run('WATER_SHIP_HATCHES.every(h=>waterAirPockets.some(p=>p.ship&&h.x>=p.x&&h.x+h.w<=p.x+p.w&&h.y===p.surface))'),'both hatches open directly into their cabin waterline');
-console.log('PASS: closed gate without key, reachable ship key via real hatch and surface swimming, retained key after drowning, key opens portal, restart restores collectible, no pickup through floor at 30/60/120 FPS.');
+console.log('PASS: upper ship bypass and return without air/key, solid cabin roofs, closed gate without key, reachable ship key via real hatch and surface swimming, retained key after drowning, key opens portal, restart restores collectible, no pickup through floor at 30/60/120 FPS.');
