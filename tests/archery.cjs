@@ -1,11 +1,11 @@
 const assert=require('node:assert/strict');
 const {run}=require('./air.cjs');
 const reset=()=>run("level='fire';resetGame();fireFinished=false;");
-const arena=()=>{reset();run("fireArrow.owned=true;beginSecondVolcano();player.x=10340;player.y=-558;player.onGround=true;player.facing=1;beginLavaKing();");};
+const arena=()=>{reset();run("rollFireArrowType=()=> 'normal';");run("fireArrow.owned=true;fireArrow.ammo.fill('normal');beginSecondVolcano();player.x=10340;player.y=-558;player.onGround=true;player.facing=1;beginLavaKing();");};
 // The relic is reachable and collected by walking, cannot be collected by zombies, and persists through respawn.
 reset();assert(run('mazeOpen(FIRE_ARROW_CELL.c,FIRE_ARROW_CELL.r)'));assert(run('mazeNext({c:1,r:1},FIRE_ARROW_CELL)'));
 run('beginFireMaze();player.mazeC=24;player.mazeR=1;player.x=6739;player.y=1991;update(1/60)');assert.equal(run('fireMode'),'maze','exit requires the relic');
-run('player.x=mazeCenter(11,11).x-21;player.y=mazeCenter(11,11).y-29;player.mazeC=11;player.mazeR=11;update(1/60)');assert(run('fireArrow.owned'));assert.equal(run('score'),0,'inventory is separate from coins');
+run('player.x=mazeCenter(FIRE_ARROW_CELL.c,FIRE_ARROW_CELL.r).x-21;player.y=mazeCenter(FIRE_ARROW_CELL.c,FIRE_ARROW_CELL.r).y-29;player.mazeC=FIRE_ARROW_CELL.c;player.mazeR=FIRE_ARROW_CELL.r;collectFireArrow()');assert(run('fireArrow.owned'));assert.equal(run('score'),0,'inventory is separate from coins');
 run('respawnFire()');assert(run('fireArrow.owned'));run('resetGame()');assert(!run('fireArrow.owned'));assert.equal(run('bunnyArrows.length'),0);
 // Before acquisition, punching cannot damage the king and shooting is unavailable.
 arena();run("fireArrow.owned=false;fireArrow.aiming=false;player.x=lavaKing.x-72;player.y=-558;attack()");assert.equal(run('lavaKing.hp'),10);assert.equal(run('fireBunnyArrow()'),false);
@@ -40,15 +40,15 @@ arena();run("player.x=10600;fireArrow.angle=.1;lavaKing.phase='recover';fireBunn
 // or intercepting incoming projectiles. No health or hit results are forced.
 for(const fps of [30,60,120]){
  arena();let shots=0,direction=1,priorK=null,sawFlight=false;
-for(let f=0;f<fps*100&&!run('lavaKing.defeated')&&run("state==='playing'");f++){
- const q=JSON.parse(run('JSON.stringify({p:player,k:lavaKing,balls:lavaKingFireballs})')),p=q.p,k=q.k;
+for(let f=0;f<fps*180&&!run('lavaKing.defeated')&&run("state==='playing'");f++){
+ const q=JSON.parse(run('JSON.stringify({p:player,k:lavaKing,balls:lavaKingFireballs,ammo:fireArrow.ammo.filter(Boolean).length})')),p=q.p,k=q.k;
  const flight=k.phase==='flight'||k.y+k.h<-550;if(flight)sawFlight=true;
  if(p.x<10320)direction=1;if(p.x>11140)direction=-1;
  let movement=flight?direction:Math.abs(p.x+21-(k.x+45))<240?(p.x<k.x?-1:1):0;
  if(!flight&&p.x<10300&&movement<0||!flight&&p.x>11150&&movement>0)movement=0;
  run(`keys.clear();keys.add('ShiftLeft');${movement?`keys.add('${movement<0?'ArrowLeft':'ArrowRight'}');`:''}`);
- let ball=q.balls.filter(b=>Math.sign(b.vx)===Math.sign(p.x+21-b.x)&&Math.abs(b.x-(p.x+21))<440).sort((a,b)=>Math.abs(a.x-p.x)-Math.abs(b.x-p.x))[0];
- if(!run('fireArrow.cooldown')&&(ball||k.phase!=='shield'&&k.dizzy<=0)){
+ let ball=q.balls.filter(b=>Math.sign(b.vx)===Math.sign(p.x+21-b.x)&&Math.abs(b.x-(p.x+21))<120).sort((a,b)=>Math.abs(a.x-p.x)-Math.abs(b.x-p.x))[0];
+ if(q.ammo&&!run('fireArrow.cooldown')&&(ball||k.phase!=='shield'&&k.dizzy<=0&&!k.recoveryHit)){
   const target=ball||{x:k.x+45,y:k.y+65,vx:priorK?(k.x-priorK.x)*fps:0,vy:priorK?(k.y-priorK.y)*fps:0};
   const distance=Math.abs(target.x-p.x-21),lead=Math.min(.65,distance/900),tx=target.x+(target.vx||0)*lead,ty=target.y+(target.vy||0)*lead;
   const facing=tx>p.x+21?1:-1;let angle=.1;
@@ -57,7 +57,7 @@ for(let f=0;f<fps*100&&!run('lavaKing.defeated')&&run("state==='playing'");f++){
  }
  priorK=k;run(`update(1/${fps})`);
 }
- assert(run('lavaKing.defeated'),`ranged flight fight ${fps}`);assert.equal(run('lives'),3);assert(shots>=10);assert(sawFlight);
+ assert(run('lavaKing.defeated'),`ranged flight fight ${fps}`);assert(run('lives')>0,'the limited-ammo fight remains winnable');assert(shots>=10);assert(sawFlight);
  assert(!run('fireArcheryMode()'));if(run("state==='playing'"))run('player.x=FIRE_EXIT_X-21;update(1/60)');assert.equal(run('state'),'map');assert(run('fireFinished'));
 }
 // Pause freezes projectiles and input; respawn clears projectiles without dropping the relic.

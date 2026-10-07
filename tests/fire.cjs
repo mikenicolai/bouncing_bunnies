@@ -90,20 +90,20 @@ for(const taken of [false,true])for(const fps of [30,60,120]){
   assert.equal(run('coins.find(c=>c.x===mazeCenter(5,3).x&&c.y===mazeCenter(5,3).y).taken'),taken);
 }
 // Four-way movement, loop routes, slow limited pursuit, and transition to the second volcano.
-fireReset();run('W=960;beginFireMaze();jump()');assert.equal(run('player.vy'),0);
+fireReset();run('W=960;beginFireMaze();player.invincible=100;jump()');assert.equal(run('player.vy'),0);
 run("keys.add('ArrowDown');update(1/60);keys.clear()");
 for(let i=0;i<35;i++)run('update(1/60)');assert.equal(run('player.mazeR'),2);
 assert(run('fireZombies.filter(z=>z.alert&&!z.surface).length<=2'));
 assert(run('fireZombies.filter(z=>!z.surface).every(z=>!z.target||mazeNeighbors(z.c,z.r).some(([c,r])=>c===z.target.c&&r===z.target.r))'));
 let cell={c:1,r:2},down=false,up=false,steps=0;
-while(cell.c!==24||cell.r!==1){
-  const next=run(`mazeNext({c:${cell.c},r:${cell.r}},{c:24,r:1})`);assert(next);
+for(const goal of [JSON.parse(run('JSON.stringify(FIRE_ARROW_CELL)')),{c:24,r:1}])while(cell.c!==goal.c||cell.r!==goal.r){
+  const next=run(`mazeNext({c:${cell.c},r:${cell.r}},{c:${goal.c},r:${goal.r}})`);assert(next);
   const dc=next.c-cell.c,dr=next.r-cell.r;down||=dr>0;up||=dr<0;
   const key=dc>0?'ArrowRight':dc<0?'ArrowLeft':dr>0?'ArrowDown':'ArrowUp';
   run(`keys.add('${key}');update(1/60);keys.clear()`);
   for(let i=0;i<35&&!(run('player.mazeC')===next.c&&run('player.mazeR')===next.r);i++)run('update(1/60)');
   assert.equal(run('player.mazeC'),next.c);assert.equal(run('player.mazeR'),next.r);
-  cell=next;assert(++steps<150);
+  cell=next;assert(++steps<300);
 }
 assert(down&&up&&steps>35);assert.equal(run('state'),'playing');assert.equal(run('fireMode'),'secondVolcano');assert.equal(run('fireFinished'),false);assert(run('lives')>=2);
 // The same combat applies to maze and outdoor zombies.

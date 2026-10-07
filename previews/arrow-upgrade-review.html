@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Five arrows · bow upgrade</title>
+<style>
+body{margin:0;padding:24px;background:#291d2a;color:#fff0d8;font:16px system-ui}main{max-width:1100px;margin:auto}h1{margin:0;font-size:28px}p{line-height:1.5}img{display:block;width:100%;background:#462e36;border-radius:16px}.types{display:grid;grid-template-columns:repeat(3,1fr);text-align:center;gap:12px;margin:12px 0 24px}.types div{background:#462e36;padding:14px;border-radius:12px}strong{display:block;margin-bottom:5px}button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:#ef9d60;color:#291d2a;margin:0 8px 12px 0;cursor:pointer}iframe{width:100%;height:850px;border:1px solid #bc654b;border-radius:14px;display:block}@media(max-width:600px){body{padding:12px}.types{gap:6px}.types div{padding:10px 4px;font-size:13px}}
+</style>
+<main>
+<h1>Five arrows. A little magic.</h1>
+<p>Find the bow and arrows in a different labyrinth corridor each run. Five arrow slots appear at the top of the game. Fire one, and a spent slot returns every three seconds. The bright underline marks your next shot.</p>
+<img src="../assets/enchanted-arrow-types-v1.png" alt="Painted golden normal arrow, flaming arrow and sparkling rainbow arrow">
+<div class="types"><div><strong>Normal · 89%</strong>1 heart of damage</div><div><strong>Fire · 10%</strong>2 hearts of damage</div><div><strong>Rainbow · 1%</strong>3 hearts of damage</div></div>
+<button data-scene="pickup" disabled>Find the pickup</button><button data-scene="arrows" disabled>See all three arrows</button><button data-scene="recharge" disabled>Watch arrows return</button><button data-scene="fight" disabled>Play the boss fight</button>
+<p>X or F fires. Z equips or stows the bow. Move with ← → and aim with ↑ ↓. On touch screens, use the stick and FIRE / STOW buttons.</p>
+<iframe src="../index.html?v=2026100703" title="Arrow upgrade in the actual game"></iframe>
+</main>
+<script>
+const frame=document.querySelector('iframe');
+function show(scene){
+ let code="level='fire';soundOn=false;start();beginFireMaze();fireZombies=[];";
+ if(scene==='pickup')code+="player.mazeC=FIRE_ARROW_CELL.c;player.mazeR=FIRE_ARROW_CELL.r;player.x=mazeCenter(FIRE_ARROW_CELL.c,FIRE_ARROW_CELL.r).x-100;player.y=mazeCenter(FIRE_ARROW_CELL.c,FIRE_ARROW_CELL.r).y-29;cameraX=player.x+21-W*.35;cameraY=player.y-H*.5;state='review';";
+ else if(scene==='fight')code+="fireArrow.owned=true;beginSecondVolcano();player.x=10340;player.y=-558;player.onGround=true;beginLavaKing();cameraX=player.x+21-W*.35;cameraY=fireCameraTargetY();state='playing';";
+ else code+="fireArrow.owned=true;fireArrow.aiming=true;player.mazeC=11;player.mazeR=11;player.x=mazeCenter(11,11).x-21;player.y=mazeCenter(11,11).y-29;cameraX=player.x+21-W*.35;cameraY=player.y-H*.5;fireArrow.ammo=['normal','fire','rainbow','normal','normal'];"+(scene==='recharge'?"fireArrow.ammo=[null,null,null,null,null];state='playing';":"state='review';");
+ frame.contentWindow.eval(code+'render(1)');frame.contentWindow.focus();
+}
+frame.addEventListener('load',()=>{document.querySelectorAll('button').forEach(b=>b.disabled=false);show('arrows');});
+document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>show(b.dataset.scene));
+</script>
+</html>

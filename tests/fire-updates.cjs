@@ -24,16 +24,16 @@ for(const fps of [30,60,120]){
 }
 // Arrows use real updates, damage zombie hearts, and remain usable after a kill.
 for(const fps of [30,60,120])for(const direction of [-1,1]){
- reset();run(`beginFireMaze();fireArrow.owned=true;fireArrow.aiming=true;fireArrow.angle=0;player.mazeC=11;player.mazeR=11;player.x=mazeCenter(11,11).x-21;player.y=mazeCenter(11,11).y-29;player.facing=${direction};var zombiePoint=mazeCenter(${11+direction*3},11);fireZombies=[{c:${11+direction*3},r:11,x:zombiePoint.x-24,y:zombiePoint.y-36,w:48,h:72,hp:2,dizzy:0,alive:true,progress:0,patrolTurn:0,target:null,phase:0}];`);
+ reset();run(`beginFireMaze();fireArrow.owned=true;fireArrow.ammo.fill('normal');fireArrow.aiming=true;fireArrow.angle=0;player.mazeC=11;player.mazeR=11;player.x=mazeCenter(11,11).x-21;player.y=mazeCenter(11,11).y-29;player.facing=${direction};var zombiePoint=mazeCenter(${11+direction*3},11);fireZombies=[{c:${11+direction*3},r:11,x:zombiePoint.x-24,y:zombiePoint.y-36,w:48,h:72,hp:2,dizzy:0,alive:true,progress:0,patrolTurn:0,target:null,phase:0}];`);
  assert(run('fireArcheryMode()'));assert(run('fireBunnyArrow()'));assert.equal(run('bunnyArrows[0].gravity'),0);
  for(let f=0;f<fps*1.3;f++)run(`update(1/${fps})`);assert.equal(run('fireZombies[0].hp'),1);assert(run('fireZombies[0].alive'));
  assert(run('fireBunnyArrow()'));for(let f=0;f<fps*.6;f++)run(`update(1/${fps})`);assert(!run('fireZombies[0].alive'));assert(run('fireArrow.owned'));
 }
 // The first maze wall stops a projectile before it can hit a zombie behind that wall.
-reset();run("beginFireMaze();fireArrow.owned=true;fireArrow.aiming=true;fireArrow.angle=0;player.mazeC=5;player.mazeR=1;player.x=mazeCenter(5,1).x-21;player.y=mazeCenter(5,1).y-29;player.facing=1;var behindWall=mazeCenter(8,1);fireZombies=[{x:behindWall.x-24,y:behindWall.y-36,w:48,h:72,hp:2,dizzy:0,alive:true}];fireBunnyArrow();updateFireArchery(.5)");assert.equal(run('fireZombies[0].hp'),2);assert.equal(run('bunnyArrows.length'),0);
+reset();run("beginFireMaze();fireArrow.owned=true;fireArrow.ammo.fill('normal');fireArrow.aiming=true;fireArrow.angle=0;player.mazeC=5;player.mazeR=1;player.x=mazeCenter(5,1).x-21;player.y=mazeCenter(5,1).y-29;player.facing=1;var behindWall=mazeCenter(8,1);fireZombies=[{x:behindWall.x-24,y:behindWall.y-36,w:48,h:72,hp:2,dizzy:0,alive:true}];fireBunnyArrow();updateFireArchery(.5)");assert.equal(run('fireZombies[0].hp'),2);assert.equal(run('bunnyArrows.length'),0);
 // Vertical ladder shooting and stowing both preserve climbing controls.
 for(const direction of [-1,1]){
- reset();run(`beginFireMaze();fireArrow.owned=true;fireArrow.aiming=true;fireArrow.angle=0;player.mazeC=11;player.mazeR=11;player.x=mazeCenter(11,11).x-21;player.y=mazeCenter(11,11).y-29;player.facing=1;keys.add('${direction<0?'ArrowUp':'ArrowDown'}');update(1/60);keys.clear();var ladderTarget=mazeCenter(11,${11+2*direction});fireZombies=[{x:ladderTarget.x-24,y:ladderTarget.y-36,w:48,h:72,hp:1,dizzy:0,alive:true}];`);
+ reset();run(`beginFireMaze();fireArrow.owned=true;fireArrow.ammo.fill('normal');fireArrow.aiming=true;fireArrow.angle=0;player.mazeC=11;player.mazeR=11;player.x=mazeCenter(11,11).x-21;player.y=mazeCenter(11,11).y-29;player.facing=1;keys.add('${direction<0?'ArrowUp':'ArrowDown'}');update(1/60);keys.clear();var ladderTarget=mazeCenter(11,${11+2*direction});fireZombies=[{x:ladderTarget.x-24,y:ladderTarget.y-36,w:48,h:72,hp:1,dizzy:0,alive:true}];`);
  assert.equal(run('fireArrow.angle'),-direction*Math.PI/2);assert(run('fireBunnyArrow()'));run('updateFireArchery(.3)');assert(!run('fireZombies[0].alive'));
  run('toggleFireAim()');assert(!run('fireWeaponEquipped()'));assert(run('player.mazeTarget'),'stowing does not cancel a ladder step');
 }
@@ -46,7 +46,7 @@ for(const [width,height] of [[960,540],[480,920]])for(const fps of [30,60,120]){
 }
 // Flight moves the actual hitbox across the arena, casts three aimed shots, then lands.
 for(const fps of [30,60,120]){
- reset();run("W=960;H=540;fireArrow.owned=true;fireArrow.aiming=true;fireMode='king';player.x=10400;player.y=-558;player.onGround=true;lavaKing.active=true;lavaKingPhase('flight');");
+ reset();run("W=960;H=540;fireArrow.owned=true;fireArrow.ammo.fill('normal');fireArrow.aiming=true;fireMode='king';player.x=10400;player.y=-558;player.onGround=true;lavaKing.active=true;lavaKingPhase('flight');");
  const start=run('lavaKing.x');let maxLift=0,shots=0,lastShot=0;
  for(let f=0;f<fps*4.2;f++){
   run(`updateLavaKing(1/${fps})`);maxLift=Math.max(maxLift,run('FIRE_KING_ARENA.y-(lavaKing.y+lavaKing.h)'));
@@ -56,7 +56,7 @@ for(const fps of [30,60,120]){
  assert.equal(run('lavaKing.phase'),'recover');
 }
 // Hit reactions cannot cancel the flight; real upward arrows can hit the flying body.
-reset();run("fireArrow.owned=true;fireArrow.aiming=true;fireMode='king';player.x=10600;player.y=-558;player.onGround=true;lavaKing.active=true;lavaKingPhase('flight');updateLavaKing(.6);");
+reset();run("fireArrow.owned=true;fireArrow.ammo.fill('normal');fireArrow.aiming=true;fireMode='king';player.x=10600;player.y=-558;player.onGround=true;lavaKing.active=true;lavaKingPhase('flight');updateLavaKing(.6);");
 // Aim ballistically at the current flying hitbox, then update the real projectile.
 run("bunnyArrows=[];fireArrow.cooldown=0;player.facing=player.x+21<lavaKing.x+45?1:-1;fireArrow.angle=Math.atan2(player.y+player.h-35-(lavaKing.y+70),Math.abs(lavaKing.x+45-player.x-55));fireBunnyArrow();");
 for(let i=0;i<60&&run('bunnyArrows.length');i++)run('updateFireArchery(1/120)');assert.equal(run('lavaKing.hp'),9);assert.equal(run('lavaKing.phase'),'flight');
