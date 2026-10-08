@@ -62,7 +62,7 @@ for(const stance of ['upright','four'])for(const move of ['run','jump']){
 }
 const approvedWalk=fs.readFileSync('previews/walking-art/gentle-walk-v1.png');assert(approvedWalk.equals(fs.readFileSync('assets/bunny-painted-upright-walk-plain-v1.png')),'game uses the exact approved A artwork');
 for(const gear of ['plain','quiver']){const b=fs.readFileSync(`assets/bunny-painted-upright-walk-${gear}-v1.png`);assert.equal(b[25],6);assert.equal(b.readUInt32BE(16),1536);assert.equal(b.readUInt32BE(20),1024);}
-const review=fs.readFileSync('previews/painted-game-test.html','utf8');assert(review.includes('../index.html?v=2026100801'));assert(review.includes('i.decode()'));assert(!review.includes('update('),'test page does not replace or double-drive physics');
+const review=fs.readFileSync('previews/painted-game-test.html','utf8');assert(review.includes('../index.html?v=2026100802'));assert(review.includes('i.decode()'));assert(!review.includes('update('),'test page does not replace or double-drive physics');
 // One common transform makes every complete pose and its bow/quiver 70% size, with the feet planted.
 run('var artScales=[];ctx.scale=(...v)=>artScales.push(v)');
 for(const mode of ['king','volcano','dropper','maze'])for(const owned of [false,true]){

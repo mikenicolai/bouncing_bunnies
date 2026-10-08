@@ -13,7 +13,7 @@ for(const event of ['pointercancel','lostpointercapture','pointerup']){
 for(const action of ["window.listeners.blur[0]()","document.querySelector('document').listeners.visibilitychange[0]()","clearInputs()","resetGame()","openWorldMap()","showEnd(false)"]){reset();pull(0,1);run(action);assert(run('!joystick.duck && !joystick.active && joystick.dy===0 && duckPointer===null'));}
 reset();pull(0,1);place(1000,700);step();assert(run('!joystick.duck && joystick.jumpArmed'));
 const html=fs.readFileSync('index.html','utf8');assert(html.includes('viewport-fit=cover'));assert(html.includes('apple-mobile-web-app-capable'));
-assert(run("document.querySelector('#buildInfo').textContent.includes(BUILD_INFO.deployment)"));assert.equal(run('BUILD_INFO.build'),2026100801);assert.equal(run('BUILD_INFO.version'),'0.14.2');assert(Number.isFinite(Date.parse(run('BUILD_INFO.builtAt'))));
+assert(run("document.querySelector('#buildInfo').textContent.includes(BUILD_INFO.deployment)"));assert.equal(run('BUILD_INFO.build'),2026100802);assert.equal(run('BUILD_INFO.version'),'0.14.3');assert(Number.isFinite(Date.parse(run('BUILD_INFO.builtAt'))));
 // Model CSS fallback geometry, visual viewport changes and scroll restoration.
 run(`
 const styles=new Map(),classes=new Set();
@@ -58,3 +58,9 @@ for(const [width,height] of [[320,568],[375,667],[390,844],[430,932],[844,390]])
 }
 run('window.visualViewport.width=1200;window.visualViewport.height=800;fitGameViewport()');assert.equal(run('touchDockHeight'),0);assert.equal(run('playfieldHeight()'),540);
 console.log('PASS small/large portrait phones, landscape dock targets, ground framing, jump and crater framing, desktop restoration.');
+
+// Browser selection and long-press menus are canceled without changing touch handling.
+for(const event of ['selectstart','contextmenu']){
+ assert(run(`(()=>{let blocked=false;gameShell.listeners['${event}'][0]({preventDefault(){blocked=true;}});return blocked;})()`),`${event} cannot interrupt play`);
+}
+console.log('PASS selection and context-menu cancellation on the game shell.');
