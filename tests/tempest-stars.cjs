@@ -39,13 +39,13 @@ for(const width of [480,960])for(const fps of [30,60,120]){
   reset();run('windStars.owned=true;windStars.equipped=true;bossAwake=true;player.invincible=1000;player.x=4950;player.y=-1748;player.facing=1');
   const expected=[7,7,4,1,0];
   for(let hit=0;hit<5;hit++){
-    run('airMonsters.forEach(m=>m.hp=0);player.attackCooldown=0;attack()');tick(2,'updateAir');
+    run('player.attackCooldown=0;attack()');tick(2,'updateAir');
     assert.equal(run('tempest.hp'),expected[hit],`star ${hit+1} at ${fps}`);
     assert.equal(run('tempest.lodged'),hit+1);assert.equal(run("windStars.slots.filter(s=>s.state==='lodged').length"),hit+1);
     if(hit===1)assert(run('tempest.enraged&&tempest.regenerated'));
   }
   assert.equal(run("windStars.slots.filter(s=>s.state==='ready').length"),3,'five accurate hits leave three spare stars');
-  assert.equal(run('tempestWinds.length'),0);assert(run('airMonsters.filter(m=>m.summoned).every(m=>m.hp===0)'));
+  assert.equal(run('tempestWinds.length'),0);assert.equal(run('airMonsters.length'),2,'boss fight preserves only the two earlier guardians');
   run('player.x=5950;player.y=-1748;updateDescent()');assert(run('descentStarted'),'victory opens downdraft');
   reset();run('windStars.owned=true;windStars.equipped=true;player.x=4950;player.y=-1748');
   for(let i=0;i<8;i++){run('player.attackCooldown=0');assert(run('throwWindStar()'));}
@@ -75,8 +75,12 @@ for(const width of [480,960])for(const fps of [30,60,120]){
   assert.equal(run('lives'),3,`real jump clears paired gusts at ${width}/${fps}`);
   reset();run('bossAwake=true;tempest.shotCooldown=0;updateTempest(0)');assert.equal(run('tempestWinds.length'),1);
   run('tempest.enraged=true;tempest.shotCooldown=0;updateTempest(0)');assert.equal(run('tempestWinds.length'),3);
-  tick(1.2,'updateTempestSummons');assert.equal(run('airMonsters.filter(m=>m.summoned).length'),1);
-  tick(30,'updateTempestSummons');assert.equal(run('airMonsters.filter(m=>m.summoned).length'),2,'summons capped');
+  // A prolonged stronger phase must never add creatures to the summit arena.
+  run('player.x=4950;player.y=-1748;player.invincible=1000');
+  tick(60,'updateAir');
+  assert.equal(run('airMonsters.length'),2,'only the original approach guardians remain');
+  assert(run('airMonsters.every(m=>m.platform===airPlatforms[6]||m.platform===airPlatforms[10])'),'no creatures spawn on the boss cloud');
+  assert(run('tempestWinds.length>0'),'Tempest still fires gusts throughout the solo fight');
   // No second heal, even after returning to five hearts in the stronger phase.
   run("tempest.hp=5;tempest.regenerated=true;tempest.regen=0;tempest.dizzy=0;hitTempest('star')");assert.equal(run('tempest.hp'),2);assert.equal(run('tempest.regen'),0);
   reset();run('player.x=5960;player.y=-1748;updateDescent()');assert(!run('descentStarted'));assert.equal(run('player.x'),5910,'cannot bypass a living boss');
@@ -84,4 +88,4 @@ for(const width of [480,960])for(const fps of [30,60,120]){
   run('player.onGround=true;jump()');assert(run('player.vy<0'),'stowed stars preserve jumping');
   reset();assert.equal(run('windStars.owned'),false);assert.equal(run('tempest.hp'),10);assert.equal(run('tempest.regenerated'),false);
 }
-console.log('PASS Tempest: reachable detour and return, five actual star hits, one recovery at five to seven, faster paired gusts, duck/jump avoidance, capped summons, miss/shield recovery, stow/jump, reset and victory gate at 30/60/120 FPS.');
+console.log('PASS Tempest: reachable detour and return, five actual star hits, one recovery at five to seven, faster paired gusts, duck/jump avoidance, solo boss arena, miss/shield recovery, stow/jump, reset and victory gate at 30/60/120 FPS.');
