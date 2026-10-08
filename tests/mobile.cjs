@@ -13,7 +13,7 @@ for(const event of ['pointercancel','lostpointercapture','pointerup']){
 for(const action of ["window.listeners.blur[0]()","document.querySelector('document').listeners.visibilitychange[0]()","clearInputs()","resetGame()","openWorldMap()","showEnd(false)"]){reset();pull(0,1);run(action);assert(run('!joystick.duck && !joystick.active && joystick.dy===0 && duckPointer===null'));}
 reset();pull(0,1);place(1000,700);step();assert(run('!joystick.duck && joystick.jumpArmed'));
 const html=fs.readFileSync('index.html','utf8');assert(html.includes('viewport-fit=cover'));assert(html.includes('apple-mobile-web-app-capable'));
-assert(run("document.querySelector('#buildInfo').textContent.includes(BUILD_INFO.deployment)"));assert.equal(run('BUILD_INFO.build'),2026100804);assert.equal(run('BUILD_INFO.version'),'0.14.5');assert(Number.isFinite(Date.parse(run('BUILD_INFO.builtAt'))));
+assert(run("document.querySelector('#buildInfo').textContent.includes(BUILD_INFO.deployment)"));assert.equal(run('BUILD_INFO.build'),2026100805);assert.equal(run('BUILD_INFO.version'),'0.15.0');assert(Number.isFinite(Date.parse(run('BUILD_INFO.builtAt'))));
 // Model CSS fallback geometry, visual viewport changes and scroll restoration.
 run(`
 const styles=new Map(),classes=new Set();
@@ -51,7 +51,7 @@ for(const [width,height] of [[320,568],[375,667],[390,844],[430,932],[844,390]])
  assert.equal(run('player.vy'),-570);assert(run('player.y-cameraY<playfieldHeight()'));
  run("level='fire';resetGame();");assert(Math.abs(run('450-cameraY')-run('fireViewSize().height')*.86)<.001);
  run("fireMode='dropper';player.y=-300;cameraY=fireCameraTargetY()");assert(Math.abs(run('player.y+player.h/2-cameraY')-run('fireViewSize().height')*.2)<.001);
- for(const world of ['water','earth','air']){
+ for(const world of ['water','earth','air','final']){
   run(`level='${world}';resetGame();player.invincible=999;`);step(240);
   assert(run('player.y-cameraY>=0&&player.y+player.h-cameraY<playfieldHeight()'),`${world} spawn stays above the dock at ${width}x${height}`);
  }

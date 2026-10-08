@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Final castle · opening review</title><style>
+:root{font:16px system-ui;color:#f3e9d2;background:#171a28}body{margin:0;padding:14px}main{max-width:1100px;margin:auto}h1{font-size:24px;margin:0}p{line-height:1.4;font-size:14px}nav{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}button,a{font:inherit}button{padding:9px;border:1px solid #918574;border-radius:9px;background:#e7ce99;color:#202633;cursor:pointer}button:disabled{opacity:.4}iframe{display:block;width:100%;height:clamp(400px,calc(100dvh - 230px),740px);border:1px solid #64717b;border-radius:12px}a{color:#ffd192}#status{color:#c9e1b1}
+</style></head><body><main>
+<h1>Green checks &amp; the old castle</h1>
+<p>Review fixtures use temporary progress inside this preview only; your saved game achievements are unchanged. <a href="../index.html?v=2026100805">Open the real game →</a></p>
+<nav aria-label="Review scene"><button disabled data-scene="locked">No worlds completed</button><button disabled data-scene="air">Air completed</button><button disabled data-scene="three">First three completed</button><button disabled data-scene="unlocked">All four · castle unlocked</button><button disabled data-scene="forest">Ember forest</button><button disabled data-scene="woods">Deep dead woods</button><button disabled data-scene="gate">Rising castle gate</button><button disabled data-scene="hall">Torch-lit hall</button><button disabled data-scene="ending">Inner castle door</button></nav>
+<p id="status" role="status">Loading castle paintings…</p>
+<iframe src="../index.html?v=2026100805" title="Castle game and world map review"></iframe>
+<p>← → move · Shift + arrows run · Space jump · M map. The final villain is for a later chapter; this opening ends at the inner castle door.</p>
+</main><script>
+const frame=document.querySelector('iframe'),status=document.querySelector('#status');let ready=false;
+function scene(name){
+ if(!ready)return;
+ const count=name==='locked'?0:name==='air'?1:name==='three'?3:4;
+ frame.contentWindow.eval(`saveWorldProgress=()=>{};soundOn=false;meadowFinished=true;airFinished=${count>=1};waterFinished=${count>=2};earthFinished=${count>=3};fireFinished=${count>=4};level='meadow';resetGame();`);
+ if(['locked','air','three','unlocked'].includes(name))frame.contentWindow.eval('openWorldMap()');
+ else {
+  const x={forest:90,woods:1610,gate:2840,hall:3740,ending:5160}[name];
+  frame.contentWindow.eval(`level='final';start();player.x=${x};player.y=FINAL_FLOOR-58;player.onGround=true;cameraX=Math.max(0,player.x-W*.38);cameraY=touchDockHeight?phoneGroundCameraY():0;finalGateLift=${['hall','ending'].includes(name)?1:0};checkpoint={x:player.x,y:player.y};`);
+ }
+ status.textContent={locked:'No checks: all four worlds can be tested; the castle stays locked.',air:'Air has a green check. Water is recommended next.',three:'Air, Water and Plants / Earth are checked. Fire is next; the castle remains locked.',unlocked:'All four are checked. The castle is selected and can now be entered.',forest:'Leave the volcano behind. Jump across the gaps toward the dark wood.',woods:'Dead branches and blue mist replace the ember glow.',gate:'The four earned elements power a gate that rises. Walk right through it.',hall:'Old masonry, hanging torches and rubble to jump over.',ending:'The inner door ends this opening chapter. It does not mark the final villain defeated.'}[name];
+ frame.contentWindow.focus();
+}
+frame.addEventListener('load',async()=>{
+ const doc=frame.contentDocument,style=doc.createElement('style');style.textContent='html,body{margin:0;padding:0;background:#171a28}.game-shell,main{width:100%;max-width:none;padding:0;margin:0}header,footer{display:none}.game-frame{border:0;border-radius:0;box-shadow:none}.game-frame:not(.expanded){min-height:0}.world-map.portrait{padding:0}';doc.head.append(style);
+ try{await frame.contentWindow.eval('Promise.all([finalForestSheet,finalHallSheet,finalArchSheet,earthGroundSheet,...Object.values(PAINTED_BUNNY).flatMap(s=>[s.plain,s.quiver])].map(i=>i.decode()))');ready=true;document.querySelectorAll('button').forEach(b=>b.disabled=false);scene('unlocked');}catch(e){status.textContent='Artwork did not load; reload to retry.';console.error(e);}
+});
+document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>scene(b.dataset.scene));
+</script></body></html>
