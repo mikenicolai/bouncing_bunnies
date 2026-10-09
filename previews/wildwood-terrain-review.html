@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Wildwood · cliffs and tree mushrooms</title>
+<style>body{margin:0;background:#172b25;color:#eaf1df;font:16px system-ui}main{max-width:1100px;margin:auto;padding:18px}h1{margin:0 0 10px;font-size:26px}p{color:#bdd1b9;line-height:1.5}button,a{display:inline-block;font:inherit;color:#eaf1df;background:#355740;padding:10px 14px;border:1px solid #64876c;border-radius:8px;cursor:pointer;text-decoration:none;margin:0 5px 8px 0}iframe{width:100%;height:720px;border:1px solid #64876c;border-radius:12px;display:block}@media(max-width:600px){main{padding:12px}iframe{height:80vh}}</style>
+<main><h1>Rooted woodland</h1><p>Continuous painted cliffs and mushrooms growing from tree boughs. These views use the actual game renderer.</p><nav><button data-scene="cliff">First cliff</button><button data-scene="mushroom">Tree mushroom</button><button data-scene="upper">Upper woodland</button><button data-scene="arena">Boss clearing</button><a href="../index.html">Play the complete game</a></nav><iframe src="../index.html" title="Wildwood terrain in the actual game"></iframe></main>
+<script>
+const frame=document.querySelector('iframe');
+function show(scene){
+const x={cliff:1060,mushroom:970,upper:5400,arena:7220}[scene];
+frame.contentWindow.eval(`level='earth';start();soundOn=false;earthGoblins.forEach(g=>g.alive=false);state='review';player.x=${x};player.y=${scene==='cliff'?520:scene==='mushroom'?'earthPlatforms[3].y':scene==='upper'?'earthPlatforms[19].y':-1480}-58;player.vx=0;player.vy=0;player.onGround=true;cameraX=player.x-W*.28;cameraY=player.y-playfieldHeight()*.68;render(0);`);
+}
+frame.onload=()=>show('cliff');document.querySelectorAll('[data-scene]').forEach(button=>button.onclick=()=>show(button.dataset.scene));
+</script></html>

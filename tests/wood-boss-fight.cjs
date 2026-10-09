@@ -68,5 +68,5 @@ for(const [name,file] of [['ANIMATION','wood-boss-animation-v1.js'],['ENCOUNTER'
  const source=html.split(`// WILDWOOD_${name}_BEGIN\n`)[1].split(`\n// WILDWOOD_${name}_END`)[0];
  assert.equal(source,fs.readFileSync('assets/'+file,'utf8'),'embedded runtime must match reusable source');
 }
-assert.equal(run('BUILD_INFO.version'),'0.16.0');
+assert.equal(run('BUILD_INFO.version'),'0.16.1');
 console.log('PASS Wildwood bosses: five hearts each, punch/stomp and immunity, shatter/rebuild, sealed exit, complete fight with real cooldowns, rock sweep, jumpable earthquakes, warned/retracting mountains, clean restart at 30/60/120 FPS.');
