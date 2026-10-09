@@ -2,7 +2,7 @@ const assert=require('node:assert/strict');
 const {run,step}=require('./air.cjs');
 const reset=()=>run("level='earth';resetGame();soundOn=false");
 reset();
-assert.equal(run('WORLD_W'),6900);
+assert.equal(run('WORLD_W'),8100);
 assert.equal(run('earthPlatforms.length'),25);
 assert.equal(run('earthGoblins.length'),6);
 assert.equal(run("worldDetails.earth[2]"),'Play Earth level');
@@ -60,8 +60,8 @@ for(const fps of [30,60,120])for(let id=0;id<24;id++){
   assert(reached,`Wildwood landing ${id} → ${id+1} unreachable at ${fps} FPS`);
 }
 reset();
-run("player.x=EARTH_GATE_X-15;player.y=earthPlatforms.at(-1).y-58;player.onGround=true;player.vy=0;update(1/60)");
+run("earthBoss.stage='done';player.x=EARTH_GATE_X-15;player.y=EARTH_ARENA.floor-58;player.onGround=true;player.vy=0;update(1/60)");
 assert.equal(run('state'),'map');
 assert.equal(run('earthFinished'),true);
 assert.equal(run("document.querySelector('#mapHeading').textContent"),'Earth complete!');
-console.log('PASS Earth: 6,900px grass/cliff route, spring, hazards, matched goblin speed, and all 24 landings at 30/60/120 FPS.');
+console.log('PASS Earth: 8,100px grass/cliff route and arena, spring, hazards, matched goblin speed, and all 24 landings at 30/60/120 FPS.');
