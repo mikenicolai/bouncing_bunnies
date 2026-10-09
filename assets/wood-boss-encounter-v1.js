@@ -10,9 +10,10 @@ function earthBossBox(){
   const giant=earthBoss.stage==='giant',w=giant?112:86,h=giant?285:100;
   return{x:earthBoss.x-w/2,y:EARTH_ARENA.floor-h,w,h};
 }
-function hitEarthBoss(){
+function hitEarthBoss(source='punch'){
   const b=earthBoss;
   if(!b.active||!['small','giant'].includes(b.stage)||b.dizzy>0)return false;
+  if(b.stage==='giant'&&source!=='knife'){burst(b.x,EARTH_ARENA.floor-70,'#c5df9b',5);tone(140,.06,'triangle',.02);return false;}
   b.hp=Math.max(0,b.hp-1);b.dizzy=b.stage==='small'?.9:.65;
   if(b.stage==='small'){b.phase='idle';b.phaseAge=0;b.cooldown=1.1;}
   burst(b.x,EARTH_ARENA.floor-70,b.stage==='small'?'#b2c967':'#78e1b1',14);

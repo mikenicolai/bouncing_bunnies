@@ -8,4 +8,6 @@ The tree and ground paintings follow the world map and existing level art. `wild
 
 Review the live renderer in `previews/wildwood-terrain-review.html`. `tests/wildwood-terrain-browser.cjs` checks detailed deep soil, camera alignment, clear sky above grass, and all five rooted mushroom supports, then captures desktop and phone views.
 
+A secret, rooted tree bough at x=6420, y=-1400 holds three individually collected knives below the final approach. It is an extra one-way landing and adds no route coins. The normal branch route and mushroom bounce heights remain the same. See `wood-throwing-knives-v1.md` for weapon behavior and controls.
+
 The branch route rises from y=440 to y=-1605. Mushroom bounce velocity is -730 pixels/second, below Air's -850. Red mushrooms cause immediate game over on contact. Goblins and the bunny use the same 260-pixel/second ground speed and 1,500-pixel/second² acceleration. The goblin sheet and animation mapping are documented in `tree-goblin-v1.md`.

@@ -4,7 +4,8 @@ const reset=()=>run("level='earth';resetGame();soundOn=false;earthGoblins.forEac
 const enter=()=>run("player.x=EARTH_ARENA.left+30;player.y=EARTH_ARENA.floor-58;player.vx=0;player.vy=0;player.onGround=true;update(1/60)");
 const tick=(fps,n)=>{for(let i=0;i<n;i++)run(`update(1/${fps})`);};
 const attackBoss=()=>run("{const box=earthBossBox();player.x=box.x-player.w-20;player.y=EARTH_ARENA.floor-player.h;player.facing=1;player.vx=0;player.vy=0;player.onGround=true;player.attackCooldown=0;attack();}");
-const safe=()=>run("player.x=EARTH_ARENA.left+30;player.y=EARTH_ARENA.floor-58;player.vx=0;player.vy=0;player.onGround=true;player.invincible=100");
+const knifeBoss=()=>run("earthKnives.slots.forEach(k=>{k.state='ready';k.remaining=0});earthKnives.equipped=true;player.x=earthBoss.x-230-player.w/2;player.y=EARTH_ARENA.floor-player.h;player.facing=1;player.attackCooldown=0;attack();updateEarthKnives(.4)");
+const safe=(protect=true)=>run("player.x=EARTH_ARENA.left+30;player.y=EARTH_ARENA.floor-58;player.vx=0;player.vy=0;player.onGround=true"+(protect?";player.invincible=100":""));
 reset();assert.equal(run('WORLD_W'),8100);assert.equal(run('EARTH_GATE_X'),8000);
 assert.equal(run('earthGround.at(-1).x+earthGround.at(-1).w'),run('WORLD_W'));
 assert.equal(run('earthBoss.hp'),5);assert(!run('earthBoss.active'));
@@ -25,8 +26,8 @@ for(const fps of [30,60,120]){
  assert(!run('hitEarthBoss()'),'transformation is invulnerable');
  safe();tick(fps,Math.ceil(2.5*fps));assert.equal(run('earthBoss.stage'),'rebuild');
  tick(fps,Math.ceil(5.7*fps));assert.equal(run('earthBoss.stage'),'giant');assert.equal(run('earthBoss.hp'),5);
- // The second form takes exactly five real punches, then opens the gate.
- for(let hit=0;hit<5;hit++){run('earthBoss.dizzy=0');attackBoss();assert.equal(run('earthBoss.hp'),4-hit);}
+ // The second form takes exactly five knife hits, then opens the gate.
+ for(let hit=0;hit<5;hit++){run('earthBoss.dizzy=0');knifeBoss();assert.equal(run('earthBoss.hp'),4-hit);}
  assert.equal(run('earthBoss.stage'),'defeat');safe();tick(fps,Math.ceil(1.6*fps));assert.equal(run('earthBoss.stage'),'done');
  assert.equal(run('earthBossRocks.length+earthBossWaves.length+earthBossMountains.length'),0);
  run("player.x=EARTH_GATE_X-15;player.y=EARTH_ARENA.floor-58;player.onGround=true;player.vy=0");tick(fps,2);
@@ -50,15 +51,21 @@ for(const fps of [30,60,120]){
  // Rock collision uses a swept segment, so faster frames cannot tunnel.
  reset();enter();run(`player.x=7200;player.y=EARTH_ARENA.floor-58;earthBossRocks=[{x:7160,y:EARTH_ARENA.floor-30,vx:6000,vy:0,r:20,age:0,spin:0}];updateEarthBossHazards(1/${fps})`);assert.equal(run('lives'),2);
 }
-// Play without bypassing the actual hurt/cooldown timers or player immunity.
+// Complete the first phase using the normal punch/hurt cooldowns.
 reset();enter();run('lives=3');
-for(const stage of ['small','giant']){
- for(let hit=0;hit<5;hit++){
-  attackBoss();assert.equal(run('earthBoss.hp'),4-hit);safe();run('player.invincible=0');tick(60,66);
-  assert(run('lives')>0,'five hits per form must be achievable within the normal three-life run');
- }
- if(stage==='small'){safe();tick(60,8*60);assert.equal(run('earthBoss.stage'),'giant');}
+for(let hit=0;hit<5;hit++){
+ attackBoss();assert.equal(run('earthBoss.hp'),4-hit);safe();run('player.invincible=0');tick(60,66);
+ assert(run('lives')>0,'rookie fight must be achievable within the normal three-life run');
 }
+safe();tick(60,8*60);assert.equal(run('earthBoss.stage'),'giant');
+// Actual ranged throws, normal return timers and one heart per hit.
+run("earthKnives.slots.forEach(k=>{k.state='ready';k.remaining=0});earthKnives.equipped=true;player.invincible=0");
+for(let hit=0;hit<5;hit++){
+ run("player.x=earthBoss.x-250-player.w/2;player.y=EARTH_ARENA.floor-player.h;player.facing=1;player.vx=0;player.vy=0;player.onGround=true;attack()");
+ tick(60,36);assert.equal(run('earthBoss.hp'),4-hit);safe(false);tick(60,hit===2?3*60:30);
+ assert(run('lives')>0,'ranged giant fight preserves a playable run');
+}
+safe();tick(60,90);assert.equal(run('earthBoss.stage'),'done');
 reset();assert.equal(run('earthBoss.stage'),'small');assert.equal(run('earthBoss.hp'),5);assert(!run('earthBoss.active'));
 run("earthBoss.stage='giant';earthBoss.hp=5;earthBoss.x=7460;cameraX=earthBoss.x-W*.6;cameraY=EARTH_ARENA.floor-336-24-50;var oldHeartRenderer=woodBossRenderer.hearts;var renderedBossHearts=null;woodBossRenderer.hearts=(ctx,x,y,count)=>renderedBossHearts={x,y,count};drawEarthBossHearts();woodBossRenderer.hearts=oldHeartRenderer;");
 assert.equal(run('renderedBossHearts.count'),5);
@@ -68,5 +75,5 @@ for(const [name,file] of [['ANIMATION','wood-boss-animation-v1.js'],['ENCOUNTER'
  const source=html.split(`// WILDWOOD_${name}_BEGIN\n`)[1].split(`\n// WILDWOOD_${name}_END`)[0];
  assert.equal(source,fs.readFileSync('assets/'+file,'utf8'),'embedded runtime must match reusable source');
 }
-assert.equal(run('BUILD_INFO.version'),'0.16.1');
-console.log('PASS Wildwood bosses: five hearts each, punch/stomp and immunity, shatter/rebuild, sealed exit, complete fight with real cooldowns, rock sweep, jumpable earthquakes, warned/retracting mountains, clean restart at 30/60/120 FPS.');
+assert.equal(run('BUILD_INFO.version'),'0.17.0');
+console.log('PASS Wildwood bosses: five hearts each, rookie punch/stomp, knife-only giant and immunity, shatter/rebuild, sealed exit, complete fight with real cooldowns, rock sweep, jumpable earthquakes, warned/retracting mountains, clean restart at 30/60/120 FPS.');
