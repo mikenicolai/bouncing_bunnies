@@ -5,7 +5,7 @@ const {run}=require('./air.cjs');
 for(const fps of [30,60,120]){
  run("level='water';waterFinished=false;resetGame();soundOn=false;waterSharks=[];waterPirates.forEach(p=>p.swingCooldown=999);player.invincible=999;player.inWater=true;player.x=1800;player.y=348;player.vx=0;player.vy=0");
  const airY=i=>run(`waterAirPockets[${i}].surface-WATER_FLOAT_HEAD`);
- const route=[[2320,740],[2634,740],[2634,airY(0)],[2634,875],[2920,875],[2920,930],[3604,930],[3604,airY(1)],[3604,1075],[4549,1075],[4549,airY(2)],[4549,1130],[5150,1080],[5531,1080],[5531,916],[5667,916],[5732,916],[5732,1080],[6411,1080],[6411,946],[6612,946],[6612,1080],[6880,1080],[7000,1080],[7529,1130],[7529,airY(5)],[7529,1320],[8529,1320],[8529,airY(6)],[8529,1280],[9519,1280],[9519,airY(7)],[9519,875],[10190,875],[10190,820],[10539,820],[10539,airY(8)],[10539,1110],[11440,1110]];
+ const route=[[2320,740],[2634,740],[2634,airY(0)],[2634,875],[2920,875],[2920,930],[3604,930],[3604,airY(1)],[3604,1075],[4549,1075],[4549,airY(2)],[4549,1130],[5150,1080],[5531,1080],[5531,916],[5667,916],[5732,916],[5732,1080],[6411,1080],[6411,946],[6612,946],[6612,1080],[6880,1080],[7030,1320],[7929,1320],[7929,airY(5)],[7929,950],[9939,950],[9939,airY(6)],[9939,1067],[10470,1067],[11109,1081],[11650,1300],[12199,1351],[12710,1250]];
  for(const [x,y] of route){
   let reached=false;
   const wantsAir=run(`!!waterPocketAtX(${x}+player.w/2)&&${y}<=waterPocketAtX(${x}+player.w/2).surface-WATER_FLOAT_HEAD`);
@@ -21,7 +21,7 @@ for(const fps of [30,60,120]){
   assert(reached,`${fps} FPS: blocked en route to ${x},${y}; actual ${run('JSON.stringify({x:player.x,y:player.y,air:player.air})')}`);
  }
  assert(run('waterPortalKeyTaken'),'ship key collected through actual swimming');
- assert(run('waterFinished'),`${fps} FPS: gate reached`);
+ assert(run("waterGate.phase==='open'&&waterTrident.owned&&waterAquaSuit&&neptunus.active&&!waterFinished"),`${fps} FPS: gate leads through relic pickups to the boss`);
  assert(run('coins.filter(c=>c.taken&&c.x>5200&&c.x<6900).length>=4'),'treasure is collected through the ship hold');
 }
-console.log('PASS: full 11,500-unit water route, reefs, both ship hatches, air pockets and tide gate at 30/60/120 FPS.');
+console.log('PASS: shortened approach, seven air pockets, both ship hatches, gate continuation, trident and aqua suit leading into Neptunus’s arena at 30/60/120 FPS.');

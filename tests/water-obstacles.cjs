@@ -42,9 +42,9 @@ reset();run('player.x=waterCacti[0].x+30;player.y=292;player.onGround=true;updat
 reset();run('player.inWater=true;player.invincible=30;var link=waterTetherSolids(waterPirates[2])[8];player.x=link.x-player.w/2;player.y=link.y-15;update(1/60)');
 assert(run('!waterTetherSolids(waterPirates[2]).some(s=>overlap(player,s))'),'a chain that sways into the bunny pushes it clear instead of trapping its controls');
 reset();assert(run('waterTetherSolids(waterPirates[2]).length>10'));
-run('waterPirates[0].hp=0;waterPirates[1].hp=0;waterPirates[2].swingCooldown=999;player.inWater=true;player.invincible=30;player.x=10200;player.y=1190;keys.add("ArrowRight")');
+run('waterPirates[0].hp=0;waterPirates[1].hp=0;waterPirates[2].swingCooldown=999;player.inWater=true;player.invincible=30;player.x=9600;player.y=1190;keys.add("ArrowRight")');
 for(let i=0;i<120;i++)run('update(1/60)');
-assert(run('player.x<10410'),'the intact tether blocks crossing below its floating pirate');
+assert(run('player.x<9810'),'the intact tether blocks crossing below its floating pirate');
 run('waterPirates[2].hp=0');for(let i=0;i<90;i++)run('update(1/60)');
-assert(run('player.x>10450'),'defeating the pirate releases the obstructing chain');
+assert(run('player.x>9850'),'defeating the pirate releases the obstructing chain');
 console.log('PASS: roof-bound air waterlines, cactus damage and three clean jumps, floating fixed-length pirate tethers, solid chains and defeat clearance.');

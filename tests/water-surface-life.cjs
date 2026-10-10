@@ -3,7 +3,7 @@ const {run}=require('./air.cjs');
 const reset=()=>run("level='water';resetGame();soundOn=false");
 // Hold Up and swim strokes in every breathing chamber. The head reaches air,
 // while the swimming body remains in water, even after a drowning respawn.
-for(const fps of [30,60,120])for(let index=0;index<9;index++){
+for(const fps of [30,60,120])for(let index=0;index<run('waterAirPockets.length');index++){
  reset();run(`var pocket=waterAirPockets[${index}];player.inWater=true;player.invincible=99;player.x=pocket.ship?WATER_SHIP_HATCHES.find(h=>h.pocket===pocket).x+45-player.w/2:pocket.x+pocket.w/2-player.w/2;player.y=pocket.ship?1120:pocket.surface+60;player.air=5;keys.add('ArrowUp')`);
  for(let frame=0;frame<fps*3;frame++){
   if(frame%fps===0)run('jump()');

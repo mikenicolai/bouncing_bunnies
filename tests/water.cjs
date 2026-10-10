@@ -5,7 +5,7 @@ const step=(n=1)=>{for(let i=0;i<n;i++)run('update(1/60)');};
 const reset=()=>run("level='water';resetGame();soundOn=false");
 
 reset();
-assert.equal(run('WORLD_W'),11500);
+assert.equal(run('WORLD_W'),14900);
 assert.equal(run('waterSharks.length'),6);
 assert.equal(run('waterPirates.length'),3);
 assert(run('waterSharks.every(s=>s.hp===2)'));

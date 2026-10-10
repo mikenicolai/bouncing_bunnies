@@ -50,8 +50,8 @@ for(const fps of [30,60,120]){
  for(let frame=0;frame<fps*1.3;frame++)run(`update(1/${fps})`);
  assert.equal(run('waterGate.phase'),'open');assert.equal(run('waterGate.lift'),1);
  assert(!run('waterFinished'),'opening alone does not finish: swim through to the right');
- for(let frame=0;frame<fps*3&&!run('waterFinished');frame++)run(`update(1/${fps})`);
- assert(run('waterFinished'),'passing through the raised gate completes the level');
+ for(let frame=0;frame<fps*3&&run('player.x<WATER_GATE.exitX+100');frame++)run(`update(1/${fps})`);
+ assert(!run('waterFinished')&&run('player.x>WATER_GATE.exitX'),'the raised gate opens the continuation without completing Water');
  reset();assert(!run('waterPortalKeyTaken'),'restarting a run restores the key collectible');
  assert.equal(run('waterGate.phase'),'locked');assert.equal(run('waterGate.lift'),0);
  // Swimming below the hanging key cannot collect it through the cabin floor.
