@@ -14,8 +14,9 @@ function collectEarthKnives(){
 function throwEarthKnife(){
   if(level!=='earth'||!earthKnives.equipped||player.attackCooldown>0||player.duck||state!=='playing')return false;
   const k=earthKnives.slots.find(k=>k.state==='ready');if(!k)return false;
-  Object.assign(k,{state:'flying',remaining:EARTH_KNIFE_RETURN,x:player.x+player.w/2+player.facing*30,y:player.y+player.h*.48,vx:player.facing*680,age:0,spin:player.facing<0?Math.PI:0});
-  player.attack=.25;player.attackCooldown=.45;tone(650,.1,'triangle',.025);return true;
+  Object.assign(k,{state:'flying',remaining:EARTH_KNIFE_RETURN,x:player.x+player.w/2+player.facing*30,y:player.y+player.h*.48,vx:player.facing*540,age:0,spin:player.facing<0?Math.PI:0});
+  if(earthBossVine?.grabbed)releaseEarthVine();
+  player.attack=.25;player.attackCooldown=.65;tone(650,.1,'triangle',.025);return true;
 }
 function updateEarthKnives(dt){
   collectEarthKnives();
@@ -34,17 +35,20 @@ function updateEarthKnives(dt){
     if(earthBoss.active&&['small','giant'].includes(earthBoss.stage))add(earthBossBox(),()=>hitEarthBoss('knife'));
     contacts.sort((a,b)=>a.t-b.t);
     if(contacts.length){const contact=contacts[0];k.x=old.x+(k.x-old.x)*contact.t;contact.hit();burst(k.x,k.y,'#d6e7d8',5);k.state='returning';}
-    else if(k.age>=1.35||k.x<0||k.x>EARTH_W)k.state='returning';
+    else if(k.age>=1.25||k.x<0||k.x>EARTH_W)k.state='returning';
   }
 }
-function drawEarthKnife(x,y,size=40,angle=0){
-  ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(size/40,size/40);
-  ctx.lineJoin='round';ctx.lineWidth=1.7;ctx.strokeStyle='#334c43';
-  ctx.fillStyle='#825733';ctx.beginPath();ctx.moveTo(-20,-3);ctx.lineTo(-6,-3.5);ctx.lineTo(-6,3.5);ctx.lineTo(-20,3);ctx.closePath();ctx.fill();ctx.stroke();
-  ctx.strokeStyle='#dcc68a';ctx.lineWidth=1;for(let x=-17;x<-7;x+=3){ctx.beginPath();ctx.moveTo(x,-2);ctx.lineTo(x+1,2);ctx.stroke();}
-  ctx.strokeStyle='#334c43';ctx.fillStyle='#79ad83';ctx.beginPath();ctx.moveTo(-7,-6);ctx.lineTo(-3,-6);ctx.lineTo(-3,6);ctx.lineTo(-7,6);ctx.closePath();ctx.fill();ctx.stroke();
-  ctx.fillStyle='#d6e6dc';ctx.beginPath();ctx.moveTo(-3,-4);ctx.quadraticCurveTo(8,-7,20,0);ctx.quadraticCurveTo(8,7,-3,4);ctx.closePath();ctx.fill();ctx.stroke();
-  ctx.strokeStyle='#f8fff1';ctx.beginPath();ctx.moveTo(-1,-2);ctx.lineTo(15,0);ctx.stroke();ctx.restore();
+function drawEarthKnife(x,y,size=40,angle=0,paint=ctx){
+  const ctx=paint;
+  // User sketch: broad pointed steel blade, inward notch, dark grip and ring.
+  ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(size/47,size/47);ctx.lineJoin='round';ctx.lineCap='round';
+  ctx.strokeStyle='#263638';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(-21,0,5.5,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='#493d32';ctx.beginPath();ctx.roundRect(-17,-3,20,6,2);ctx.fill();ctx.stroke();
+  ctx.strokeStyle='#9f9076';ctx.lineWidth=.8;for(let px=-14;px<0;px+=3){ctx.beginPath();ctx.moveTo(px,-2);ctx.lineTo(px+1,2);ctx.stroke();}
+  const steel=ctx.createLinearGradient(0,-9,0,9);steel.addColorStop(0,'#f0f3ed');steel.addColorStop(.5,'#b7c4c5');steel.addColorStop(1,'#788d91');
+  ctx.fillStyle=steel;ctx.strokeStyle='#34484b';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(20,0);ctx.lineTo(-4,-9);ctx.lineTo(3,0);ctx.lineTo(-4,9);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.strokeStyle='#f6faf3';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(3,-1.2);ctx.lineTo(-1,-6);ctx.stroke();ctx.restore();
 }
 function drawEarthKnifeWorld(){
   for(const [i,k] of earthKnives.slots.entries()){

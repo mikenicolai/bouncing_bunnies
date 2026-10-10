@@ -73,7 +73,7 @@ async function browserChecks() {
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Mobile review must not scroll horizontally');
     await page.screenshot({ path: path.resolve(__dirname, '../previews/wood-boss-review-phone.png') });
     assert.deepEqual(errors, []);
-    console.log('PASS: 24 painted poses, all 15 views in both directions, full timeline at 30/60/120 FPS, exact 3:1 scale, scrub/restart and phone layout.');
+    console.log('PASS: 24 painted poses, all 16 views in both directions, full timeline at 30/60/120 FPS, exact 3:1 scale, scrub/restart and phone layout.');
     console.log(JSON.stringify(inspection));
   } finally { await browser.close(); }
 }

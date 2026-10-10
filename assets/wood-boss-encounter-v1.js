@@ -1,11 +1,12 @@
 /* Runtime portion is embedded in index.html, alongside the animation library. */
 const EARTH_ARENA={left:7000,right:7880,floor:-1480,spawn:7460};
-let earthBoss,earthBossRocks=[],earthBossWaves=[],earthBossMountains=[];
+const EARTH_GIANT_HP=8;
+let earthBoss,earthBossRocks=[],earthBossWaves=[],earthBossMountains=[],earthBossVine=null;
 function resetEarthBoss(){
   earthBoss={stage:'small',hp:5,active:false,x:EARTH_ARENA.spawn,facing:-1,age:0,phase:'idle',phaseAge:0,cooldown:1.8,dizzy:0,turn:0,shot:false};
   clearEarthBossHazards();
 }
-function clearEarthBossHazards(){earthBossRocks=[];earthBossWaves=[];earthBossMountains=[];}
+function clearEarthBossHazards(){earthBossRocks=[];earthBossWaves=[];earthBossMountains=[];earthBossVine=null;}
 function earthBossBox(){
   const giant=earthBoss.stage==='giant',w=giant?112:86,h=giant?285:100;
   return{x:earthBoss.x-w/2,y:EARTH_ARENA.floor-h,w,h};
@@ -18,6 +19,7 @@ function hitEarthBoss(source='punch'){
   if(b.stage==='small'){b.phase='idle';b.phaseAge=0;b.cooldown=1.1;}
   burst(b.x,EARTH_ARENA.floor-70,b.stage==='small'?'#b2c967':'#78e1b1',14);
   tone(b.hp?210:125,.15,'triangle',.035);
+  if(earthBossVine?.grabbed)releaseEarthVine();
   if(!b.hp){b.stage=b.stage==='small'?'shatter':'defeat';b.age=0;b.phase='idle';clearEarthBossHazards();}
   return true;
 }
@@ -60,6 +62,42 @@ function updateEarthBossHazards(dt){
   for(const m of earthBossMountains){m.age+=dt;if(earthMountainBoxes(m).some(box=>overlap(player,box)))hurt(player.x<m.x?-1:1);}
   earthBossMountains=earthBossMountains.filter(m=>m.age<5.2);
 }
+function releaseEarthVine(){
+  if(!earthBossVine)return;
+  earthBossVine.grabbed=false;earthBossVine.released=true;
+  burst(player.x+player.w/2,player.y+player.h*.5,'#a6df7c',7);
+}
+function earthVineTip(age){
+  const v=earthBossVine,b=earthBoss,from={x:b.x+b.facing*110,y:EARTH_ARENA.floor-145};
+  const reach=Math.max(0,Math.min(1,(age-.65)/.55));
+  const retreat=age>2?Math.max(0,1-(age-2)/.7):1;
+  return {x:from.x+(v.targetX-from.x)*reach*retreat,y:from.y+(v.targetY-from.y)*reach*retreat};
+}
+function updateEarthVine(dt){
+  const v=earthBossVine;if(!v)return;
+  const old=earthVineTip(v.age);v.age+=dt;const tip=earthVineTip(v.age);
+  if(!v.released&&!v.grabbed&&v.age>=.65&&v.age<=1.3&&arrowSegmentEntry(old,tip,player,10)!==null){v.grabbed=true;v.pullAge=0;tone(220,.1,'triangle',.025);}
+  if(v.grabbed){
+    v.pullAge+=dt;
+    const center=player.x+player.w/2,direction=Math.sign(earthBoss.x-center),gap=Math.abs(earthBoss.x-center);
+    player.x+=direction*Math.min(210*dt,Math.max(0,gap-105));player.vx=0;
+    if(v.pullAge>=.85||player.y+player.h<EARTH_ARENA.floor-65)releaseEarthVine();
+  }
+  if(v.age>=2.8)earthBossVine=null;
+}
+function drawEarthVine(){
+  const v=earthBossVine;if(!v)return;
+  const b=earthBoss,from={x:b.x+b.facing*110-cameraX,y:EARTH_ARENA.floor-145};
+  const tip=v.grabbed?{x:player.x+player.w/2,y:player.y+player.h*.5}:earthVineTip(v.age);
+  const x=tip.x-cameraX,y=tip.y,sag=22*Math.sin(Math.min(1,v.age/.65)*Math.PI*.5);
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.strokeStyle='#264f36';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(from.x,from.y);ctx.bezierCurveTo(from.x+(x-from.x)*.3,from.y+sag,x-(x-from.x)*.2,y+sag,x,y);ctx.stroke();
+  ctx.strokeStyle='#78b65b';ctx.lineWidth=4;ctx.stroke();
+  for(let i=1;i<7;i++){const t=i/7,px=from.x+(x-from.x)*t,py=from.y+(y-from.y)*t+Math.sin(t*Math.PI)*sag;ctx.fillStyle=i%2?'#8bc969':'#547f49';ctx.beginPath();ctx.ellipse(px,py,8,3.5,i%2?.55:-.55,0,Math.PI*2);ctx.fill();}
+  ctx.strokeStyle='#98d77b';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,v.grabbed?20:11,0,Math.PI*1.7);ctx.stroke();
+  if(v.age<.65){ctx.globalAlpha=.35+.2*Math.sin(v.age*15)**2;ctx.fillStyle='#99d971';ctx.beginPath();ctx.ellipse(v.targetX-cameraX,EARTH_ARENA.floor+3,30,8,0,0,Math.PI*2);ctx.fill();}
+  ctx.restore();
+}
 function updateEarthBoss(dt){
   const b=earthBoss;
   if(!b.active&&player.x>=EARTH_ARENA.left&&player.y+player.h<=EARTH_ARENA.floor+15){
@@ -68,10 +106,10 @@ function updateEarthBoss(dt){
   if(!b.active)return;
   b.age+=dt;b.dizzy=Math.max(0,b.dizzy-dt);
   if(b.stage==='shatter'){if(b.age>=2.4){b.stage='rebuild';b.age-=2.4;}return;}
-  if(b.stage==='rebuild'){if(b.age>=5.6){b.stage='giant';b.hp=5;b.age=0;b.phaseAge=0;b.cooldown=1.5;b.dizzy=0;}return;}
+  if(b.stage==='rebuild'){if(b.age>=5.6){b.stage='giant';b.hp=EARTH_GIANT_HP;b.age=0;b.phaseAge=0;b.cooldown=1.5;b.dizzy=0;}return;}
   if(b.stage==='defeat'){if(b.age>=1.5){b.stage='done';clearEarthBossHazards();}return;}
   if(b.stage==='done')return;
-  updateEarthBossHazards(dt);
+  updateEarthBossHazards(dt);updateEarthVine(dt);
   if(state!=='playing')return;
   b.phaseAge+=dt;b.cooldown=Math.max(0,b.cooldown-dt);
   if(b.phase==='idle'){
@@ -79,11 +117,12 @@ function updateEarthBoss(dt){
     const distance=Math.abs(player.x+player.w/2-b.x);
     if(b.dizzy<=0&&distance>155)b.x=Math.max(EARTH_ARENA.left+130,Math.min(EARTH_ARENA.right-130,b.x+b.facing*(b.stage==='small'?36:52)*dt));
     if(!b.cooldown&&b.dizzy<=0&&distance<900){
-      b.phase=b.stage==='small'?'swipe':['rock','quake','mountain'][b.turn++%3];b.phaseAge=0;b.shot=false;
+      b.phase=b.stage==='small'?'swipe':['rock','quake','mountain','vine'][b.turn++%4];b.phaseAge=0;b.shot=false;
+      if(b.phase==='vine')earthBossVine={age:0,targetX:player.x+player.w/2,targetY:player.y+player.h*.5,grabbed:false,pullAge:0,released:false};
       if(b.phase==='mountain'){
         const target=b.x-b.facing*210;
         b.retreatFrom=b.x;b.retreatTo=Math.max(EARTH_ARENA.left+155,Math.min(EARTH_ARENA.right-155,target));
-        earthBossMountains.push({x:b.x,age:0});
+        earthBossMountains.push({x:Math.max(EARTH_ARENA.left+20,Math.min(EARTH_ARENA.right-20,player.x+player.w/2)),age:0});
       }
     }
   }else if(b.phase==='swipe'){
@@ -99,7 +138,7 @@ function updateEarthBoss(dt){
     if(b.phase==='mountain'){
       const t=Math.max(0,Math.min(1,(b.phaseAge-.65)/.9)),p=t*t*(3-2*t);b.x=b.retreatFrom+(b.retreatTo-b.retreatFrom)*p;
     }
-    const duration={rock:3,quake:3.2,mountain:5.2}[b.phase];
+    const duration={rock:3,quake:3.2,mountain:5.2,vine:3.4}[b.phase];
     if(b.phaseAge>=duration){b.phase='idle';b.phaseAge=0;b.cooldown=.95;}
   }
   if(b.dizzy<=0&&overlap(player,earthBossBox())){
@@ -112,18 +151,19 @@ function drawEarthBoss(){
   const b=earthBoss;if(!b||b.stage==='done'||!woodBossImages.small.complete||!woodBossImages.small.naturalWidth||!woodBossImages.giant.complete||!woodBossImages.giant.naturalWidth)return;
   const r=woodBossRenderer,x=b.x-cameraX,floor=EARTH_ARENA.floor;
   for(const m of earthBossMountains)r.mountain(ctx,m.x-cameraX,floor,m.age);
-  if(b.stage==='shatter'){r.sprite(ctx,'small',WoodBossAnimation.frameAt({scene:'shatter',time:b.age}),x,floor,112,b.facing);r.rubble(ctx,x,floor,b.age);r.dust(ctx,x,floor,b.age,Math.max(0,1.5-b.age));}
+  if(b.stage==='shatter'){r.pose(ctx,'small','shatter',b.age,x,floor,112,b.facing);r.rubble(ctx,x,floor,b.age);r.dust(ctx,x,floor,b.age,Math.max(0,1.5-b.age));}
   else if(b.stage==='rebuild')r.assembly(ctx,x,floor,b.age,b.facing);
   else{
     const giant=b.stage==='giant'||b.stage==='defeat',kind=giant?'giant':'small',height=giant?336:112;
     let scene=b.stage==='defeat'?'defeat':b.dizzy>0?(giant?'giantHurt':'smallHurt'):b.phase==='idle'?(giant?'giantIdle':'smallIdle'):b.phase==='swipe'?'smallSwipe':b.phase;
-    const time=b.stage==='defeat'?b.age:b.dizzy>0?0:b.phase==='idle'?b.age:b.phaseAge;
+    const time=b.stage==='defeat'?b.age:b.dizzy>0?(giant?.65:.9)-b.dizzy:b.phase==='idle'?b.age:b.phaseAge;
     const walking=b.phase==='idle'&&b.dizzy<=0&&b.active&&Math.abs(player.x+player.w/2-b.x)>155;
     if(walking)r.walk(ctx,kind,x,floor,height,b.age,b.facing);
-    else r.sprite(ctx,kind,WoodBossAnimation.frameAt({scene,time}),x,floor,height,b.facing);
+    else r.pose(ctx,kind,scene,time,x,floor,height,b.facing);
     if(b.phase==='quake')r.quake(ctx,x,floor,b.phaseAge);
     if(b.stage==='defeat')r.dust(ctx,x,floor,b.age,Math.min(1,b.age));
   }
+  drawEarthVine();
   for(const rock of earthBossRocks)r.fragment(ctx,'small',901,rock.x-cameraX,rock.y,rock.r*2,rock.spin);
   for(const wave of earthBossWaves){
     ctx.save();ctx.strokeStyle='#e5d7a4';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(wave.x-cameraX,floor-5,19,9,0,Math.PI,Math.PI*2);ctx.stroke();ctx.restore();
@@ -134,10 +174,11 @@ function drawEarthBossHearts(){
   const height=b.stage==='giant'?336:112;
   let x=b.x-cameraX,y=Math.max(15,EARTH_ARENA.floor-height-24-cameraY);
   if(x<-100||x>W+100)return;
-  x=Math.max(52,Math.min(W-52,x));
+  const radius=(b.hp-1)*9+10;
+  x=Math.max(radius+7,Math.min(W-radius-7,x));
   const hudScale=H>540?1:Math.min(1.6,Math.max(1,650/canvas.getBoundingClientRect().width));
   const left=W/2-105*hudScale,right=W/2+105*hudScale,bottom=18+54*hudScale;
-  if(y<bottom+10&&x+45>left&&x-45<right)x=x>=W/2?Math.min(W-52,right+60):Math.max(52,left-60);
-  // Overlay after the hero HUD so the five boss hearts stay fully visible.
+  if(y<bottom+10&&x+radius>left&&x-radius<right)x=x>=W/2?Math.min(W-radius-7,right+radius+15):Math.max(radius+7,left-radius-15);
+  // Overlay after the hero HUD so all boss hearts stay fully visible.
   woodBossRenderer.hearts(ctx,x,y,b.hp);
 }

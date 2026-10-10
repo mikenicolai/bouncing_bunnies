@@ -16,6 +16,7 @@
     rock: ['Giant · throw rock', 3],
     quake: ['Giant · earthquake', 3.2],
     mountain: ['Giant · warning + rising mountains', 5.2],
+    vine: ['Giant · vine reach and pull', 3.4],
     giantHurt: ['Giant · hurt', 1.4],
     defeat: ['Giant · collapse', 3.5]
   };
@@ -55,6 +56,57 @@
       default: return 0;
     }
   }
+  // Continuous, eased transitions retain the complete painted silhouette.
+  // Paint into one additive blend surface first; ordinary stacked alpha draws
+  // make the overlapping torso translucent and expose rectangular slice seams.
+  function blendAt(scene, time) {
+    let keys;
+    if (['smallIdle','giantIdle','compare'].includes(scene)) {
+      const phase=((time % 2)+2)%2;keys=[[0,0],[1,1],[2,0]];time=phase;
+    } else if (scene.endsWith('Walk')) {
+      time=((time*3.2)%4+4)%4;keys=[[0,0],[1,2],[2,0],[3,3],[4,0]];
+    } else keys={
+      smallSwipe:[[0,0],[.3,4],[.5,5],[.8,0]],
+      smallHurt:[[0,6],[.45,6],[.9,0]],
+      shatter:[[0,7],[.28,8],[.52,9],[.82,10],[1.2,11]],
+      rock:[[0,0],[.45,4],[.75,5],[1.18,0]],
+      quake:[[0,0],[.55,6],[.9,7],[1.5,0]],
+      mountain:[[0,0],[.55,8],[1.15,9],[1.65,0]],
+      vine:[[0,0],[.4,8],[.9,9],[2,0]],
+      giantHurt:[[0,10],[.2,10],[.65,0]],
+      defeat:[[0,10],[.65,11]]
+    }[scene]||[[0,0]];
+    for(let i=1;i<keys.length;i++)if(time<keys[i][0])return {frame:keys[i-1][1],next:keys[i][1],mix:smooth((time-keys[i][0]+Math.min(.12,(keys[i][0]-keys[i-1][0])*.45))/Math.min(.12,(keys[i][0]-keys[i-1][0])*.45))};
+    return {frame:keys.at(-1)[1],next:keys.at(-1)[1],mix:0};
+  }
+  class PaintedPoseBlend {
+    constructor(image, bounds, normalize=false) {
+      this.normalize=normalize;
+      this.image=image;this.bounds=bounds;this.frames=[];
+      this.left=Math.ceil(Math.max(...bounds.map(b=>(b.anchorX===undefined?b.w/2:b.anchorX-b.x)*(normalize?bounds[0].h/b.h:1))))+2;
+      this.right=Math.ceil(Math.max(...bounds.map(b=>(b.w-(b.anchorX===undefined?b.w/2:b.anchorX-b.x))*(normalize?bounds[0].h/b.h:1))))+2;
+      this.baseline=Math.ceil(Math.max(...bounds.map(b=>normalize?bounds[0].h:b.h)))+2;
+      this.surface=document.createElement('canvas');this.surface.width=this.left+this.right;this.surface.height=this.baseline+2;
+      this.paint=this.surface.getContext('2d');
+    }
+    frame(index) {
+      if(this.frames[index])return this.frames[index];
+      const b=this.bounds[index],c=document.createElement('canvas');c.width=this.surface.width;c.height=this.surface.height;
+      const paint=c.getContext('2d'),anchor=b.anchorX===undefined?b.w/2:b.anchorX-b.x;
+      paint.imageSmoothingEnabled=true;paint.imageSmoothingQuality='high';
+      const scale=this.normalize?this.bounds[0].h/b.h:1;
+      paint.drawImage(this.image,b.x,b.y,b.w,b.h,this.left-anchor*scale,this.baseline-b.h*scale+(b.offsetY||0),b.w*scale,b.h*scale);
+      return this.frames[index]=c;
+    }
+    draw(ctx, frame, next, amount, x, floor, height, facing=-1, alpha=1) {
+      const scale=height/this.bounds[0].h,paint=this.paint,t=clamp(amount);
+      paint.clearRect(0,0,this.surface.width,this.surface.height);paint.globalCompositeOperation='source-over';paint.globalAlpha=1-t;paint.drawImage(this.frame(frame),0,0);
+      if(t>0){paint.globalCompositeOperation='lighter';paint.globalAlpha=t;paint.drawImage(this.frame(next),0,0);}
+      paint.globalAlpha=1;paint.globalCompositeOperation='source-over';
+      ctx.save();ctx.globalAlpha*=alpha;ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.translate(x,floor);ctx.scale(-facing,1);
+      ctx.drawImage(this.surface,-this.left*scale,-this.baseline*scale,this.surface.width*scale,this.surface.height*scale);ctx.restore();
+    }
+  }
   // Bounds are authored per pose after visual review, rather than inferred from
   // debris / spell effects. Frame zero is the shared scale reference.
   const atlas = {
@@ -71,7 +123,7 @@
   };
   class Renderer {
     constructor(images, bounds) {
-      this.images = images;
+      this.images = images;this.painters={};
       this.bounds = bounds;
       this.ready = !!(images.small?.naturalWidth && images.giant?.naturalWidth);
     }
@@ -108,28 +160,19 @@
     sprite(ctx, kind, frame, x, floor, height, facing = -1, alpha = 1) {
       const b = this.bounds[kind][frame], ref = this.bounds[kind][0];
       const scale = height / ref.h;
-      ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, floor); ctx.scale(-facing, 1);
+      ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high'; ctx.globalAlpha *= alpha; ctx.translate(x, floor); ctx.scale(-facing, 1);
       const anchor = b.anchorX === undefined ? b.w / 2 : b.anchorX - b.x;
       ctx.drawImage(this.images[kind], b.x, b.y, b.w, b.h, -anchor * scale, -b.h * scale, b.w * scale, b.h * scale);
       ctx.restore();
     }
+    pose(ctx, kind, scene, time, x, floor, height, facing=-1) {
+      const blend=blendAt(scene,time),normalize=!['shatter','defeat'].includes(scene),key=kind+(normalize?'standing':'collapse'),painter=this.painters[key]||(this.painters[key]=new PaintedPoseBlend(this.images[kind],this.bounds[kind],normalize));
+      const idle=scene.endsWith('Idle'),breath=idle?1+.004*Math.sin(time*Math.PI):1;
+      painter.draw(ctx,blend.frame,blend.next,blend.mix,x,floor,height*breath,facing);
+    }
     walk(ctx, kind, x, floor, height, time, facing) {
-      const b = this.bounds[kind][0], s = height / b.h, anchor = b.anchorX - b.x;
-      const splitY = b.h * (kind === 'small' ? .85 : .64), stride = Math.sin(time * 9);
-      ctx.save();ctx.translate(x,floor);ctx.scale(-facing,1);
-      // Two painted legs travel in opposite phases; the torso covers the seams.
-      for (let side=0;side<2;side++) {
-        const sx=side?anchor:0, sw=side?b.w-anchor:anchor;
-        const step=stride*(side?1:-1), pivot=(side?sw*.48:-sw*.27)*s;
-        ctx.save();ctx.translate(pivot,-(b.h-splitY)*s);
-        ctx.rotate(step*(kind==='small'?.11:.075));
-        ctx.translate(step*(kind==='small'?4:6),-Math.max(0,step)*(kind==='small'?3:8));
-        ctx.drawImage(this.images[kind],b.x+sx,b.y+splitY,sw,b.h-splitY,(sx-anchor)*s-pivot,0,sw*s,(b.h-splitY)*s);
-        ctx.restore();
-      }
-      const bob=-Math.abs(stride)*(kind==='small'?1:2);
-      ctx.drawImage(this.images[kind],b.x,b.y,b.w,splitY+3,-anchor*s,-height+bob,b.w*s,(splitY+3)*s);
-      ctx.restore();
+      const bob=-(Math.sin(time*3.2*Math.PI)**2)*(kind==='small'?1:2);
+      this.pose(ctx,kind,kind==='small'?'smallWalk':'giantWalk',time,x,floor+bob,height,facing);
     }
     // Draw a polygon cut from the *original* painting. The same stone and moss
     // fragments continue through shatter, settlement, and giant assembly.
@@ -252,10 +295,10 @@
       const shake = state.scene === 'quake' && t >= .85 && t < 2.5 && !options.reducedMotion ? Math.sin(t * 80) * 4 * (1 - (t - .85) / 1.65) : 0;
       ctx.save(); ctx.translate(0, shake);
       if (state.scene === 'compare') {
-        this.sprite(ctx, 'small', frame, 290, floor, SMALL_HEIGHT, facing);
-        this.sprite(ctx, 'giant', frame, 690, floor, GIANT_HEIGHT, facing);
+        this.pose(ctx, 'small', 'smallIdle', t, 290, floor, SMALL_HEIGHT, facing);
+        this.pose(ctx, 'giant', 'giantIdle', t, 690, floor, GIANT_HEIGHT, facing);
         this.hearts(ctx, 290, floor - SMALL_HEIGHT - 27, 5);
-        this.hearts(ctx, 690, floor - GIANT_HEIGHT - 27, 5);
+        this.hearts(ctx, 690, floor - GIANT_HEIGHT - 27, 8);
         ctx.fillStyle = '#315648'; ctx.font = '600 16px system-ui'; ctx.textAlign = 'center';
         ctx.fillText('SMALL · 5 HEARTS', 290, 508); ctx.fillText('GIANT · 3× TALLER', 690, 508);
         ctx.strokeStyle = '#477b63'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 5]);
@@ -264,7 +307,7 @@
       } else if (state.scene.startsWith('small') || state.scene === 'shatter') {
         const walk = state.scene === 'smallWalk' ? Math.sin(t * 2.3) * 38 : 0;
         if(state.scene==='smallWalk')this.walk(ctx,'small',anchor+walk,floor,SMALL_HEIGHT,t,facing);
-        else this.sprite(ctx, 'small', frame, anchor + walk, floor, SMALL_HEIGHT, facing);
+        else this.pose(ctx, 'small', state.scene, t, anchor + walk, floor, SMALL_HEIGHT, facing);
         if (state.scene === 'shatter') { this.rubble(ctx, anchor, floor, t); this.dust(ctx, anchor, floor, t, clamp(1.5 - t)); }
         else this.hearts(ctx, anchor + walk, floor - SMALL_HEIGHT - 28, 5);
       } else if (state.scene === 'rebuild') {
@@ -275,8 +318,8 @@
         if (state.scene === 'mountain') x += 205 * smooth((t - .65) / .9);
         if (state.scene === 'mountain') this.mountain(ctx, anchor, floor, t);
         if(state.scene==='giantWalk')this.walk(ctx,'giant',x,floor,GIANT_HEIGHT,t,facing);
-        else this.sprite(ctx, 'giant', frame, x, floor, GIANT_HEIGHT, facing);
-        if(state.scene!=='defeat')this.hearts(ctx,x,floor-GIANT_HEIGHT-27,5);
+        else this.pose(ctx, 'giant', state.scene, t, x, floor, GIANT_HEIGHT, facing);
+        if(state.scene!=='defeat')this.hearts(ctx,x,floor-GIANT_HEIGHT-27,8);
         if (state.scene === 'rock' && t >= .7 && t < 2.5) {
           const p = (t - .7) / 1.8, rockX = anchor + facing * (65 + 490 * p), rockY = floor - 225 - Math.sin(p * Math.PI) * 110 + 205 * p * p;
           this.fragment(ctx, 'small', 901, rockX, rockY, 45, p * 8);
@@ -314,6 +357,6 @@
       for (let i = 0; i < 140; i++) { const x = random(i + 700) * 1000; ctx.beginPath(); ctx.moveTo(x, 470); ctx.lineTo(x + 3, 463 - random(i + 3) * 10); ctx.stroke(); }
     }
   }
-  root.WoodBossAnimation = { Renderer, scenes, story, sample, frameAt, SMALL_HEIGHT, GIANT_HEIGHT, atlas };
+  root.WoodBossAnimation = { Renderer, PaintedPoseBlend, blendAt, scenes, story, sample, frameAt, SMALL_HEIGHT, GIANT_HEIGHT, atlas };
   if (typeof module !== 'undefined') module.exports = root.WoodBossAnimation;
 })(typeof globalThis !== 'undefined' ? globalThis : window);

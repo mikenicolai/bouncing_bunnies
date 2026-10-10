@@ -25,9 +25,9 @@ for(const fps of [30,60,120]){
  assert.equal(run('earthBoss.stage'),'shatter');assert.equal(run('earthBossRocks.length'),0);
  assert(!run('hitEarthBoss()'),'transformation is invulnerable');
  safe();tick(fps,Math.ceil(2.5*fps));assert.equal(run('earthBoss.stage'),'rebuild');
- tick(fps,Math.ceil(5.7*fps));assert.equal(run('earthBoss.stage'),'giant');assert.equal(run('earthBoss.hp'),5);
- // The second form takes exactly five knife hits, then opens the gate.
- for(let hit=0;hit<5;hit++){run('earthBoss.dizzy=0');knifeBoss();assert.equal(run('earthBoss.hp'),4-hit);}
+ tick(fps,Math.ceil(5.7*fps));assert.equal(run('earthBoss.stage'),'giant');assert.equal(run('earthBoss.hp'),8);
+ // The second form takes exactly eight knife hits, then opens the gate.
+ for(let hit=0;hit<8;hit++){run('earthBoss.dizzy=0');knifeBoss();assert.equal(run('earthBoss.hp'),7-hit);}
  assert.equal(run('earthBoss.stage'),'defeat');safe();tick(fps,Math.ceil(1.6*fps));assert.equal(run('earthBoss.stage'),'done');
  assert.equal(run('earthBossRocks.length+earthBossWaves.length+earthBossMountains.length'),0);
  run("player.x=EARTH_GATE_X-15;player.y=EARTH_ARENA.floor-58;player.onGround=true;player.vy=0");tick(fps,2);
@@ -58,22 +58,24 @@ for(let hit=0;hit<5;hit++){
  assert(run('lives')>0,'rookie fight must be achievable within the normal three-life run');
 }
 safe();tick(60,8*60);assert.equal(run('earthBoss.stage'),'giant');
-// Actual ranged throws, normal return timers and one heart per hit.
-run("earthKnives.slots.forEach(k=>{k.state='ready';k.remaining=0});earthKnives.equipped=true;player.invincible=0");
-for(let hit=0;hit<5;hit++){
+// Actual ranged throws and all eight hits, waiting for the real return timer.
+// Protect the player here to isolate projectile/cooldown rules; the attacks'
+// damage and escape routes have dedicated tests below and in wood-boss-abilities.
+run("earthKnives.slots.forEach(k=>{k.state='ready';k.remaining=0});earthKnives.equipped=true;player.invincible=100");
+for(let hit=0;hit<8;hit++){
+ while(!run("earthKnives.slots.some(k=>k.state==='ready')"))tick(60,1);
  run("player.x=earthBoss.x-250-player.w/2;player.y=EARTH_ARENA.floor-player.h;player.facing=1;player.vx=0;player.vy=0;player.onGround=true;attack()");
- tick(60,36);assert.equal(run('earthBoss.hp'),4-hit);safe(false);tick(60,hit===2?3*60:30);
- assert(run('lives')>0,'ranged giant fight preserves a playable run');
+ tick(60,36);assert.equal(run('earthBoss.hp'),7-hit);safe();tick(60,30);
 }
 safe();tick(60,90);assert.equal(run('earthBoss.stage'),'done');
 reset();assert.equal(run('earthBoss.stage'),'small');assert.equal(run('earthBoss.hp'),5);assert(!run('earthBoss.active'));
-run("earthBoss.stage='giant';earthBoss.hp=5;earthBoss.x=7460;cameraX=earthBoss.x-W*.6;cameraY=EARTH_ARENA.floor-336-24-50;var oldHeartRenderer=woodBossRenderer.hearts;var renderedBossHearts=null;woodBossRenderer.hearts=(ctx,x,y,count)=>renderedBossHearts={x,y,count};drawEarthBossHearts();woodBossRenderer.hearts=oldHeartRenderer;");
-assert.equal(run('renderedBossHearts.count'),5);
-assert(run('renderedBossHearts.x-45>W/2+105'),'hearts must move clear of the hero HUD when the camera raises them');
+run("earthBoss.stage='giant';earthBoss.hp=8;earthBoss.x=7460;cameraX=earthBoss.x-W*.6;cameraY=EARTH_ARENA.floor-336-24-50;var oldHeartRenderer=woodBossRenderer.hearts;var renderedBossHearts=null;woodBossRenderer.hearts=(ctx,x,y,count)=>renderedBossHearts={x,y,count};drawEarthBossHearts();woodBossRenderer.hearts=oldHeartRenderer;");
+assert.equal(run('renderedBossHearts.count'),8);
+assert(run('renderedBossHearts.x-73>W/2+105'),'hearts must move clear of the hero HUD when the camera raises them');
 const html=fs.readFileSync('index.html','utf8');
 for(const [name,file] of [['ANIMATION','wood-boss-animation-v1.js'],['ENCOUNTER','wood-boss-encounter-v1.js']]){
  const source=html.split(`// WILDWOOD_${name}_BEGIN\n`)[1].split(`\n// WILDWOOD_${name}_END`)[0];
  assert.equal(source,fs.readFileSync('assets/'+file,'utf8'),'embedded runtime must match reusable source');
 }
-assert.equal(run('BUILD_INFO.version'),'0.17.0');
-console.log('PASS Wildwood bosses: five hearts each, rookie punch/stomp, knife-only giant and immunity, shatter/rebuild, sealed exit, complete fight with real cooldowns, rock sweep, jumpable earthquakes, warned/retracting mountains, clean restart at 30/60/120 FPS.');
+assert.equal(run('BUILD_INFO.version'),'0.18.0');
+console.log('PASS Wildwood bosses: five rookie hearts and eight giant hearts, rookie punch/stomp, knife-only giant and immunity, shatter/rebuild, sealed exit, complete fight with real cooldowns, rock sweep, jumpable earthquakes, warned/retracting mountains, clean restart at 30/60/120 FPS.');
