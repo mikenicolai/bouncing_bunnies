@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict');
 const {run,reset,place,step}=require('./air.cjs');
-assert(run("airMonsters.length===2&&airMonsters.every(m=>m.platform.kind==='white'&&m.platform.w>=300)"));
+assert(run("airMonsters.length===1&&airMonsters[0].platform===airPlatforms[6]"));
 for(const fps of [30,60,120]){
  reset();run('player.airCloud=airPlatforms[6];player.x=1350;player.y=342;');
  const x=run('airMonsters[0].x');run(`updateAirMonsters(1/${fps})`);

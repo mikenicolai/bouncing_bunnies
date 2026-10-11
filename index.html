@@ -625,7 +625,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.19.2',build:2026101102,builtAt:'2026-10-11',builtLabel:'11 October 2026',deployment:'Hidden Wind island and Lava King flames'});
+const BUILD_INFO=Object.freeze({version:'0.19.3',build:2026101103,builtAt:'2026-10-11',builtLabel:'11 October 2026',deployment:'Safe retreat and crouch fixes'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -1342,8 +1342,8 @@ const smallDescentClouds=[{x:6540,y:-650,w:94,h:54,offset:.4},{x:6010,y:-50,w:92
 const allDescentClouds=[...descentObstacles,...smallDescentClouds];
 let airMonsters=[],descentStarted=false,descentBlueReached=false;
 function resetAirMonsters(){
-  // Only two roomy white clouds; no enemies on tutorial, intermediate or boss clouds.
-  airMonsters=[6,10].map(i=>({platform:airPlatforms[i],x:airPlatforms[i].x+airPlatforms[i].w-76,
+  // One guardian on the first roomy island; the second island stays clear.
+  airMonsters=[6].map(i=>({platform:airPlatforms[i],x:airPlatforms[i].x+airPlatforms[i].w-76,
     y:airPlatforms[i].y-64,w:52,h:64,facing:-1,phase:i*.3,walking:false,hp:3,dizzy:0}));
 }
 function hitAirMonster(m){
@@ -1490,11 +1490,11 @@ function updateFireArrowRecharge(dt){
   }
   if(fireArrow.ammo.every(Boolean))fireArrow.recharge=0;
 }
-function fireArrowToggleAvailable(){return level==='fire'&&fireArrow.owned&&['maze','secondVolcano','king'].includes(fireMode);}
+function fireArrowToggleAvailable(){return level==='fire'&&fireArrow.owned&&['maze','secondVolcano','king'].includes(fireMode)&&!(fireMode==='king'&&lavaKing.defeated);}
 function fireWeaponEquipped(){return level==='fire'&&fireArrow.owned&&fireArrow.aiming;}
 function fireSlopeTravelMode(){return level==='fire'&&['volcano','secondVolcano'].includes(fireMode);}
 function fireHillCrawlMode(){return fireSlopeTravelMode()&&player.onGround&&Math.abs(fireSlopeGrade(player.x+player.w/2))>.05;}
-function fireArcheryMode(){return fireWeaponEquipped()&&['maze','secondVolcano','king'].includes(fireMode);}
+function fireArcheryMode(){return fireWeaponEquipped()&&['maze','secondVolcano','king'].includes(fireMode)&&!(fireMode==='king'&&lavaKing.defeated);}
 function collectFireArrow(){
   if(fireArrow.owned||fireMode!=='maze')return;
   const p=mazeCenter(FIRE_ARROW_CELL.c,FIRE_ARROW_CELL.r);
@@ -1682,10 +1682,13 @@ function respawnFire(){
 }
 function updateFireJourney(dt){
   fireTime+=dt;player.attack=Math.max(0,player.attack-dt);player.attackCooldown=Math.max(0,player.attackCooldown-dt);
-  player.invincible=Math.max(0,player.invincible-dt);player.duck=false;player.h=58;
+  player.invincible=Math.max(0,player.invincible-dt);
+  if(fireMode==='king'&&lavaKing.defeated)updateDuck();
+  else if(player.duck){const feet=player.y+player.h;player.duck=false;player.h=58;player.y=feet-58;}
+  player.duckVisual=Math.max(0,Math.min(.18,(player.duckVisual||0)+(player.duck?dt:-dt)));
   const move=(keys.has('ArrowRight')||keys.has('KeyD')?1:0)-(keys.has('ArrowLeft')||keys.has('KeyA')?1:0)|| (Math.abs(joystick.dx)>.22?joystick.dx:0);
   if(fireJumpingMode()){
-    const accel=player.onGround?(sprintHeld()?1900:GROUND_RUN_ACCEL):820,max=bunnyMoveSpeed();
+    const accel=player.onGround?(sprintHeld()&&!player.duck?1900:GROUND_RUN_ACCEL):820,max=player.duck?70:bunnyMoveSpeed();
     if(move)player.vx+=move*accel*dt;
     else player.vx*=Math.pow(player.onGround?.0008:.08,dt);
     player.vx=Math.max(-max,Math.min(max,player.vx));
@@ -2229,7 +2232,7 @@ function burst(x,y,color,count=8) {
 
 function updateDuck(){
   if(level==='water'&&player.inWater){if(player.duck){player.y-=58-player.h;player.h=58;player.duck=false;}return;}
-  if(level==='fire'&&fireMode!=='surface'){
+  if(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated)){
     if(player.duck){player.y-=58-player.h;player.h=58;player.duck=false;}
     return;
   }
@@ -2238,7 +2241,7 @@ function updateDuck(){
   if(held&&!player.duck){player.duck=true;player.h=18;player.y=feet-18;player.attack=0;}
   else if(!held&&player.duck){
     const standing={x:player.x,y:feet-58,w:player.w,h:58};
-    if(!platforms.some(p=>p.kind!=='blue'&&overlap(standing,p))){player.duck=false;player.h=58;player.y=feet-58;}
+    if(!platforms.some(p=>p.kind!=='blue'&&!p.oneWay&&overlap(standing,p))){player.duck=false;player.h=58;player.y=feet-58;}
   }
 }
 function hurt(direction=1){
@@ -2280,12 +2283,13 @@ function spawnTempestWind(){
   for(const height of heights)tempestWinds.push({x:direction<0?tempest.x-45:tempest.x+tempest.w+10,y:floor-height-9,w:35,h:18,vx:direction*(tempest.enraged?330:240),age:0});
   tone(170,.15,'triangle',.025);
 }
+const TEMPEST_RETREAT_X=5000;
 function updateTempestWinds(dt){
   for(const wind of tempestWinds){
     const oldX=wind.x;wind.x+=wind.vx*dt;wind.age+=dt;
-    if(overlap(player,{x:Math.min(oldX,wind.x),y:wind.y,w:Math.abs(wind.x-oldX)+wind.w,h:wind.h}))hurt(wind.vx>0?1:-1);
+    if(player.x+player.w>TEMPEST_RETREAT_X&&overlap(player,{x:Math.min(oldX,wind.x),y:wind.y,w:Math.abs(wind.x-oldX)+wind.w,h:wind.h}))hurt(wind.vx>0?1:-1);
   }
-  tempestWinds=tempestWinds.filter(w=>w.age<6&&w.x>4620&&w.x<6050);
+  tempestWinds=tempestWinds.filter(w=>w.age<6&&w.x+w.w>TEMPEST_RETREAT_X&&w.x<6050);
 }
 function updateTempest(dt){
   if(!bossAwake||descentStarted||tempest.hp<=0)return;
@@ -2299,6 +2303,7 @@ function updateTempest(dt){
   tempest.x=5330+(tempest.enraged?160:100)*Math.sin(bossTime*(tempest.enraged?1.15:.9));
   const lift=48*Math.max(0,Math.min(1,(bossTime-30)/.8));
   tempest.y=airPlatforms[19].y-tempest.h-lift;
+  if(player.x+player.w<=TEMPEST_RETREAT_X){tempestWinds=[];tempest.shotCooldown=Math.max(.6,tempest.shotCooldown);return;}
   // The wind column blocks jumping over the boss at every height.
   const column={x:tempest.x,y:airPlatforms[19].y-460,w:tempest.w,h:tempest.y+tempest.h-(airPlatforms[19].y-460)};
   if(tempest.dizzy<=0&&tempest.regen<=0&&overlap(player,column))hurt(player.x<tempest.x+tempest.w/2?-1:1);
@@ -4445,11 +4450,11 @@ function drawTouchControls() {
   const kx=JOY.x+joystick.dx*32,ky=JOY.y+joystick.dy*32;
   ctx.fillStyle="rgba(131,220,200,.9)";ctx.beginPath();ctx.arc(kx,ky,JOY.knob,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#fff8de';ctx.font=`bold ${JOY.radius>60?20:14}px system-ui`;ctx.textAlign='center';
-  const inMaze=level==='fire'&&fireMode==='maze',fireWalking=level==='fire'&&fireMode!=='surface'&&!fireJumpingMode();
-  ctx.fillText(inMaze?'↑ CLIMB':fireArcheryMode()?'↑ AIM':fireWalking&&!inMaze?'← MOVE →':inMaze?'↑ CLIMB':level==='water'&&player.inWater?'↑ SWIM':'↑ JUMP',JOY.x,JOY.y-JOY.radius+20);ctx.fillText(inMaze?'↓ CLIMB':fireArcheryMode()?'↓ AIM':level==='fire'&&fireJumpingMode()||fireWalking&&!inMaze?'':inMaze?'↓ CLIMB':level==='water'&&player.inWater?'↓ DIVE':'↓ DUCK',JOY.x,JOY.y+JOY.radius-10);
+  const inMaze=level==='fire'&&fireMode==='maze',fireWalking=level==='fire'&&fireMode!=='surface'&&!fireJumpingMode(),postKing=level==='fire'&&fireMode==='king'&&lavaKing.defeated;
+  ctx.fillText(inMaze?'↑ CLIMB':fireArcheryMode()?'↑ AIM':fireWalking&&!inMaze?'← MOVE →':inMaze?'↑ CLIMB':level==='water'&&player.inWater?'↑ SWIM':'↑ JUMP',JOY.x,JOY.y-JOY.radius+20);ctx.fillText(inMaze?'↓ CLIMB':fireArcheryMode()?'↓ AIM':(level==='fire'&&fireJumpingMode()&&!postKing)||fireWalking&&!inMaze?'':inMaze?'↓ CLIMB':level==='water'&&player.inWater?'↓ DIVE':'↓ DUCK',JOY.x,JOY.y+JOY.radius-10);
   for(const [name,b] of Object.entries(ACTIONS)){
     if(fireArcheryMode()&&name==='jump')continue;
-    if(fireWalking&&(name==='jump'||name==='duck')||level==='fire'&&fireJumpingMode()&&name==='duck')continue;
+    if(fireWalking&&(name==='jump'||name==='duck')||level==='fire'&&fireJumpingMode()&&!postKing&&name==='duck')continue;
     const aimButton=name==='ability2'&&(fireArrowToggleAvailable()||level==='air'&&windStars.owned||level==='earth'&&earthKnivesOwned()||level==='water'&&waterTrident.owned),reserved=name.startsWith('ability')&&!aimButton;if(reserved&&(touchDockHeight||canvas.getBoundingClientRect().width<520))continue;
     ctx.globalAlpha=reserved?.3:.48;ctx.fillStyle=b.color;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
     ctx.globalAlpha=.7;ctx.strokeStyle='#fff';ctx.stroke();
@@ -4499,7 +4504,7 @@ function updateJoystick(p){
   if(state!=='playing'){clearInputs();return;}
   const dx=p.x-JOY.x,dy=p.y-JOY.y,d=Math.hypot(dx,dy)||1,limit=Math.min(JOY.radius-12,d);
   joystick.dx=dx/d*limit/(JOY.radius-12);joystick.dy=dy/d*limit/(JOY.radius-12);
-  if(level==='fire'&&fireMode!=='surface'){
+  if(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated)){
     joystick.duck=false;
     if(fireJumpingMode()&&!fireArcheryMode()){
       if(joystick.dy>=-.25)joystick.jumpArmed=true;
@@ -4519,7 +4524,7 @@ canvas.addEventListener("pointerdown",e=>{
   fitTouchControls();
   const p=canvasPoint(e);
   if((fireArrowToggleAvailable()||level==='air'&&windStars.owned||level==='earth'&&earthKnivesOwned()||level==='water'&&waterTrident.owned)&&Math.hypot(p.x-ACTIONS.ability2.x,p.y-ACTIONS.ability2.y)<ACTIONS.ability2.r+7){e.preventDefault();if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}
-  else if(!(level==='fire'&&fireMode!=='surface')&&Math.hypot(p.x-ACTIONS.duck.x,p.y-ACTIONS.duck.y)<ACTIONS.duck.r+7){e.preventDefault();duckPointer=e.pointerId;canvas.setPointerCapture(e.pointerId);updateDuck();}
+  else if(!(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated))&&Math.hypot(p.x-ACTIONS.duck.x,p.y-ACTIONS.duck.y)<ACTIONS.duck.r+7){e.preventDefault();duckPointer=e.pointerId;canvas.setPointerCapture(e.pointerId);updateDuck();}
   else if(!joystick.active&&Math.hypot(p.x-JOY.x,p.y-JOY.y)<JOY.radius+22){e.preventDefault();joystick.active=true;joystick.pointerId=e.pointerId;canvas.setPointerCapture(e.pointerId);updateJoystick(p);}
   else if(Math.hypot(p.x-ACTIONS.jump.x,p.y-ACTIONS.jump.y)<ACTIONS.jump.r+12){e.preventDefault();jump();}
   else if(Math.hypot(p.x-ACTIONS.hit.x,p.y-ACTIONS.hit.y)<ACTIONS.hit.r+12){e.preventDefault();attack();}
