@@ -625,7 +625,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.19.1',build:2026101101,builtAt:'2026-10-11',builtLabel:'11 October 2026',deployment:'Varied Fire zombie hearts'});
+const BUILD_INFO=Object.freeze({version:'0.19.2',build:2026101102,builtAt:'2026-10-11',builtLabel:'11 October 2026',deployment:'Hidden Wind island and Lava King flames'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -747,6 +747,19 @@ const meadowPlatforms = [
 const FIRE_W=11500,FIRE_EXIT_X=11120;
 const FIRE_SECOND_VOLCANO=[[6800,2060],[7060,2060],[7540,1740],[8000,1340],[8460,920],[8900,520],[9360,140],[9820,-220],[10250,-500],[11280,-500]];
 const FIRE_KING_ARENA={left:10250,right:11280,y:-500};
+const FIRE_KING_BARRIERS=[
+  {x:FIRE_KING_ARENA.left,y:FIRE_KING_ARENA.y-300,w:40,h:300,direction:1},
+  {x:FIRE_KING_ARENA.right-40,y:FIRE_KING_ARENA.y-300,w:40,h:300,direction:-1}
+];
+function lavaKingBarriersActive(){return level==='fire'&&fireMode==='king'&&lavaKing.active&&!lavaKing.defeated;}
+function updateLavaKingBarriers(previousX=player.x){
+  if(!lavaKingBarriersActive())return;
+  const swept={x:Math.min(previousX,player.x),y:player.y,w:Math.abs(player.x-previousX)+player.w,h:player.h};
+  for(const wall of FIRE_KING_BARRIERS)if(overlap(swept,wall)){
+    if(hurt(wall.direction))player.onGround=false;
+    player.x=wall.direction>0?wall.x+wall.w:wall.x-player.w;
+  }
+}
 function fireJumpingMode(){return ['volcano','secondVolcano','king'].includes(fireMode);}
 const FIRE_VOLCANO=[[2700,450],[3150,180],[3600,-220],[4100,-690],[4550,-1050],[4750,-1050]];
 const FIRE_DROPPER={left:4620,right:5220,top:-1050,bottom:1900};
@@ -1265,8 +1278,11 @@ function onTrampoline(p,x=player.x+player.w/2){return p.kind==='green'&&x>=p.x+p
 const AIR_SUMMIT_OFFSET=-2110;
 const DESCENT={left:6000,right:6660,blue:20,finish:21,gateX:6750};
 // Keep the main route IDs stable. Drop off the gate cloud to discover this ledge.
-const airSecretIsland={x:DESCENT.gateX-90,y:1950,w:180,h:28,kind:'white',island:1,oneWay:true,secret:true,spring:0};
+const airSecretIsland={x:DESCENT.gateX-90,y:1960,w:180,h:28,kind:'white',island:1,oneWay:true,secret:true,spring:0};
 airPlatforms.push(airSecretIsland);
+function airSecretIslandVisible(){
+  return descentStarted&&player.y+player.h>airPlatforms[DESCENT.finish].y+35;
+}
 // The return jump from the hidden island passes upward through the gate cloud.
 airPlatforms[DESCENT.finish].oneWay=true;
 // A visible nook under the summit: double back off its left lip to reach it.
@@ -1676,6 +1692,7 @@ function updateFireJourney(dt){
   }else player.vx=move*bunnyMoveSpeed();
   if(move&&!fireArcheryMode())player.facing=Math.sign(move);
   if(fireArcheryMode()&&fireMode==='king')player.facing=player.x+player.w/2<lavaKing.x+lavaKing.w/2?1:-1;
+  const previousX=player.x;
   player.x+=player.vx*dt;player.run+=Math.abs(player.vx)*dt*.04;
   if(fireJumpingMode()){
     if(fireMode!=='volcano')player.x=Math.max(6680-player.w/2,player.x);
@@ -1686,7 +1703,7 @@ function updateFireJourney(dt){
       player.vy=Math.min(850,player.vy+1450*dt);player.y+=player.vy*dt;player.jumpAge+=dt;
       if(player.y+player.h>=ground){player.y=ground-player.h;player.onGround=true;player.vy=0;player.jumpAge=9;player.boosts=0;}
     }
-    updateFireArchery(dt);if(fireMode!=='king')updateFireStones(dt);else updateLavaKing(dt);if(state!=='playing')return;
+    updateFireArchery(dt);if(fireMode!=='king')updateFireStones(dt);else{updateLavaKing(dt);if(state==='playing')updateLavaKingBarriers(previousX);}if(state!=='playing')return;
     if(fireMode==='volcano'&&player.x+player.w/2<=2700){fireMode='surface';}
     else if(fireMode==='volcano'&&player.x+player.w/2>=4750){
       checkpoint={x:4650,y:-1108,mode:'volcano',stage:6};
@@ -2622,7 +2639,8 @@ function updateWorld(dt) {
     // A vertical dead zone leaves small hops steady and follows long ascents/falls.
     const falling=descentStarted&&player.y>airPlatforms[19].y+60;
     const fieldH=playfieldHeight(),screenY=player.y-cameraY,top=fieldH*(falling?.22:.32),bottom=fieldH*(falling?.30:touchDockHeight?.80:.64);
-    const target=screenY<top?player.y-top:screenY>bottom?player.y-bottom:cameraY;
+    const atWindGate=level==='air'&&descentStarted&&player.airCloud===airPlatforms[DESCENT.finish]&&player.y+player.h<=airPlatforms[DESCENT.finish].y+35;
+    const target=atWindGate?airPlatforms[DESCENT.finish].y-fieldH*.86:screenY<top?player.y-top:screenY>bottom?player.y-bottom:cameraY;
     const ceiling=level==='air'&&descentStarted?airSecretIsland.y+80-fieldH*.64:touchDockHeight?phoneGroundCameraY():level==='earth'?72:0;
     cameraY+=(Math.min(ceiling,target)-cameraY)*Math.min(1,dt*9);
   }else if(level==='fire'){
@@ -3423,6 +3441,8 @@ function drawBlueCloudForeground(){
   for(const p of platforms)if(p.kind==='blue')drawPaintedCloud(p,true);
 }
 function drawAirPlatform(p){
+  // The lower island is revealed only after dropping beneath the portal cloud.
+  if(p===airSecretIsland&&!airSecretIslandVisible())return;
   const x=p.x-cameraX;if(x>W+40||x+p.w<-40)return;
   if(p.kind==='green'&&trampolineSprites.length===4){drawTrampoline(p,x);return;}
   if(p.island!==undefined&&islandSprites[p.island]){
@@ -3674,6 +3694,7 @@ function drawPlatform(p) {
 }
 
 function drawCoin(c,time) {
+  if(level==='air'&&c.y===airSecretIsland.y-45&&c.x>=airSecretIsland.x&&c.x<=airSecretIsland.x+airSecretIsland.w&&!airSecretIslandVisible())return;
   if(c.taken)return;const x=c.x-cameraX,y=c.y+Math.sin(time*4+c.bob)*5;if(x<-20||x>W+20)return;
   const squash=.35+.65*Math.abs(Math.sin(time*3+c.bob));ctx.save();ctx.translate(x,y);ctx.scale(squash,1);
   ctx.fillStyle=THEME.goldDark;ctx.beginPath();ctx.arc(0,0,14,0,7);ctx.fill();ctx.fillStyle=THEME.gold;ctx.beginPath();ctx.arc(-2,-2,10,0,7);ctx.fill();
@@ -4234,10 +4255,30 @@ function drawSecondFireVolcano(){
     else{ctx.fillStyle='#b65639';ctx.fillRect(0,0,bx-ax,170);}
     ctx.restore();
   }
-  // The summit is a broad solid arena, with glowing volcanic seams.
-  for(const x of [10265,11260]){
-    ctx.fillStyle='#583439';roundRect(x-cameraX,-590,20,90,7);
-    ctx.fillStyle='#ff9c45';ctx.fillRect(x-cameraX+7,-578,6,64);
+}
+function drawLavaKingBarriers(){
+  if(!lavaKingBarriersActive())return;
+  for(const wall of FIRE_KING_BARRIERS){
+    const x=wall.x-cameraX;if(x>W+60||x+wall.w<-60)continue;
+    ctx.save();ctx.translate(x+wall.w/2,FIRE_KING_ARENA.y);
+    ctx.shadowColor='#ff662b';ctx.shadowBlur=24;
+    const glow=ctx.createLinearGradient(0,-wall.h,0,0);
+    glow.addColorStop(0,'rgba(255,76,25,.05)');glow.addColorStop(.3,'rgba(255,98,28,.4)');glow.addColorStop(1,'#ff943a');
+    ctx.fillStyle=glow;ctx.fillRect(-wall.w/2,-wall.h,wall.w,wall.h);
+    // Overlapping, flickering tongues match the warm outlined fireball palette.
+    for(let i=0;i<7;i++){
+      const phase=fireTime*6+i*1.8,base=-wall.w/2+i*wall.w/6;
+      const height=wall.h*(.68+.23*Math.sin(phase)*Math.sin(phase)),sway=Math.sin(phase*.8)*12;
+      ctx.fillStyle=i%2?'#ff9d36':'#ef4e24';ctx.strokeStyle='#9c3223';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(base-9,0);
+      ctx.bezierCurveTo(base-23,-height*.28,base+18+sway,-height*.58,base+sway,-height);
+      ctx.bezierCurveTo(base+30+sway,-height*.6,base-5,-height*.28,base+11,0);
+      ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle='#ffe59a';ctx.beginPath();ctx.moveTo(base-5,0);
+      ctx.quadraticCurveTo(base+10,-height*.25,base+sway*.5,-height*.55);
+      ctx.quadraticCurveTo(base+17,-height*.2,base+6,0);ctx.fill();
+    }
+    ctx.restore();
   }
 }
 const lavaKingSheet=new Image();lavaKingSheet.src='assets/lava-king-v1.png';
@@ -4422,7 +4463,7 @@ function drawTouchControls() {
 function render(time) {
   const nativeW=W,nativeH=H,fieldH=playfieldHeight(),view=level==='fire'?fireViewSize():level==='water'?waterViewSize():{width:W,height:fieldH,scale:1};
   ctx.save();ctx.beginPath();ctx.rect(0,0,W,fieldH);ctx.clip();ctx.scale(view.scale,view.scale);W=view.width;H=view.height;
-  drawBackground();ctx.save();ctx.translate(0,-cameraY);if(level==='fire'){drawFireTrees();drawFireVolcano();drawFireMaze();drawSecondFireVolcano();drawFireMazeTransition();}if(level==='earth')drawEarthTrees();platforms.forEach(drawPlatform);if(level==='air')drawAirWorld();else if(level==='earth')drawEarthWorld();else if(level==='fire'){drawFireRollingStones();drawFireGate();drawLavaKing();drawFireArrowPickup();drawFireAimPath();drawBunnyArrows();}else if(level==='water')drawWaterWorld();else if(level==='final')drawFinalWorld();else drawShrine(time);coins.forEach(c=>drawCoin(c,time));enemies.forEach(drawEnemy);fireZombies.forEach(drawFireZombie);waterSharks.forEach(drawWaterShark);waterPirates.forEach(drawWaterPirate);drawBunny();if(level==='air')drawHeldWindStar();if(level==='earth')drawHeldEarthKnife();if(level==='water'){drawHeldWaterEquipment();drawWaterGateForeground();drawWaterCacti();}if(level==='final')drawFinalGateForeground();drawBlueCloudForeground();
+  drawBackground();ctx.save();ctx.translate(0,-cameraY);if(level==='fire'){drawFireTrees();drawFireVolcano();drawFireMaze();drawSecondFireVolcano();drawFireMazeTransition();}if(level==='earth')drawEarthTrees();platforms.forEach(drawPlatform);if(level==='air')drawAirWorld();else if(level==='earth')drawEarthWorld();else if(level==='fire'){drawFireRollingStones();drawLavaKingBarriers();drawFireGate();drawLavaKing();drawFireArrowPickup();drawFireAimPath();drawBunnyArrows();}else if(level==='water')drawWaterWorld();else if(level==='final')drawFinalWorld();else drawShrine(time);coins.forEach(c=>drawCoin(c,time));enemies.forEach(drawEnemy);fireZombies.forEach(drawFireZombie);waterSharks.forEach(drawWaterShark);waterPirates.forEach(drawWaterPirate);drawBunny();if(level==='air')drawHeldWindStar();if(level==='earth')drawHeldEarthKnife();if(level==='water'){drawHeldWaterEquipment();drawWaterGateForeground();drawWaterCacti();}if(level==='final')drawFinalGateForeground();drawBlueCloudForeground();
   particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;ctx.restore();ctx.restore();W=nativeW;H=nativeH;drawHUD();drawEarthBossHearts();if(level==='fire'){drawLavaKingHearts();drawFireArrowInventory();}if(level==='air')drawWindStarInventory();if(level==='earth')drawEarthKnifeInventory();drawWaterAdventureHUD();drawTouchControls();
 }
 
