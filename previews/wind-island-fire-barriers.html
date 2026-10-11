@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hidden Wind island and Lava King flames</title>
+<style>body{margin:0;padding:20px;background:#182734;color:#fff4dc;font:16px system-ui}main{max-width:1100px;margin:auto}h1{font-size:25px}p{line-height:1.5}button{font:inherit;padding:10px 15px;margin:0 8px 10px 0;border:0;border-radius:10px;background:#f5bd78;color:#302c39;cursor:pointer}iframe{width:100%;height:850px;border:1px solid #86aab4;border-radius:14px}#status{min-height:25px}</style>
+<main><h1>Hidden Wind island · Lava King flames</h1>
+<p>The lower island appears only after dropping beneath the Wind portal cloud. Two extra jump taps let you return. The Lava King’s flames block the arena edges and take one heart on contact; they extinguish after his defeat.</p>
+<button data-scene="portal" disabled>Wind portal: island hidden</button><button data-scene="island" disabled>Below the cloud: secret island</button><button data-scene="fire" disabled>Lava King flame barriers</button><button data-scene="victory" disabled>After victory: flames out</button><button id="play" disabled>Play boss fight</button>
+<p id="status" role="status">Loading artwork…</p><iframe src="../index.html?v=2026101102" title="Game scenery and flame-barrier preview"></iframe></main>
+<script>
+const frame=document.querySelector('iframe'),status=document.querySelector('#status');
+function show(scene){
+ let code="soundOn=false;level='air';start();beginDescent();descentBlueReached=true;player.x=6815;player.y=airPlatforms[DESCENT.finish].y-player.h;player.onGround=true;player.airCloud=airPlatforms[DESCENT.finish];cameraX=WORLD_W-W;cameraY=airPlatforms[DESCENT.finish].y-playfieldHeight()*.86;state='review';";
+ if(scene==='island')code+="player.x=airSecretIsland.x+70;player.y=airSecretIsland.y-player.h;player.airCloud=airSecretIsland;cameraY=airSecretIsland.y-playfieldHeight()*.7;";
+ if(scene==='fire'||scene==='victory')code="soundOn=false;level='fire';start();fireArrow.owned=true;fireArrow.ammo.fill('normal');beginLavaKing();player.x=10400;player.y=FIRE_KING_ARENA.y-player.h;player.onGround=true;cameraX=FIRE_KING_ARENA.left-70;cameraY=FIRE_KING_ARENA.y-fireViewSize().height*.82;state='review';";
+ if(scene==='victory')code+="lavaKing.hp=0;lavaKing.defeated=true;lavaKing.phase='defeated';";
+ frame.contentWindow.eval(code+'render(1)');
+ status.textContent=scene==='portal'?'The secret island is out of sight beneath the portal cloud.':scene==='island'?'The island is visible after dropping down.':scene==='victory'?'The barriers are extinguished and the victory portal is open.':'The flames hold both sides of the arena. Touching them costs one heart.';
+}
+frame.addEventListener('load',async()=>{await frame.contentWindow.eval('Promise.all([islandSheet,lavaKingSheet].map(image=>image.decode()))');document.querySelectorAll('button').forEach(b=>b.disabled=false);show('portal');});
+document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>show(b.dataset.scene));
+document.querySelector('#play').onclick=()=>{show('fire');frame.contentWindow.eval("state='playing';clearInputs()");frame.contentWindow.focus();status.textContent='Left/right moves. Up/down aims. X/F fires. Z stows or equips.';};
+</script></html>

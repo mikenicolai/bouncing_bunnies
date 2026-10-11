@@ -625,7 +625,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.20.0',build:2026101101,builtAt:'2026-10-11',builtLabel:'11 October 2026',deployment:'Painted meadow zombies and rolled hearts'});
+const BUILD_INFO=Object.freeze({version:'0.20.0',build:2026101104,builtAt:'2026-10-11',builtLabel:'11 October 2026',deployment:'Painted meadow zombies and rolled hearts'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -4031,6 +4031,7 @@ function drawPlatform(p) {
 }
 
 function drawCoin(c,time) {
+  if(level==='air'&&c.y===airSecretIsland.y-45&&c.x>=airSecretIsland.x&&c.x<=airSecretIsland.x+airSecretIsland.w&&!airSecretIslandVisible())return;
   if(c.taken)return;const x=c.x-cameraX,y=c.y+Math.sin(time*4+c.bob)*5;if(x<-20||x>W+20)return;
   const squash=.35+.65*Math.abs(Math.sin(time*3+c.bob));ctx.save();ctx.translate(x,y);ctx.scale(squash,1);
   ctx.fillStyle=THEME.goldDark;ctx.beginPath();ctx.arc(0,0,14,0,7);ctx.fill();ctx.fillStyle=THEME.gold;ctx.beginPath();ctx.arc(-2,-2,10,0,7);ctx.fill();
