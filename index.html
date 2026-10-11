@@ -625,7 +625,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.19.0',build:2026101002,builtAt:'2026-10-10',builtLabel:'10 October 2026',deployment:'Trident, ancient ruins and Neptunus'});
+const BUILD_INFO=Object.freeze({version:'0.19.1',build:2026101101,builtAt:'2026-10-11',builtLabel:'11 October 2026',deployment:'Varied Fire zombie hearts'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
