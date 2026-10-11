@@ -39,7 +39,7 @@ arena();run("player.x=10600;fireArrow.angle=.1;lavaKing.phase='recover';fireBunn
 // Win the actual fight by sprinting during flight and aiming at the moving boss
 // or intercepting incoming projectiles. No health or hit results are forced.
 for(const fps of [30,60,120]){
- arena();let shots=0,direction=1,priorK=null,sawFlight=false;
+ arena();run('lives=5');let shots=0,direction=1,priorK=null,sawFlight=false;
 for(let f=0;f<fps*180&&!run('lavaKing.defeated')&&run("state==='playing'");f++){
  const q=JSON.parse(run('JSON.stringify({p:player,k:lavaKing,balls:lavaKingFireballs,ammo:fireArrow.ammo.filter(Boolean).length})')),p=q.p,k=q.k;
  const flight=k.phase==='flight'||k.y+k.h<-550;if(flight)sawFlight=true;

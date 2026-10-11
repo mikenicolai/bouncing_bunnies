@@ -45,7 +45,7 @@ for(const width of [480,960])for(const fps of [30,60,120]){
     if(hit===1)assert(run('tempest.enraged&&tempest.regenerated'));
   }
   assert.equal(run("windStars.slots.filter(s=>s.state==='ready').length"),3,'five accurate hits leave three spare stars');
-  assert.equal(run('tempestWinds.length'),0);assert.equal(run('airMonsters.length'),2,'boss fight preserves only the two earlier guardians');
+  assert.equal(run('tempestWinds.length'),0);assert.equal(run('airMonsters.length'),1,'only the first island guardian remains');
   run('player.x=5950;player.y=-1748;updateDescent()');assert(run('descentStarted'),'victory opens downdraft');
   reset();run('windStars.owned=true;windStars.equipped=true;player.x=4950;player.y=-1748');
   for(let i=0;i<8;i++){run('player.attackCooldown=0');assert(run('throwWindStar()'));}
@@ -73,13 +73,14 @@ for(const width of [480,960])for(const fps of [30,60,120]){
     run(`update(1/${fps})`);
   }
   assert.equal(run('lives'),3,`real jump clears paired gusts at ${width}/${fps}`);
-  reset();run('bossAwake=true;tempest.shotCooldown=0;updateTempest(0)');assert.equal(run('tempestWinds.length'),1);
+  reset();run('bossAwake=true;player.x=5100;player.y=-1748;tempest.shotCooldown=0;updateTempest(0)');assert.equal(run('tempestWinds.length'),1);
   run('tempest.enraged=true;tempest.shotCooldown=0;updateTempest(0)');assert.equal(run('tempestWinds.length'),3);
   // A prolonged stronger phase must never add creatures to the summit arena.
-  run('player.x=4950;player.y=-1748;player.invincible=1000');
+  run('player.x=5100;player.y=-1748;player.invincible=1000');
   tick(60,'updateAir');
-  assert.equal(run('airMonsters.length'),2,'only the original approach guardians remain');
-  assert(run('airMonsters.every(m=>m.platform===airPlatforms[6]||m.platform===airPlatforms[10])'),'no creatures spawn on the boss cloud');
+  assert.equal(run('airMonsters.length'),1,'only the first island guardian remains');
+  assert(run('airMonsters.every(m=>m.platform===airPlatforms[6])'),'no creatures spawn on the boss cloud');
+  run('tempest.shotCooldown=0;updateTempest(0)');
   assert(run('tempestWinds.length>0'),'Tempest still fires gusts throughout the solo fight');
   // No second heal, even after returning to five hearts in the stronger phase.
   run("tempest.hp=5;tempest.regenerated=true;tempest.regen=0;tempest.dizzy=0;hitTempest('star')");assert.equal(run('tempest.hp'),2);assert.equal(run('tempest.regen'),0);

@@ -22,12 +22,29 @@ assert.deepEqual(detail.above,[18,171,239,255],'soil must not leak above the gra
 assert(detail.colors>30,'deep exposed cliffs must contain painted detail, not plain brown');
 assert(detail.before.every((value,i)=>Math.abs(value-detail.after[i])<=1),'soil must stay aligned to world coordinates as the camera moves');
 await page.locator('[data-scene="mushroom"]').click();await capture('wildwood-mushroom-review.png');
-const supports=await game.evaluate(()=>earthPlatforms.filter(p=>p.kind==='mushroom').map(p=>{const t=earthTreeLayout(p);return {bough:t.boughY,foot:p.y+116,width:t.treeW,cap:p.w,root:t.boughY+t.lowerH*(t.sh*.965-t.branchY)/(t.sh-t.branchY),ground:earthGroundAt(p.x+p.w/2)};}));
+const supports=await game.evaluate(()=>earthPlatforms.filter(p=>p.kind==='mushroom').map(p=>{const t=earthTreeLayout(p);return {bough:t.boughY,foot:p.y+116*EARTH_MUSHROOM_SCALE,width:t.treeW,cap:p.w/EARTH_MUSHROOM_SCALE,root:t.boughY+t.lowerH*(t.sh*.965-t.branchY)/(t.sh-t.branchY),ground:earthGroundAt(p.x+p.w/2)};}));
 assert.equal(supports.length,5);
 for(const support of supports){assert.equal(support.bough,support.foot,'mushroom stem must touch its tree bough');assert(support.root>=support.ground,'supporting tree roots must reach the terrain');assert(support.width<=support.cap+20);}
 await page.locator('[data-scene="upper"]').click();await capture('wildwood-upper-review.png');
 await page.setViewportSize({width:390,height:844});await page.locator('[data-scene="cliff"]').click();await capture('wildwood-cliff-phone-review.png');
 assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+for(const viewport of [{width:1200,height:1040},{width:390,height:844}]){
+  await page.setViewportSize(viewport);
+  for(let i=0;i<5;i++){
+    const landing=await game.evaluate(i=>{
+      level='earth';resetGame();soundOn=false;earthGoblins.forEach(g=>g.alive=false);keys.clear();
+      const b=earthMushroomBoughs[i];player.x=b.x+12;player.y=b.y-player.h-8;player.vx=0;player.vy=30;player.invincible=100;
+      for(let f=0;f<60;f++)update(1/60);
+      const standing=player.onGround&&Math.abs(player.y+player.h-b.y)<.01;
+      keys.add('ArrowRight');for(let f=0;f<12;f++)update(1/60);keys.clear();
+      const walking=player.onGround&&Math.abs(player.y+player.h-b.y)<.01;
+      state='review';cameraX=b.x-W*.3;cameraY=b.y-playfieldHeight()*.7;render(0);
+      return{standing,walking};
+    },i);
+    assert(landing.standing&&landing.walking,`bough ${i} at ${viewport.width}px`);
+    if(i===0)await capture(`wildwood-mushroom-support-${viewport.width}.png`);
+  }
+}
 assert.deepEqual(errors,[]);
 console.log('PASS Wildwood artwork: textured deep cliffs, camera-stable soil, all five mushrooms attached to rooted tree boughs, desktop and phone rendering.');
 }finally{await browser.close();}
