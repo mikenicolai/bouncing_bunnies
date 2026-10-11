@@ -1,0 +1,35 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bunny · painted Aqua suit animation</title>
+<style>
+:root{color-scheme:dark}body{margin:0;background:#0b2436;color:#eefcf6;font:16px system-ui}main{max-width:1060px;margin:auto;padding:24px}h1{font-size:30px;margin:0 0 8px}p{color:#b9dce4;line-height:1.55;max-width:820px}nav{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}button,a{color:#eafdf8;border:1px solid #407f91;background:#163e53;border-radius:10px;padding:10px 16px;font:inherit;cursor:pointer;text-decoration:none}button[aria-pressed=true]{background:#286b74;border-color:#74ebdb}.stage{display:grid;grid-template-columns:2fr 1fr;gap:16px}canvas{display:block;width:100%;height:auto;border:1px solid #407f91;border-radius:18px;background:#103d56}.pickup{display:flex;align-items:center;justify-content:center;flex-direction:column;background:#123b50;border:1px solid #407f91;border-radius:18px;padding:16px}.pickup img{max-height:300px;max-width:100%;object-fit:contain}.pickup span{color:#b9dce4;margin-top:12px;font-size:14px}iframe{display:block;width:100%;height:720px;border:1px solid #407f91;border-radius:18px;margin:16px 0}.atlas{width:100%;display:block;background:#123b50;border-radius:18px;margin:20px 0}details{margin:22px 0}summary{cursor:pointer;color:#94eadd}@media(max-width:600px){main{padding:14px}h1{font-size:25px}.stage{grid-template-columns:1fr}.pickup{display:none}iframe{height:80vh}button,a{padding:9px 12px}}
+</style>
+<main><h1>Bunny’s new Aqua suit</h1><p>Painted to match Bunny: soft rounded teal armor, a glowing golden chest core, cyan lights, and a clear helmet with room for the pink ears. Watch the paddling paws and flipper kicks, then switch to diving or an underwater punch.</p>
+<nav aria-label="Animation"><button data-mode="swim" aria-pressed="true">Swim</button><button data-mode="idle" aria-pressed="false">Float</button><button data-mode="dive" aria-pressed="false">Dive</button><button data-mode="punch" aria-pressed="false">Punch</button><button id="direction">Face left</button><button id="pause">Pause</button></nav>
+<div class="stage"><canvas id="animation" width="680" height="420" aria-label="Animated Bunny wearing the painted cyber Aqua suit"></canvas><div class="pickup"><img src="../assets/aqua-suit-pickup-v1.png" alt="The matching painted Aqua suit pickup"><span>The matching suit pickup</span></div></div>
+<p id="status" aria-live="polite">Loading painted swimming poses…</p>
+<nav><button id="try">Try the suit in the swimming level</button><button id="reset">Back to animation</button></nav>
+<iframe src="../index.html" title="The painted suit in the actual swimming level" allow="fullscreen"></iframe>
+<details><summary>See all eight painted poses</summary><img class="atlas" src="../assets/bunny-aqua-suit-swim-v1.png" alt="Four swimming poses, two diving poses, windup and underwater punch"><a href="../assets/bunny-aqua-suit-swim-v1.md">Artwork and generation prompts</a></details>
+</main>
+<script>
+const frame=document.querySelector('iframe'),stage=document.querySelector('#animation'),paint=stage.getContext('2d');window.aquaPreviewContext=paint;
+let ready=false,mode='swim',facing=1,paused=false,live=false,elapsed=0,last=0;
+function scene(){frame.contentWindow.eval("fallbackFullscreen=true;syncFullscreen();level='water';soundOn=false;start();waterSharks=[];waterPirates=[];waterPortalKeyTaken=true;waterGate.phase='open';waterGate.lift=1;waterAquaSuit=true;waterTrident.owned=true;neptunus.active=false;player.inWater=true;player.breaching=false;player.x=12400;player.y=1270;player.vx=0;player.vy=0;player.invincible=0;cameraX=player.x-waterViewSize().width*.44;cameraY=player.y-waterViewSize().height*.48;state='review';");live=false;}
+window.drawAquaPreview=function(time){
+ const w=stage.width,h=stage.height,g=paint.createLinearGradient(0,0,w,h);g.addColorStop(0,'#194d68');g.addColorStop(1,'#092637');paint.fillStyle=g;paint.fillRect(0,0,w,h);
+ for(let i=0;i<12;i++){const x=48+i*57+Math.sin(time*.6+i)*9,y=h-((i*37+time*20)%h);paint.strokeStyle='rgba(156,236,235,.18)';paint.lineWidth=2;paint.beginPath();paint.arc(x,y,3+i%4*2,0,Math.PI*2);paint.stroke();}
+ const vx=mode==='idle'?0:80,vy=mode==='dive'?140:0,cycle=time%1.2,attack=mode==='punch'&&cycle>.68&&cycle<1.08?(cycle<.85?.15:.04):0;
+ if(!ready)return;
+ const pose=frame.contentWindow.eval(`player.vx=${vx};player.vy=${vy};player.attack=${attack};player.facing=${facing};player.swimClock=${time};player.stroke=0;keys.clear();swimFrame()`);
+ frame.contentWindow.eval(`drawAquaSwimPose(${pose},340,245+${Math.sin(time*2.2)*3},${facing},.70,0,parent.aquaPreviewContext)`);
+ if(!live)frame.contentWindow.eval(`waterTime=${time};render(${time});`);
+ window.aquaPreviewFrame=pose;
+};
+frame.onload=()=>{scene();const timer=setInterval(()=>{if(frame.contentWindow.eval('aquaSuitPaintReady()&&aquaSuitPickupSheet.naturalWidth')){clearInterval(timer);ready=true;document.querySelector('#status').textContent='Four swimming strokes · two diving kicks · windup and punch. These are the same painted poses used in the swimming level.';}},50);};
+document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>{mode=button.dataset.mode;elapsed=0;document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b===button));if(live)scene();});
+document.querySelector('#direction').onclick=()=>{facing*=-1;document.querySelector('#direction').textContent=facing===1?'Face left':'Face right';};
+document.querySelector('#pause').onclick=()=>{paused=!paused;document.querySelector('#pause').textContent=paused?'Resume':'Pause';};
+document.querySelector('#try').onclick=()=>{live=true;frame.contentWindow.eval("state='playing';player.attack=0;player.vx=0;player.vy=0;");frame.contentWindow.focus();};
+document.querySelector('#reset').onclick=()=>scene();
+function animate(ms){const dt=Math.min(.033,(ms-last)/1000||0);last=ms;if(!paused)elapsed+=dt;if(!paused||!ready)window.drawAquaPreview(elapsed);requestAnimationFrame(animate);}requestAnimationFrame(animate);
+</script></html>
