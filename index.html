@@ -1393,7 +1393,13 @@ const coinSpots = [
 const enemySpots = [[560,426,500,650],[1000,386,820,1090],[1540,436,1250,1660],[1990,376,1830,2100],[2580,426,2230,2780],[3060,356,2940,3180],[3680,426,3340,3780],[4100,376,3930,4190],[4510,426,4350,4680]];
 
 let player, coins, enemies, fireZombies, particles, score, lives;
-function rollFireZombieHearts(){return Math.random()<.1?1:4.5;}
+function rollFireZombieHearts(roll=Math.random()){
+  if(roll<.2)return 1;
+  if(roll<.55)return 2;
+  if(roll<.8)return 3;
+  if(roll<.95)return 4;
+  return 5;
+}
 function hitFireZombie(z,damage=1){
   if(!z.alive||z.dizzy>0)return false;
   z.hp=Math.max(0,z.hp-damage);z.dizzy=z.hp>0?1.1:0;
