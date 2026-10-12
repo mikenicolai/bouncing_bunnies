@@ -5,7 +5,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   const page=await browser.newPage({viewport:{width:1100,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:8772/previews/water-ruins-review.html');
   const game=page.frames().find(f=>/index.html/.test(f.url()));assert(game);
-  await game.waitForFunction(()=>neptunusSheet.naturalWidth&&waterRuinsSheet.naturalWidth&&waterTridentSheet.naturalWidth&&swimSprites.length===8&&waterGateSheet.naturalWidth);
+  await game.waitForFunction(()=>neptunusSheet.naturalWidth&&waterRuinsSheet.naturalWidth&&waterTridentSheet.naturalWidth&&aquaSuitPaintReady()&&swimSprites.length===8&&waterGateSheet.naturalWidth);
   async function capture(scene,file){
    await page.locator(`[data-scene="${scene}"]`).click();
    await game.evaluate(()=>{state='review';render(0);});

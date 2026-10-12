@@ -2103,7 +2103,36 @@ function drawWaterTrident(x,y,size=74,angle=0,alpha=1){
   for(const [px,py]of[[39,0],[35,-14],[35,14]]){ctx.beginPath();ctx.moveTo(px+5,py);ctx.lineTo(px-5,py-4);ctx.lineTo(px-5,py+4);ctx.closePath();ctx.fill();}
   ctx.strokeStyle='#64dccc';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-22,-3);ctx.lineTo(-22,3);ctx.moveTo(-16,-3);ctx.lineTo(-16,3);ctx.stroke();ctx.restore();
 }
+// Painted Aqua suit poses: four paddles, two dives, windup and punch.
+// The face registration keeps the helmet steady while paws and flippers alternate.
+const AQUA_SWIM_FRAMES=[
+  [0,0,444,444,210,272],[444,0,443,444,206,274],
+  [887,0,443,444,209,275],[1330,0,444,444,198,270],
+  [0,444,444,443,226,264],[444,444,443,443,226,268],
+  [887,444,443,443,210,246],[1330,444,444,443,205,250]
+];
+const aquaSwimSprites=[],aquaSwimSheet=new Image(),aquaSuitPickupSheet=new Image();
+aquaSwimSheet.onload=()=>{
+  aquaSwimSprites.length=0;
+  for(const [x,y,w,h] of AQUA_SWIM_FRAMES){
+    const image=document.createElement('canvas');image.width=w;image.height=h;
+    image.getContext('2d').drawImage(aquaSwimSheet,x,y,w,h,0,0,w,h);aquaSwimSprites.push(image);
+  }
+};
+aquaSwimSheet.src='assets/bunny-aqua-suit-swim-v1.png';
+aquaSuitPickupSheet.src='assets/aqua-suit-pickup-v1.png';
+function aquaSuitPaintReady(){return aquaSwimSprites.length===AQUA_SWIM_FRAMES.length;}
+function drawAquaSwimPose(frame,x,y,facing=1,scale=.20,angle=0,target=ctx){
+  const sprite=aquaSwimSprites[frame];if(!sprite)return false;
+  const [, , , ,ax,ay]=AQUA_SWIM_FRAMES[frame];
+  target.save();target.translate(x,y);target.scale(facing,1);target.rotate(angle);target.imageSmoothingEnabled=true;
+  target.drawImage(sprite,-ax*scale,-ay*scale,sprite.width*scale,sprite.height*scale);target.restore();return true;
+}
 function drawAquaSuit(x,y,size=70){
+  if(aquaSuitPickupSheet.complete&&aquaSuitPickupSheet.naturalWidth){
+    const h=size*1.35,w=h*aquaSuitPickupSheet.naturalWidth/aquaSuitPickupSheet.naturalHeight;
+    ctx.save();ctx.shadowColor='#5eeedc';ctx.shadowBlur=5;ctx.drawImage(aquaSuitPickupSheet,x-cameraX-w/2,y-h*.55,w,h);ctx.restore();return;
+  }
   ctx.save();ctx.translate(x-cameraX,y);ctx.scale(size/70,size/70);ctx.lineWidth=3;ctx.strokeStyle='#26495b';
   const suit=ctx.createLinearGradient(-18,-8,19,32);suit.addColorStop(0,'#89f3d9');suit.addColorStop(1,'#268fab');ctx.fillStyle=suit;
   ctx.beginPath();ctx.roundRect(-18,-5,36,32,10);ctx.fill();ctx.stroke();
@@ -2150,7 +2179,7 @@ function drawWaterAdventure(){
 function drawHeldWaterEquipment(){
   if(!player.inWater||player.invincible>0&&Math.floor(player.invincible*12)%2===0)return;
   const x=player.x+21,y=player.y+29;
-  if(waterAquaSuit){
+  if(waterAquaSuit&&!aquaSuitPaintReady()){
     // Keep the bunny's face and pink ears readable through a transparent dive helmet.
     ctx.save();ctx.translate(x-cameraX,y);ctx.scale(player.facing,1);
     ctx.fillStyle='#319fa6';ctx.strokeStyle='#24566a';ctx.lineWidth=2;
@@ -2159,7 +2188,10 @@ function drawHeldWaterEquipment(){
     ctx.fillStyle='rgba(185,255,242,.10)';ctx.beginPath();ctx.ellipse(10,-14,21,21,0,0,7);ctx.fill();ctx.strokeStyle='#aadfd9';ctx.stroke();
     ctx.strokeStyle='rgba(241,255,255,.85)';ctx.beginPath();ctx.arc(10,-14,16,3.5,4.7);ctx.stroke();ctx.restore();
   }
-  if(waterTrident.owned&&!waterTrident.shot)drawWaterTrident(x+player.facing*18,y+17,58,player.facing<0?Math.PI+.35:-.35);
+  if(waterTrident.owned&&!waterTrident.shot){
+    const painted=waterAquaSuit&&aquaSuitPaintReady();
+    drawWaterTrident(x+player.facing*(painted?28:18),y+(painted?10:17),58,player.facing<0?Math.PI+.35:-.35);
+  }
 }
 function drawWaterAdventureHUD(){
   if(level!=='water')return;
@@ -4237,6 +4269,11 @@ function swimFrame(){
   return Math.floor(player.swimClock*8)%4;
 }
 function drawSwimmingBunny(){
+  if(waterAquaSuit&&aquaSuitPaintReady()){
+    const frame=swimFrame(),x=player.x-cameraX+player.w/2,y=player.y+player.h/2;
+    drawAquaSwimPose(frame,x,y,player.facing,.20,frame<4?Math.max(-.13,Math.min(.16,player.vy/1000)):0);
+    return;
+  }
   if(swimSprites.length!==8){
     if(characterSprites.length!==8){drawPlaceholderBunny();return;}
     const sprite=characterSprites[2],scale=.19,[ax,ay]=CHARACTER_ANCHORS[2];
@@ -4429,7 +4466,7 @@ function drawBunny(){
 function drawBunnyBody() {
   if(player.invincible>0&&Math.floor(player.invincible*12)%2===0)return;
   if(level==='fire'&&fireArrow.owned&&fireWeaponEquipped()&&fireArcherySheet.complete&&fireArcherySheet.naturalWidth){drawArmedBunny();return;}
-  if(level==='water'&&player.inWater&&!player.breaching){drawSwimmingBunny();return;}
+  if(level==='water'&&player.inWater&&(!player.breaching||waterAquaSuit)){drawSwimmingBunny();return;}
   if(drawPaintedBunny())return;
   if(uprightRunMode()&&uprightRunSheet.complete&&uprightRunSheet.naturalWidth){drawUprightRun();return;}
   const motion=motionFrame();
