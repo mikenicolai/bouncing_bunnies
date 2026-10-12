@@ -58,11 +58,11 @@ for(const fps of [30,60,120]){
  // A carried dash lands one heart of damage and ends before unsafe body contact.
  reset();armed();run("waterAquaSuit=true;neptunus.active=true;neptunus.cooldown=999;player.x=neptunus.x-230;player.y=neptunus.y+80;player.facing=1;waterTrident.mode='dash';attack()");tick(fps,.5);
  assert.equal(run('neptunus.hp'),run('NEPTUNUS_HP')-1);assert.equal(run('lives'),3);assert.equal(run('waterTrident.dash'),0);
- // Eight genuine projectile hits defeat Neptunus; repeated contact per throw cannot multiply damage.
+ // Ten genuine projectile hits defeat Neptunus; repeated contact per throw cannot multiply damage.
  reset();armed();run("waterAquaSuit=true;neptunus.active=true;player.invincible=999;neptunus.cooldown=999");
  for(let hp=run('NEPTUNUS_HP');hp>0;hp--){
   run("keys.clear();waterTrident.shot=null;waterTrident.cooldown=0;neptunus.dizzy=0;neptunus.mode='idle';neptunus.cooldown=999;player.x=neptunus.x-160;player.y=neptunus.y+neptunus.h/2-29;player.vx=0;player.vy=0;player.facing=1;attack()");
-  tick(fps,.55);assert.equal(run('neptunus.hp'),hp-1);
+  tick(fps,.55);assert.equal(run('neptunus.hp'),hp-1);assert.equal(run('waterTrident.cyber'),hp-1<=5,'cyber unlocks on the fifth landed hit');
  }
  assert.equal(run('neptunusShots.length'),0,'defeat clears water attacks');tick(fps,2);
  run("player.x=WATER_ARENA.exit-50;player.y=1260;player.vx=0;keys.add('ArrowRight')");tick(fps,.8);
@@ -87,11 +87,11 @@ for(const fps of [30,60,120]){
   return state==='playing'&&neptunus.hp===0&&lives>0;
  })()`);
  assert(victory,'the live encounter is winnable with normal movement and reusable throws');
- reset();assert(!run('waterTrident.owned||waterAquaSuit||neptunus.active'));assert.equal(run('neptunus.hp'),run('NEPTUNUS_HP'));
+ reset();assert(!run('waterTrident.owned||waterAquaSuit||neptunus.active'));assert.equal(run('neptunus.hp'),10);assert(!run('waterTrident.cyber'),'fresh runs reset the upgrade');
 }
 // Pause freezes oxygen, the projectile and boss; Z and touch share the mode switch.
 reset();armed();run("attack();state='map'");const frozen=run('JSON.stringify({t:waterTrident,b:neptunus,air:player.air})');tick(60,3);
 assert.equal(run('JSON.stringify({t:waterTrident,b:neptunus,air:player.air})'),frozen);
 run("state='playing';window.listeners.keydown[1]({code:'KeyZ',repeat:false,preventDefault(){}})");assert.equal(run('waterTrident.mode'),'dash');
 run("fitTouchControls();document.querySelector('#game').listeners.pointerdown[0]({clientX:ACTIONS.ability2.x,clientY:ACTIONS.ability2.y,pointerId:52,preventDefault(){}})");assert.equal(run('waterTrident.mode'),'throw');
-console.log('PASS water ruins: relic pickups, unlimited suit breathing, aim/throw/dash/return, swept obstacle collisions, checkpoint/pause/reset, mode controls, three telegraphed attacks, eight-hit Neptunus defeat and final exit at 30/60/120 FPS.');
+console.log('PASS water ruins: relic pickups, unlimited suit breathing, aim/throw/dash/return, swept obstacle collisions, checkpoint/pause/reset, mode controls, three telegraphed attacks, ten-hit Neptunus defeat and final exit at 30/60/120 FPS.');

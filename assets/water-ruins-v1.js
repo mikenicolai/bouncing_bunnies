@@ -2,15 +2,17 @@
 // This source is embedded verbatim in index.html for the standalone game.
 const WATER_TRIDENT_SPOT={x:11130,y:1110},WATER_SUIT_SPOT={x:12220,y:1380};
 const WATER_RUINS_START=11850,WATER_ARENA={left:12600,right:14560,exit:14670};
-const NEPTUNUS_HP=8;
+const NEPTUNUS_HP=10;
+const WATER_TRIDENT_DASH_SPEED=720,WATER_TRIDENT_DASH_TIME=.82,WATER_TRIDENT_RETURN_SPEED=1500;
 let waterTrident,waterAquaSuit,neptunus,neptunusShots;
 const neptunusSheet=new Image();neptunusSheet.src='assets/neptunus-v1.png';
 const waterRuinsSheet=new Image();waterRuinsSheet.src='assets/ancient-water-ruins-v1.png';
+const waterTridentSheet=new Image();waterTridentSheet.src='assets/benny-trident-gold-cyber-v1.png';
 
 function waterClamp(value,min,max){return Math.max(min,Math.min(max,value));}
 function resetWaterAdventure(){
   neptunusPaintFrame=0;neptunusPreviousFrame=0;neptunusBlendAge=1;drawNeptunus.lastTime=0;
-  waterTrident={owned:false,mode:'throw',cooldown:0,shot:null,dash:0,dx:1,dy:0};
+  waterTrident={owned:false,cyber:false,mode:'throw',cooldown:0,shot:null,dash:0,dx:1,dy:0};
   waterAquaSuit=false;neptunusShots=[];
   neptunus={x:13800,y:1130,w:120,h:220,hp:NEPTUNUS_HP,active:false,mode:'idle',age:0,
     cooldown:1.8,turn:0,facing:-1,flash:0,dizzy:0,deathAge:0,targetX:0,targetY:0};
@@ -40,10 +42,10 @@ function fireWaterTrident(){
   const t=waterTrident;
   if(!t.owned||!player.inWater||player.breaching||t.cooldown>0||t.shot)return false;
   const direction=waterAimVector();t.dx=direction.x;t.dy=direction.y;
-  t.cooldown=1.25;player.attack=.25;
+  t.cooldown=.85;player.attack=.25;
   t.shot={x:player.x+player.w/2+t.dx*35,y:player.y+player.h/2+t.dy*35,
     vx:t.dx*650,vy:t.dy*650,age:0,returning:false,dash:t.mode==='dash',hit:false};
-  if(t.mode==='dash'){t.dash=.65;player.vx=t.dx*720;player.vy=t.dy*720;}
+  if(t.mode==='dash'){t.dash=WATER_TRIDENT_DASH_TIME;player.vx=t.dx*WATER_TRIDENT_DASH_SPEED;player.vy=t.dy*WATER_TRIDENT_DASH_SPEED;}
   tone(t.mode==='dash'?700:480,.12,'triangle',.03);return true;
 }
 function stopWaterDash(){
@@ -58,9 +60,9 @@ function waterPositionClear(box,solids){
     &&box.y+box.h<=waterFloorY(center)+.1&&!solids.some(s=>overlap(box,s));
 }
 function moveWaterDash(dt,solids){
-  const t=waterTrident,travel=Math.min(dt,t.dash),steps=Math.max(1,Math.ceil(travel*720/7));
+  const t=waterTrident,travel=Math.min(dt,t.dash),steps=Math.max(1,Math.ceil(travel*WATER_TRIDENT_DASH_SPEED/7));
   for(let i=0;i<steps;i++){
-    const candidate={...player,x:player.x+t.dx*720*travel/steps,y:player.y+t.dy*720*travel/steps};
+    const candidate={...player,x:player.x+t.dx*WATER_TRIDENT_DASH_SPEED*travel/steps,y:player.y+t.dy*WATER_TRIDENT_DASH_SPEED*travel/steps};
     if(!waterPositionClear(candidate,solids)){stopWaterDash();break;}
     player.x=candidate.x;player.y=candidate.y;
     if(i%3===0)burst(player.x+21-t.dx*25,player.y+29-t.dy*25,'#a8fff0',1);
@@ -74,7 +76,12 @@ function hitWaterEnemy(enemy){
 }
 function hitNeptunus(){
   const b=neptunus;if(!b.active||b.hp<=0||b.dizzy>0)return false;
-  b.hp--;b.dizzy=.7;b.flash=.3;b.mode=b.hp>0?'hurt':'defeated';b.age=0;b.cooldown=1.1;
+  b.hp--;b.dizzy=1.2;b.flash=.3;b.mode=b.hp>0?'hurt':'defeated';b.age=0;b.cooldown=1.1;
+  // A hit interrupts the whole attack, including any water already summoned.
+  neptunusShots=[];
+  if(b.hp<=5&&!waterTrident.cyber){
+    waterTrident.cyber=true;burst(player.x+21,player.y+29,'#67f7ff',32);tone(980,.25,'sine',.04);
+  }
   burst(b.x+b.w/2,b.y+90,b.hp?'#ffde87':'#a5fff1',b.hp?18:48);tone(b.hp?260:145,.18,'triangle',.04);
   if(b.hp===0){neptunusShots=[];stopWaterDash();}
   return true;
@@ -85,8 +92,8 @@ function updateWaterTrident(dt,solids){
   shot.age+=dt;
   if(shot.returning){
     const dx=player.x+21-shot.x,dy=player.y+29-shot.y,d=Math.hypot(dx,dy);
-    if(d<=940*dt+20){t.shot=null;return;}
-    shot.x+=dx/d*940*dt;shot.y+=dy/d*940*dt;return;
+    if(d<=WATER_TRIDENT_RETURN_SPEED*dt+20){t.shot=null;return;}
+    shot.x+=dx/d*WATER_TRIDENT_RETURN_SPEED*dt;shot.y+=dy/d*WATER_TRIDENT_RETURN_SPEED*dt;return;
   }
   const steps=Math.max(1,Math.ceil(650*dt/8));
   for(let i=0;i<steps&&!shot.returning;i++){
@@ -161,8 +168,14 @@ function updateNeptunus(dt){
 }
 function neptunusThrustBox(){const b=neptunus;return{x:b.facing<0?b.x-195:b.x+b.w-10,y:b.y+92,w:205,h:36};}
 
-// The small weapons and suit are continuous Canvas art, matching the game's item style.
+// Two painted atlas rows share one orientation: butt left, three prongs right.
 function drawWaterTrident(x,y,size=74,angle=0,alpha=1){
+  if(waterTridentSheet.complete&&waterTridentSheet.naturalWidth){
+    const cyber=waterTrident?.cyber,sw=waterTridentSheet.naturalWidth,sh=waterTridentSheet.naturalHeight*.375;
+    const sy=(cyber?548:108)*waterTridentSheet.naturalHeight/1024;
+    ctx.save();ctx.translate(x-cameraX,y);ctx.rotate(angle);ctx.globalAlpha*=alpha;
+    ctx.drawImage(waterTridentSheet,0,sy,sw,sh,-size/2,-size*sh/sw/2,size,size*sh/sw);ctx.restore();return;
+  }
   ctx.save();ctx.translate(x-cameraX,y);ctx.rotate(angle);ctx.scale(size/74,size/74);ctx.globalAlpha*=alpha;
   ctx.strokeStyle='#25465d';ctx.lineWidth=7;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-34,0);ctx.lineTo(25,0);ctx.moveTo(17,-14);ctx.quadraticCurveTo(7,-14,11,0);ctx.quadraticCurveTo(7,14,17,14);ctx.moveTo(17,-14);ctx.lineTo(35,-14);ctx.moveTo(25,0);ctx.lineTo(39,0);ctx.moveTo(17,14);ctx.lineTo(35,14);ctx.stroke();
   ctx.strokeStyle='#efd38a';ctx.lineWidth=4;ctx.stroke();ctx.fillStyle='#aaffee';
@@ -211,7 +224,7 @@ function drawWaterAdventure(){
   ctx.beginPath();ctx.ellipse(exit+40,1270,50,135,0,0,7);ctx.stroke();
   if(neptunus.hp>0||neptunus.deathAge<1.6){ctx.fillStyle='rgba(66,106,121,.7)';ctx.fillRect(exit,680,64,820);}
   ctx.fillStyle='#e0fff1';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(neptunus.hp>0?'DEFEAT NEPTUNUS':'WATER EXIT',exit+32,1100);
-  const t=waterTrident;if(t.shot){drawWaterTrident(t.shot.x,t.shot.y,65,Math.atan2(t.shot.vy,t.shot.vx),t.shot.returning?.65:1);}
+  const t=waterTrident;if(t.shot){drawWaterTrident(t.shot.x,t.shot.y,82,Math.atan2(t.shot.vy,t.shot.vx),t.shot.returning?.65:1);}
 }
 function drawHeldWaterEquipment(){
   if(!player.inWater||player.invincible>0&&Math.floor(player.invincible*12)%2===0)return;
@@ -225,22 +238,22 @@ function drawHeldWaterEquipment(){
     ctx.fillStyle='rgba(185,255,242,.10)';ctx.beginPath();ctx.ellipse(10,-14,21,21,0,0,7);ctx.fill();ctx.strokeStyle='#aadfd9';ctx.stroke();
     ctx.strokeStyle='rgba(241,255,255,.85)';ctx.beginPath();ctx.arc(10,-14,16,3.5,4.7);ctx.stroke();ctx.restore();
   }
-  if(waterTrident.owned&&!waterTrident.shot)drawWaterTrident(x+player.facing*18,y+17,42,player.facing<0?Math.PI+.35:-.35);
+  if(waterTrident.owned&&!waterTrident.shot)drawWaterTrident(x+player.facing*18,y+17,58,player.facing<0?Math.PI+.35:-.35);
 }
 function drawWaterAdventureHUD(){
   if(level!=='water')return;
   const t=waterTrident;
   if(t.owned){
-    const x=20,y=H>540?194:171;ctx.fillStyle='rgba(13,42,65,.84)';roundRect(x,y,230,45,10);
-    ctx.fillStyle='#b3fff1';ctx.font='bold 12px system-ui';ctx.textAlign='left';ctx.fillText(`TRIDENT · ${t.mode.toUpperCase()}${t.shot?(t.shot.returning?' · RETURNING':' · IN FLIGHT'):''}`,x+12,y+18);
+    const x=20,y=H>540?194:171;ctx.fillStyle='rgba(13,42,65,.84)';roundRect(x,y,274,45,10);
+    ctx.fillStyle=t.cyber?'#67f7ff':'#ffe3a0';ctx.font='bold 12px system-ui';ctx.textAlign='left';ctx.fillText(`${t.cyber?'CYBER ':''}TRIDENT · ${t.mode.toUpperCase()}${t.shot?(t.shot.returning?' · RETURNING':' · IN FLIGHT'):''}`,x+12,y+18);
     ctx.fillStyle='#d8e9e7';ctx.font='11px system-ui';ctx.fillText('Z: switch · X/F: use · arrows: aim',x+12,y+34);
   }
   const b=neptunus;if(!b.active||b.hp<=0)return;
   const zoom=waterViewSize().scale;
-  const x=waterClamp((b.x+b.w/2-cameraX)*zoom,100,W-100),y=waterClamp((b.y-cameraY-32)*zoom,110,playfieldHeight()-38);
-  ctx.fillStyle='rgba(13,42,65,.8)';roundRect(x-90,y-23,180,47,12);ctx.textAlign='center';ctx.font='bold 11px system-ui';ctx.fillStyle='#ffe3a0';ctx.fillText('NEPTUNUS',x,y-6);
+  const x=waterClamp((b.x+b.w/2-cameraX)*zoom,110,W-110),y=waterClamp((b.y-cameraY-32)*zoom,110,playfieldHeight()-38);
+  ctx.fillStyle='rgba(13,42,65,.8)';roundRect(x-103,y-23,206,47,12);ctx.textAlign='center';ctx.font='bold 11px system-ui';ctx.fillStyle='#ffe3a0';ctx.fillText('NEPTUNUS',x,y-6);
   for(let i=0;i<NEPTUNUS_HP;i++){
-    const hx=x-66+i*19,hy=y+7;ctx.fillStyle=i<b.hp?'#ff8e91':'#456477';ctx.beginPath();ctx.moveTo(hx,hy+7);ctx.bezierCurveTo(hx-15,hy-2,hx-8,hy-12,hx,hy-5);ctx.bezierCurveTo(hx+8,hy-12,hx+15,hy-2,hx,hy+7);ctx.fill();
+    const hx=x+(i-(NEPTUNUS_HP-1)/2)*19,hy=y+7;ctx.fillStyle=i<b.hp?'#ff8e91':'#456477';ctx.beginPath();ctx.moveTo(hx,hy+7);ctx.bezierCurveTo(hx-15,hy-2,hx-8,hy-12,hx,hy-5);ctx.bezierCurveTo(hx+8,hy-12,hx+15,hy-2,hx,hy+7);ctx.fill();
   }
 }
 // Atlas registration is populated from the final transparent painted sheet.
@@ -290,5 +303,12 @@ function drawNeptunus(){
   neptunusBlendAge=Math.min(1,neptunusBlendAge+Math.max(0,waterTime-(drawNeptunus.lastTime||waterTime))/.12);drawNeptunus.lastTime=waterTime;
   const blend=neptunusBlendAge*neptunusBlendAge*(3-2*neptunusBlendAge);
   const opacity=b.hp<=0?Math.max(0,1-b.deathAge/2.4):b.flash>0?.7:1;
-  neptunusPaint.draw(ctx,neptunusPreviousFrame,frame,blend,b.x+b.w/2-cameraX,b.y+b.h+12,300,b.facing,opacity);
+  const cx=b.x+b.w/2-cameraX;
+  ctx.save();
+  if(b.dizzy>0&&b.hp>0){ctx.translate(cx,b.y+b.h);ctx.rotate(Math.sin(waterTime*18)*.025);ctx.translate(-cx,-b.y-b.h);}
+  neptunusPaint.draw(ctx,neptunusPreviousFrame,frame,blend,cx,b.y+b.h+12,300,b.facing,opacity);ctx.restore();
+  if(b.dizzy>0&&b.hp>0){
+    ctx.save();ctx.fillStyle='#ffe48a';ctx.font='bold 19px system-ui';ctx.textAlign='center';
+    for(let i=0;i<3;i++){const a=waterTime*5+i*Math.PI*2/3;ctx.fillText('★',cx+Math.cos(a)*48,b.y+8+Math.sin(a)*10);}ctx.restore();
+  }
 }

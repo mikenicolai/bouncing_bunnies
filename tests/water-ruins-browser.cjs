@@ -5,13 +5,16 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   const page=await browser.newPage({viewport:{width:1100,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:8772/previews/water-ruins-review.html');
   const game=page.frames().find(f=>/index.html/.test(f.url()));assert(game);
-  await game.waitForFunction(()=>neptunusSheet.naturalWidth&&waterRuinsSheet.naturalWidth&&swimSprites.length===8&&waterGateSheet.naturalWidth);
+  await game.waitForFunction(()=>neptunusSheet.naturalWidth&&waterRuinsSheet.naturalWidth&&waterTridentSheet.naturalWidth&&swimSprites.length===8&&waterGateSheet.naturalWidth);
   async function capture(scene,file){
    await page.locator(`[data-scene="${scene}"]`).click();
    await game.evaluate(()=>{state='review';render(0);});
+   if(scene==='hurt')await game.evaluate(()=>{waterTime+=.2;render(0);waterTime+=.12;render(0);});
    const data=await game.evaluate(()=>canvas.toDataURL('image/png').split(',')[1]);fs.writeFileSync('previews/'+file,Buffer.from(data,'base64'));
   }
   await capture('trident','water-trident-review.png');await capture('suit','water-aqua-suit-review.png');await capture('boss','water-neptunus-review.png');
+  await capture('cyber','water-cyber-trident-review.png');assert.equal(await game.evaluate(()=>neptunus.hp),5);assert(await game.evaluate(()=>waterTrident.cyber));
+  await capture('hurt','water-neptunus-hurt-review.png');assert.equal(await game.evaluate(()=>neptunus.mode),'hurt');assert.equal(await game.evaluate(()=>neptunusPaintFrame),6);
   await capture('tide','water-tide-warning-review.png');await capture('thrust','water-thrust-warning-review.png');
   const art=await game.evaluate(()=>{
    const source=document.createElement('canvas');source.width=neptunusSheet.naturalWidth;source.height=neptunusSheet.naturalHeight;const c=source.getContext('2d');c.drawImage(neptunusSheet,0,0);

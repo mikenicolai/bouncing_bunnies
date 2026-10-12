@@ -1,0 +1,13 @@
+# Benny's gold and cyber trident
+
+12 October 2026. Generated with the built-in ImageGen tool; original RGBA output copied unchanged to `assets/benny-trident-gold-cyber-v1.png` (1536 × 1024).
+
+Two horizontal, right-facing weapons share the same silhouette: gold with teal grips and turquoise jewels above, gold/graphite with cyan energy blades and circuit seams below. The game draws registered atlas windows at `(0,108,1536,384)` and `(0,548,1536,384)` without modifying the source alpha. The artwork appears on the pedestal, in Benny's hands and during throws/returns.
+
+Neptunus starts with ten hearts. The fifth successful hit unlocks the cyber appearance; it persists through lost player hearts and resets on a fresh Water run. Both forms deal one heart per hit. Dash lasts 0.82 seconds at 720 pixels/second (about 590 pixels), with swept obstacle collision. Throws return at 1500 pixels/second; reuse waits for the weapon and a 0.85-second cooldown.
+
+Successful hits interrupt Neptunus's attack and summoned water, and show 1.2 seconds of hurt pose, sway and orbiting stars. His next attack waits through recovery and an idle cooldown. Wildwood's two forms now cancel their attacks/hazards and pause during hurt; Tempest stops moving and clears gusts on a hit. The Lava King's existing hit behavior is preserved.
+
+Final built-in ImageGen prompt:
+
+Use case: stylized-concept. Asset type: transparent 2D weapon sprite atlas for the Bouncing Bunnies canvas game. Primary request: Benny's beautiful ornate golden underwater trident and its cyber upgraded form, two versions of exactly the same weapon. Composition: landscape 1536x1024 transparent image with TWO separate horizontal weapons, stacked in two evenly spaced rows; each weapon entirely contained in its row with generous margins. Both shafts point horizontally right, butt on left and three-pronged spear head on right, perfectly side-on with no perspective. Top row: polished warm gold shaft and three distinct golden spear prongs, engraved sea-wave motifs, dark teal grip bands, turquoise jewel at the base of the fork, tasteful gold highlights. Bottom row: the SAME silhouette and gold ornaments upgraded with deep teal/graphite panels, luminous cyan circuit seams along the shaft, bright aqua energy blades on all three prongs, a small warm golden power core, matching a cyber Aqua suit/shield. Style: hand-painted 2D storybook game art with bold dark ink silhouette and softly textured shading, clear at small sizes. Clean compact broad three-tined head, long straight shaft, no excessive tiny detail. True transparent background; no scenery, labels, text, characters, hands, additional objects, watermark or drop shadows. Keep weapons separate, aligned and equal length.

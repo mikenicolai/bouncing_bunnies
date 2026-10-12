@@ -16,10 +16,12 @@ function hitEarthBoss(source='punch'){
   if(!b.active||!['small','giant'].includes(b.stage)||b.dizzy>0)return false;
   if(b.stage==='giant'&&source!=='knife'){burst(b.x,EARTH_ARENA.floor-70,'#c5df9b',5);tone(140,.06,'triangle',.02);return false;}
   b.hp=Math.max(0,b.hp-1);b.dizzy=b.stage==='small'?.9:.65;
-  if(b.stage==='small'){b.phase='idle';b.phaseAge=0;b.cooldown=1.1;}
+  // Both forms cancel the current attack and wait through the hurt pose.
+  b.phase='idle';b.phaseAge=0;b.cooldown=1.1;b.shot=false;
   burst(b.x,EARTH_ARENA.floor-70,b.stage==='small'?'#b2c967':'#78e1b1',14);
   tone(b.hp?210:125,.15,'triangle',.035);
   if(earthBossVine?.grabbed)releaseEarthVine();
+  clearEarthBossHazards();
   if(!b.hp){b.stage=b.stage==='small'?'shatter':'defeat';b.age=0;b.phase='idle';clearEarthBossHazards();}
   return true;
 }
@@ -111,6 +113,7 @@ function updateEarthBoss(dt){
   if(b.stage==='done')return;
   updateEarthBossHazards(dt);updateEarthVine(dt);
   if(state!=='playing')return;
+  if(b.dizzy>0)return;
   b.phaseAge+=dt;b.cooldown=Math.max(0,b.cooldown-dt);
   if(b.phase==='idle'){
     b.facing=player.x+player.w/2<b.x?-1:1;
