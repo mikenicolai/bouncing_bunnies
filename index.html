@@ -625,7 +625,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.20.2',build:2026101201,builtAt:'2026-10-12',builtLabel:'12 October 2026',deployment:'Boss hit reactions and gold cyber trident'});
+const BUILD_INFO=Object.freeze({version:'0.20.3',build:2026101202,builtAt:'2026-10-12',builtLabel:'12 October 2026',deployment:'Castle bow and jump fixes'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -1039,9 +1039,9 @@ function resetFinalMonsters(){
       swing:0,swingCooldown:.5+i*.13,tetherAngle:0,hurtFrom:4,castle:true};
   });
 }
-function hitFinalMonster(m){
+function hitFinalMonster(m,damage=1){
   if(!m.alive||m.dizzy>0)return false;
-  m.hp--;m.alive=m.hp>0;m.dizzy=m.alive?.9:0;m.deathAge=0;m.swing=0;m.hurtFrom=Math.floor(m.phase)%4;
+  m.hp=Math.max(0,m.hp-damage);m.alive=m.hp>0;m.dizzy=m.alive?.9:0;m.deathAge=0;m.swing=0;m.hurtFrom=Math.floor(m.phase)%4;
   burst(m.x+m.w/2,m.y+m.h/2,m.alive?'#f4cb8d':'#a6e6d2',m.alive?10:20);
   tone(m.alive?230:145,.12,'triangle',.03);return true;
 }
@@ -1069,7 +1069,7 @@ function updateFinalMonsters(dt){
     const pirateReach=m.kind==='pirate'?pirateWeaponBox(m):null;
     if(pirateReach&&overlap(player,pirateReach))hurt(player.x<m.x?-1:1);
     if(!overlap(player,m))continue;
-    const stomp=player.vy>100&&(player.previousFeet??player.y+player.h)<=m.y+12;
+    const stomp=m.kind!=='lava'&&player.vy>100&&(player.previousFeet??player.y+player.h)<=m.y+12;
     if(stomp){if(hitFinalMonster(m)){player.y=m.y-player.h;player.vy=-460;player.onGround=false;player.jumpAge=0;player.boosts=0;}}
     else if(!wasDizzy&&m.dizzy<=0)hurt(player.x+player.w/2<m.x+m.w/2?-1:1);
   }
@@ -1083,7 +1083,7 @@ function updateFinalCastle(dt){
     const floor=finalPlatforms.find(p=>p.h>100&&player.x>=p.x&&player.x+player.w<=p.x+p.w&&Math.abs(player.y+player.h-p.y)<1);
     if(floor)checkpoint={x:Math.max(floor.x+40,player.x-100),y:floor.y-58};
   }
-  updateFinalMonsters(dt);
+  updateFireArchery(dt);updateFinalMonsters(dt);
   if(player.onGround&&player.x>FINAL_END_X)showCastleOpeningEnd();
 }
 function showCastleOpeningEnd(){
@@ -1601,6 +1601,11 @@ function chooseFireArrowCell(){
 }
 function resetFireArrow(){
   if(level==='fire')chooseFireArrowCell();
+  // Fire victory requires this relic, so saved completion restores it in the castle.
+  if(level==='final'&&fireFinished){
+    const ammo=fireArrow.owned&&fireArrow.ammo.length===FIRE_ARROW_CAPACITY?fireArrow.ammo.slice():Array.from({length:FIRE_ARROW_CAPACITY},rollFireArrowType);
+    fireArrow={owned:true,aiming:false,angle:.1,cooldown:0,release:0,ammo,recharge:fireArrow.owned?fireArrow.recharge:0};bunnyArrows=[];return;
+  }
   fireArrow={owned:false,aiming:false,angle:.1,cooldown:0,release:0,ammo:Array.from({length:FIRE_ARROW_CAPACITY},rollFireArrowType),recharge:0};bunnyArrows=[];
 }
 function updateFireArrowRecharge(dt){
@@ -1611,11 +1616,11 @@ function updateFireArrowRecharge(dt){
   }
   if(fireArrow.ammo.every(Boolean))fireArrow.recharge=0;
 }
-function fireArrowToggleAvailable(){return level==='fire'&&fireArrow.owned&&['maze','secondVolcano','king'].includes(fireMode)&&!(fireMode==='king'&&lavaKing.defeated);}
-function fireWeaponEquipped(){return level==='fire'&&fireArrow.owned&&fireArrow.aiming;}
+function fireArrowToggleAvailable(){return fireArrow.owned&&(level==='final'||level==='fire'&&['maze','secondVolcano','king'].includes(fireMode)&&!(fireMode==='king'&&lavaKing.defeated));}
+function fireWeaponEquipped(){return (level==='fire'||level==='final')&&fireArrow.owned&&fireArrow.aiming;}
 function fireSlopeTravelMode(){return level==='fire'&&['volcano','secondVolcano'].includes(fireMode);}
 function fireHillCrawlMode(){return fireSlopeTravelMode()&&player.onGround&&Math.abs(fireSlopeGrade(player.x+player.w/2))>.05;}
-function fireArcheryMode(){return fireWeaponEquipped()&&['maze','secondVolcano','king'].includes(fireMode)&&!(fireMode==='king'&&lavaKing.defeated);}
+function fireArcheryMode(){return fireWeaponEquipped()&&fireArrowToggleAvailable();}
 function collectFireArrow(){
   if(fireArrow.owned||fireMode!=='maze')return;
   const p=mazeCenter(FIRE_ARROW_CELL.c,FIRE_ARROW_CELL.r);
@@ -1624,8 +1629,9 @@ function collectFireArrow(){
 }
 function toggleFireAim(){
   if(state!=='playing'||!fireArrowToggleAvailable())return;
-  if(!fireArrow.aiming&&!player.onGround&&fireMode!=='maze')return;
-  fireArrow.aiming=!fireArrow.aiming;fireArrow.angle=fireMode==='maze'?(player.mazeTarget?-Math.sign(player.mazeTarget.r-player.mazeR)*Math.PI/2:0):.1;fireArrow.release=0;player.attack=0;joystick.jumpArmed=false;
+  const inMaze=level==='fire'&&fireMode==='maze';
+  if(!fireArrow.aiming&&(!player.onGround&&!inMaze||player.duck))return;
+  fireArrow.aiming=!fireArrow.aiming;fireArrow.angle=inMaze?(player.mazeTarget?-Math.sign(player.mazeTarget.r-player.mazeR)*Math.PI/2:0):.1;fireArrow.release=0;player.attack=0;joystick.jumpArmed=false;
 }
 function arrowOrigin(){return{x:player.x+player.w/2+player.facing*(34+14*Math.cos(fireArrow.angle))*BUNNY_ART_SCALE,y:player.y+player.h-(35+14*Math.sin(fireArrow.angle))*BUNNY_ART_SCALE};}
 function arrowFlightPoint(a,t){return{x:a.ox+a.vx*t,y:a.oy+a.vy*t+.5*(a.gravity??FIRE_ARROW_GRAVITY)*t*t};}
@@ -1636,7 +1642,7 @@ function fireBunnyArrow(){
   if(fireArrow.ammo.every(Boolean))fireArrow.recharge=0;
   fireArrow.ammo[slot]=null;
   fireArrow.cooldown=.62;fireArrow.release=.22;
-  const o=arrowOrigin();bunnyArrows.push({ox:o.x,oy:o.y,x:o.x,y:o.y,vx:player.facing*Math.cos(fireArrow.angle)*FIRE_ARROW_SPEED,vy:-Math.sin(fireArrow.angle)*FIRE_ARROW_SPEED,age:0,alive:true,type,damage,facing:player.facing,maze:fireMode==='maze',gravity:fireMode==='maze'?0:FIRE_ARROW_GRAVITY});
+  const o=arrowOrigin(),inMaze=level==='fire'&&fireMode==='maze';bunnyArrows.push({ox:o.x,oy:o.y,x:o.x,y:o.y,vx:player.facing*Math.cos(fireArrow.angle)*FIRE_ARROW_SPEED,vy:-Math.sin(fireArrow.angle)*FIRE_ARROW_SPEED,age:0,alive:true,type,damage,facing:player.facing,maze:inMaze,gravity:inMaze?0:FIRE_ARROW_GRAVITY});
   tone(490,.08,'triangle',.025);return true;
 }
 function arrowSegmentEntry(a,b,r,pad=4){
@@ -1660,6 +1666,12 @@ function arrowSegmentCircle(a,b,c){return arrowCircleEntry(a,b,c)!==null;}
 function arrowFirstCollision(a,b,inMaze=false){
   let hit=null;
   const consider=(t,kind,target)=>{if(t!==null&&(!hit||t<hit.t))hit={t,kind,target};};
+  if(level==='final'){
+    for(const p of finalPlatforms)consider(arrowSegmentEntry(a,b,p),'wall');
+    consider(arrowSegmentEntry(a,b,{...FINAL_GATE,y:FINAL_GATE.y-FINAL_GATE.h*finalGateLift}),'wall');
+    for(const m of finalMonsters)if(m.alive)consider(arrowSegmentEntry(a,b,m),'castleMonster',m);
+    return hit;
+  }
   if(inMaze){
     const m=FIRE_MAZE,tile=m.tile;
     const c0=Math.floor((Math.min(a.x,b.x)-4-m.x)/tile),c1=Math.floor((Math.max(a.x,b.x)+4-m.x)/tile);
@@ -1678,7 +1690,7 @@ function arrowFirstCollision(a,b,inMaze=false){
 function updateFireArchery(dt){
   updateFireArrowRecharge(dt);
   fireArrow.cooldown=Math.max(0,fireArrow.cooldown-dt);fireArrow.release=Math.max(0,fireArrow.release-dt);
-  if(fireArcheryMode()&&fireMode!=='maze'){
+  if(fireArcheryMode()&&!(level==='fire'&&fireMode==='maze')){
     const vertical=(keys.has('ArrowUp')||keys.has('KeyW')?1:0)-(keys.has('ArrowDown')||keys.has('KeyS')?1:0)-(Math.abs(joystick.dy)>.18?joystick.dy:0);
     fireArrow.angle=Math.max(-.45,Math.min(1.3,fireArrow.angle+Math.max(-1,Math.min(1,vertical))*1.25*dt));
   }
@@ -1687,13 +1699,14 @@ function updateFireArchery(dt){
     const hit=arrowFirstCollision(old,point,a.maze);
     if(hit){
       a.x=old.x+(point.x-old.x)*hit.t;a.y=old.y+(point.y-old.y)*hit.t;a.alive=false;
-      if(hit.kind==='zombie')hitFireZombie(hit.target,a.damage);
+      if(hit.kind==='castleMonster')hitFinalMonster(hit.target,a.damage);
+      else if(hit.kind==='zombie')hitFireZombie(hit.target,a.damage);
       else if(hit.kind==='fireball')hit.target.alive=false;
       else if(hit.kind==='king')hitLavaKing({x:a.ox,w:0},true,a.damage);
       burst(a.x,a.y,hit.kind==='wall'||hit.kind==='ground'?'#c88752':FIRE_ARROW_TYPES[a.type].color,7);
     }else{a.x=point.x;a.y=point.y;}
   }
-  bunnyArrows=bunnyArrows.filter(a=>a.alive&&a.age<3&&a.x>0&&a.x<FIRE_W);
+  bunnyArrows=bunnyArrows.filter(a=>a.alive&&a.age<3&&a.x>0&&a.x<(level==='final'?FINAL_W:FIRE_W));
   lavaKingFireballs=lavaKingFireballs.filter(b=>b.alive);
 }
 
@@ -2507,7 +2520,7 @@ function burst(x,y,color,count=8) {
 
 function updateDuck(){
   if(level==='water'&&player.inWater){if(player.duck){player.y-=58-player.h;player.h=58;player.duck=false;}return;}
-  if(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated)){
+  if(fireArcheryMode()||level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated)){
     if(player.duck){player.y-=58-player.h;player.h=58;player.duck=false;}
     return;
   }
@@ -2903,6 +2916,7 @@ function updateWorld(dt) {
     clearInputs();player.blueContact=null;player.duck=false;player.h=58;duckPointer=null;
      player.x=level==='air'||level==='earth'||level==='fire'||level==='final'?checkpoint.x:Math.max(40,cameraX+80);player.y=level==='air'||level==='earth'||level==='fire'||level==='final'?checkpoint.y:100;
     player.vx=0;player.vy=0;player.invincible=2;
+    if(level==='final'){bunnyArrows=[];fireArrow.cooldown=0;fireArrow.release=0;player.jumpAge=9;player.boosts=0;}
     if(level==='air'){player.airCloud=airPlatforms.find(p=>!p.removed&&p.kind==='white'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x<p.x+p.w);if(descentStarted)descentBlueReached=false;}
     if(level==='air'){cameraX=Math.max(0,Math.min(WORLD_W-W,player.x-W*.38));cameraY=Math.min(0,player.y-playfieldHeight()*.5);}tone(100,.25,"sawtooth");
      if(level==='fire'){cameraX=Math.max(0,Math.min(WORLD_W-W,player.x-W*.38));cameraY=0;fireMode=checkpoint.mode||'surface';fireUnderground=false;}
@@ -2949,7 +2963,7 @@ function jump() {
     if(level==='earth'&&earthBossVine?.grabbed)releaseEarthVine();
     player.blueContact=null;player.landingPaint=0;
     player.vy=level==='fire'&&fireJumpingMode()?-620+fireSlopeGrade(player.x+player.w/2)*player.vx:-570;player.onGround=false;player.jumpAge=0;player.boosts=0;tone(330,.09,"square",.025);
-  } else if(player.jumpAge<.52 && player.boosts<2 && player.vy<180) {
+  } else if(level!=='final'&&player.jumpAge<.52 && player.boosts<2 && player.vy<180) {
     // Two quick taps turn a normal hop into a high jump. The short window,
     // hard velocity cap, and limited charges keep it useful without flight.
     player.vy=Math.min(player.vy,Math.max(-720,player.vy-145));player.boosts++;tone(390+player.boosts*70,.07,"square",.022);
@@ -4329,7 +4343,7 @@ function drawFireArrowPickup(){
   ctx.fillStyle='#ffe3a1';ctx.beginPath();ctx.arc(x-21,p.y-13,2+Math.sin(fireTime*3),0,Math.PI*2);ctx.fill();
 }
 function drawFireArrowInventory(){
-  if(level!=='fire'||!['maze','secondVolcano','king'].includes(fireMode))return;
+  if(level!=='final'&&(level!=='fire'||!['maze','secondVolcano','king'].includes(fireMode)))return;
   const compact=W<650,x=compact?12:75,y=compact?152:18,width=compact?220:235;
   const count=fireArrow.owned?fireArrow.ammo.filter(Boolean).length:0;
   ctx.save();ctx.fillStyle='rgba(28,24,35,.88)';roundRect(x,y,width,63,13);
@@ -4348,7 +4362,7 @@ function drawFireArrowInventory(){
 }
 function drawFireAimPath(){
   if(!fireArcheryMode()||!player.onGround)return;
-  const o=arrowOrigin(),inMaze=fireMode==='maze',flight={ox:o.x,oy:o.y,vx:player.facing*Math.cos(fireArrow.angle)*FIRE_ARROW_SPEED,vy:-Math.sin(fireArrow.angle)*FIRE_ARROW_SPEED,gravity:inMaze?0:FIRE_ARROW_GRAVITY};
+  const o=arrowOrigin(),inMaze=level==='fire'&&fireMode==='maze',flight={ox:o.x,oy:o.y,vx:player.facing*Math.cos(fireArrow.angle)*FIRE_ARROW_SPEED,vy:-Math.sin(fireArrow.angle)*FIRE_ARROW_SPEED,gravity:inMaze?0:FIRE_ARROW_GRAVITY};
   ctx.save();let end=o;
   for(let i=1;i<=22;i++){
     const p=arrowFlightPoint(flight,i*.04),hit=arrowFirstCollision(end,p,inMaze);
@@ -4444,7 +4458,7 @@ function paintedBunnyPose(forceAction=false){
 }
 function drawPaintedBunny(forceAction=false){
   const pose=paintedBunnyPose(forceAction),sheet=PAINTED_BUNNY[pose.name],frame=pose.frame;
-  const gear=level==='fire'&&fireArrow.owned?'quiver':'plain',image=sheet[gear];
+  const gear=(level==='fire'||level==='final')&&fireArrow.owned?'quiver':'plain',image=sheet[gear];
   const anchors=sheet.anchors?.[gear]||sheet;
   if(!image.complete||!image.naturalWidth)return false;
   const w=image.naturalWidth,h=image.naturalHeight,col=frame%4,row=Math.floor(frame/4);
@@ -4465,7 +4479,7 @@ function drawBunny(){
 }
 function drawBunnyBody() {
   if(player.invincible>0&&Math.floor(player.invincible*12)%2===0)return;
-  if(level==='fire'&&fireArrow.owned&&fireWeaponEquipped()&&fireArcherySheet.complete&&fireArcherySheet.naturalWidth){drawArmedBunny();return;}
+  if(fireWeaponEquipped()&&fireArcherySheet.complete&&fireArcherySheet.naturalWidth){drawArmedBunny();return;}
   if(level==='water'&&player.inWater&&(!player.breaching||waterAquaSuit)){drawSwimmingBunny();return;}
   if(drawPaintedBunny())return;
   if(uprightRunMode()&&uprightRunSheet.complete&&uprightRunSheet.naturalWidth){drawUprightRun();return;}
@@ -4840,7 +4854,7 @@ function drawTouchControls() {
   const inMaze=level==='fire'&&fireMode==='maze',fireWalking=level==='fire'&&fireMode!=='surface'&&!fireJumpingMode(),postKing=level==='fire'&&fireMode==='king'&&lavaKing.defeated;
   ctx.fillText(inMaze?'↑ CLIMB':fireArcheryMode()?'↑ AIM':fireWalking&&!inMaze?'← MOVE →':inMaze?'↑ CLIMB':level==='water'&&player.inWater?'↑ SWIM':'↑ JUMP',JOY.x,JOY.y-JOY.radius+20);ctx.fillText(inMaze?'↓ CLIMB':fireArcheryMode()?'↓ AIM':(level==='fire'&&fireJumpingMode()&&!postKing)||fireWalking&&!inMaze?'':inMaze?'↓ CLIMB':level==='water'&&player.inWater?'↓ DIVE':'↓ DUCK',JOY.x,JOY.y+JOY.radius-10);
   for(const [name,b] of Object.entries(ACTIONS)){
-    if(fireArcheryMode()&&name==='jump')continue;
+    if(fireArcheryMode()&&(name==='jump'||name==='duck'))continue;
     if(fireWalking&&(name==='jump'||name==='duck')||level==='fire'&&fireJumpingMode()&&!postKing&&name==='duck')continue;
     const aimButton=name==='ability2'&&(fireArrowToggleAvailable()||level==='air'&&windStars.owned||level==='earth'&&earthKnivesOwned()||level==='water'&&waterTrident.owned),reserved=name.startsWith('ability')&&!aimButton;if(reserved&&(touchDockHeight||canvas.getBoundingClientRect().width<520))continue;
     ctx.globalAlpha=reserved?.3:.48;ctx.fillStyle=b.color;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
@@ -4855,9 +4869,9 @@ function drawTouchControls() {
 function render(time) {
   const nativeW=W,nativeH=H,fieldH=playfieldHeight(),view=level==='fire'?fireViewSize():level==='water'?waterViewSize():{width:W,height:fieldH,scale:1};
   ctx.save();ctx.beginPath();ctx.rect(0,0,W,fieldH);ctx.clip();ctx.scale(view.scale,view.scale);W=view.width;H=view.height;
-  drawBackground();ctx.save();ctx.translate(0,-cameraY);if(level==='fire'){drawFireTrees();drawFireVolcano();drawFireMaze();drawSecondFireVolcano();drawFireMazeTransition();}if(level==='earth')drawEarthTrees();platforms.forEach(drawPlatform);if(level==='air')drawAirWorld();else if(level==='earth')drawEarthWorld();else if(level==='fire'){drawFireRollingStones();drawLavaKingBarriers();drawFireGate();drawLavaKing();drawFireArrowPickup();drawFireAimPath();drawBunnyArrows();}else if(level==='water')drawWaterWorld();else if(level==='final')drawFinalWorld();else drawShrine(time);
+  drawBackground();ctx.save();ctx.translate(0,-cameraY);if(level==='fire'){drawFireTrees();drawFireVolcano();drawFireMaze();drawSecondFireVolcano();drawFireMazeTransition();}if(level==='earth')drawEarthTrees();platforms.forEach(drawPlatform);if(level==='air')drawAirWorld();else if(level==='earth')drawEarthWorld();else if(level==='fire'){drawFireRollingStones();drawLavaKingBarriers();drawFireGate();drawLavaKing();drawFireArrowPickup();drawFireAimPath();drawBunnyArrows();}else if(level==='water')drawWaterWorld();else if(level==='final'){drawFinalWorld();drawFireAimPath();drawBunnyArrows();}else drawShrine(time);
   coins.forEach(c=>drawCoin(c,time));enemies.forEach(drawEnemy);fireZombies.forEach(drawFireZombie);waterSharks.forEach(drawWaterShark);waterPirates.forEach(drawWaterPirate);if(level==='final')drawFinalMonsters();drawBunny();if(level==='air')drawHeldWindStar();if(level==='earth')drawHeldEarthKnife();if(level==='water'){drawHeldWaterEquipment();drawWaterGateForeground();drawWaterCacti();}if(level==='final')drawFinalGateForeground();drawBlueCloudForeground();
-  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;ctx.restore();ctx.restore();W=nativeW;H=nativeH;drawHUD();drawEarthBossHearts();if(level==='fire'){drawLavaKingHearts();drawFireArrowInventory();}if(level==='air')drawWindStarInventory();if(level==='earth')drawEarthKnifeInventory();drawWaterAdventureHUD();drawTouchControls();
+  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;ctx.restore();ctx.restore();W=nativeW;H=nativeH;drawHUD();drawEarthBossHearts();if(level==='fire')drawLavaKingHearts();if(level==='fire'||level==='final')drawFireArrowInventory();if(level==='air')drawWindStarInventory();if(level==='earth')drawEarthKnifeInventory();drawWaterAdventureHUD();drawTouchControls();
 }
 
 function loop(ms) { const t=ms/1000,dt=Math.min(.033,t-lastTime||0);lastTime=t;update(dt);render(t);requestAnimationFrame(loop); }
@@ -4892,6 +4906,7 @@ function updateJoystick(p){
   if(state!=='playing'){clearInputs();return;}
   const dx=p.x-JOY.x,dy=p.y-JOY.y,d=Math.hypot(dx,dy)||1,limit=Math.min(JOY.radius-12,d);
   joystick.dx=dx/d*limit/(JOY.radius-12);joystick.dy=dy/d*limit/(JOY.radius-12);
+  if(level==='final'&&fireArcheryMode()){joystick.duck=false;return;}
   if(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated)){
     joystick.duck=false;
     if(fireJumpingMode()&&!fireArcheryMode()){
@@ -4912,7 +4927,7 @@ canvas.addEventListener("pointerdown",e=>{
   fitTouchControls();
   const p=canvasPoint(e);
   if((fireArrowToggleAvailable()||level==='air'&&windStars.owned||level==='earth'&&earthKnivesOwned()||level==='water'&&waterTrident.owned)&&Math.hypot(p.x-ACTIONS.ability2.x,p.y-ACTIONS.ability2.y)<ACTIONS.ability2.r+7){e.preventDefault();if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}
-  else if(!(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated))&&Math.hypot(p.x-ACTIONS.duck.x,p.y-ACTIONS.duck.y)<ACTIONS.duck.r+7){e.preventDefault();duckPointer=e.pointerId;canvas.setPointerCapture(e.pointerId);updateDuck();}
+  else if(!fireArcheryMode()&&!(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated))&&Math.hypot(p.x-ACTIONS.duck.x,p.y-ACTIONS.duck.y)<ACTIONS.duck.r+7){e.preventDefault();duckPointer=e.pointerId;canvas.setPointerCapture(e.pointerId);updateDuck();}
   else if(!joystick.active&&Math.hypot(p.x-JOY.x,p.y-JOY.y)<JOY.radius+22){e.preventDefault();joystick.active=true;joystick.pointerId=e.pointerId;canvas.setPointerCapture(e.pointerId);updateJoystick(p);}
   else if(Math.hypot(p.x-ACTIONS.jump.x,p.y-ACTIONS.jump.y)<ACTIONS.jump.r+12){e.preventDefault();jump();}
   else if(Math.hypot(p.x-ACTIONS.hit.x,p.y-ACTIONS.hit.y)<ACTIONS.hit.r+12){e.preventDefault();attack();}
