@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.7',build:2026101314,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Continuous beach and underwater sand'});
+const BUILD_INFO=Object.freeze({version:'0.21.8',build:2026101315,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Reef motion and swimming direction'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -3242,7 +3242,7 @@ function resolveWaterTetherContact(solids){
 }
 
 function updateWater(dt){
-  waterTime+=dt;player.swimClock+=dt;player.stroke=Math.max(0,player.stroke-dt);
+  player.swimClock+=dt;player.stroke=Math.max(0,player.stroke-dt);
   waterPirates.filter(p=>p.hp>0).forEach(positionWaterPirate);
   const waterSolids=[...waterReefs,...waterShipSolids(),...waterGateSolid(),...waterAdventureSolids(),...waterPirates.filter(p=>p.hp>0).flatMap(waterTetherSolids)];
   if(!player.breaching)resolveWaterTetherContact(waterSolids);
@@ -3350,6 +3350,8 @@ function update(dt) {
 }
 function updateWorld(dt) {
   if (state!=="playing") return;
+  // Reef life and water animation continue while Benny is on the beach.
+  if(level==='water')waterTime+=dt;
   if(level==='meadow'){
     updateMeadowLesson(dt);
     if(meadowShouldSwim()){updateMeadowSwimming(dt);return;}
@@ -4214,8 +4216,10 @@ function waterCreatureY(x,preferred,halfWidth=20,halfHeight=8){
   return y;
 }
 function waterFishPose(school,i,time=waterTime){
-  const direction=school%2?1:-1;
-  const x=1740+school*445+i*26+Math.sin(time*.55+school)*44*direction;
+  const travelSign=school%2?1:-1,phase=time*.55+school;
+  const x=1740+school*445+i*26+Math.sin(phase)*44*travelSign;
+  // The paintings face right; turn with the horizontal swimming velocity.
+  const direction=Math.cos(phase)*travelSign>=0?1:-1;
   const ceiling=x<WATER_CAVE_START?WATER_SURFACE:waterProfileY(WATER_ROOF,x);
   const preferred=ceiling+130+(school%3)*95+i%3*13+Math.sin(time*2+i+school)*5;
   return {x,y:waterCreatureY(x,Math.min(waterFloorY(x)-90,preferred)),direction};
@@ -4246,8 +4250,8 @@ function drawWaterReefFish(pose,variant,time=waterTime){
 }
 const waterTurtlePaintings=[];
 function waterTurtlePose(i,time=waterTime){
-  const x=2300+i*1750+Math.sin(time*.33+i)*58;
-  return {x,y:waterCreatureY(x,waterFloorY(x)-190+Math.sin(time*1.1+i)*12,50,28),direction:i%2?1:-1,stroke:(Math.sin(time*3+i)+1)/2};
+  const phase=time*.33+i,x=2300+i*1750+Math.sin(phase)*58;
+  return {x,y:waterCreatureY(x,waterFloorY(x)-190+Math.sin(time*1.1+i)*12,50,28),direction:Math.cos(phase)>=0?1:-1,stroke:(Math.sin(time*3+i)+1)/2};
 }
 function waterTurtleArtScale(){
   let halfWidth=0,halfHeight=0;

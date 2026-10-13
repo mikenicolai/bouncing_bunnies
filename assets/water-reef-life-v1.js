@@ -20,8 +20,10 @@ function waterCreatureY(x,preferred,halfWidth=20,halfHeight=8){
   return y;
 }
 function waterFishPose(school,i,time=waterTime){
-  const direction=school%2?1:-1;
-  const x=1740+school*445+i*26+Math.sin(time*.55+school)*44*direction;
+  const travelSign=school%2?1:-1,phase=time*.55+school;
+  const x=1740+school*445+i*26+Math.sin(phase)*44*travelSign;
+  // The paintings face right; turn with the horizontal swimming velocity.
+  const direction=Math.cos(phase)*travelSign>=0?1:-1;
   const ceiling=x<WATER_CAVE_START?WATER_SURFACE:waterProfileY(WATER_ROOF,x);
   const preferred=ceiling+130+(school%3)*95+i%3*13+Math.sin(time*2+i+school)*5;
   return {x,y:waterCreatureY(x,Math.min(waterFloorY(x)-90,preferred)),direction};
@@ -52,8 +54,8 @@ function drawWaterReefFish(pose,variant,time=waterTime){
 }
 const waterTurtlePaintings=[];
 function waterTurtlePose(i,time=waterTime){
-  const x=2300+i*1750+Math.sin(time*.33+i)*58;
-  return {x,y:waterCreatureY(x,waterFloorY(x)-190+Math.sin(time*1.1+i)*12,50,28),direction:i%2?1:-1,stroke:(Math.sin(time*3+i)+1)/2};
+  const phase=time*.33+i,x=2300+i*1750+Math.sin(phase)*58;
+  return {x,y:waterCreatureY(x,waterFloorY(x)-190+Math.sin(time*1.1+i)*12,50,28),direction:Math.cos(phase)>=0?1:-1,stroke:(Math.sin(time*3+i)+1)/2};
 }
 function waterTurtleArtScale(){
   let halfWidth=0,halfHeight=0;
