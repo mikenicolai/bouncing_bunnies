@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.11',build:2026101318,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Painted Lava King and gentler pace'});
+const BUILD_INFO=Object.freeze({version:'0.21.12',build:2026101319,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Two-way labyrinth exit and solid stone'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -1943,7 +1943,13 @@ function beginFireMaze(){
   const p=mazeCenter(1,1);
   fireMode='maze';fireUnderground=true;
   Object.assign(player,{x:p.x-player.w/2,y:p.y-29,h:58,vx:0,vy:0,onGround:true,duck:false,mazeC:1,mazeR:1,mazeTarget:null,mazeProgress:0});
-  checkpoint={x:player.x,y:player.y,mode:'maze',stage:7};
+  checkpoint={x:player.x,y:player.y,mode:'maze',stage:7,mazeC:1,mazeR:1};
+}
+function returnToFireMaze(){
+  const from={x:player.x+player.w/2,y:player.y+player.h/2};
+  fireMode='maze';fireUnderground=true;resetFireStones();
+  Object.assign(player,{mazeC:FIRE_MAZE.rows[0].length,mazeR:FIRE_MAZE.exit.r,
+    mazeTarget:{...FIRE_MAZE.exit,from,reentry:true},mazeProgress:0,vx:0,vy:0,onGround:true,duck:false,facing:-1});
 }
 const FIRE_ARROW_CELL={c:11,r:11},FIRE_ARROW_SPEED=900,FIRE_ARROW_GRAVITY=300;
 const FIRE_ARROW_CAPACITY=5,FIRE_ARROW_RECHARGE=3;
@@ -2085,6 +2091,7 @@ function resetLavaKing(){
 }
 function beginSecondVolcano(){
   fireMode='secondVolcano';fireUnderground=false;resetFireStones();fireArrow.aiming=false;
+  player.x=Math.max(FIRE_SECOND_VOLCANO[0][0],player.x);
   Object.assign(player,{y:fireSlopeY(player.x+player.w/2)-58,h:58,vx:0,vy:0,onGround:true,duck:false,mazeTarget:null});
   checkpoint={x:player.x,y:player.y,mode:'secondVolcano',stage:8};
 }
@@ -2184,7 +2191,7 @@ function restoreFireCheckpoint(){
   clearInputs();fireMode=checkpoint.mode||'surface';fireUnderground=fireMode==='maze';
   fireCraterViewBlend=0;fireDropCamera=null;
   Object.assign(player,{x:checkpoint.x,y:checkpoint.y,h:58,vx:0,vy:0,onGround:true,duck:false,invincible:2,mazeTarget:null});
-  if(fireMode==='maze'){player.mazeC=1;player.mazeR=1;}
+  if(fireMode==='maze'){player.mazeC=checkpoint.mazeC??1;player.mazeR=checkpoint.mazeR??1;player.mazeProgress=0;}
   resetFireStones();bunnyArrows=[];fireArrow.cooldown=0;fireArrow.release=0;fireArrow.aiming=fireArrow.aiming&&fireArrowToggleAvailable();lavaKingFireballs=[];if(fireMode==='king'){lavaKing.phase='patrol';lavaKing.age=0;lavaKing.flightClock=0;lavaKing.dizzy=1;}
   cameraX=Math.max(0,Math.min(WORLD_W-W,player.x-W*.38));cameraY=fireCameraTargetY();
 }
@@ -2206,7 +2213,15 @@ function updateFireJourney(dt){
   const previousX=player.x;
   player.x+=player.vx*dt;player.run+=Math.abs(player.vx)*dt*.04;
   if(fireJumpingMode()){
-    if(fireMode!=='volcano')player.x=Math.max(6680-player.w/2,player.x);
+    if(fireMode==='secondVolcano'){
+      const edge=FIRE_SECOND_VOLCANO[0][0],top=FIRE_MAZE.y+FIRE_MAZE.exit.r*FIRE_MAZE.tile,bottom=top+FIRE_MAZE.tile;
+      // Only the open exit passage admits the entire bunny. The stone above
+      // and below it stays solid while outdoor jumping is active.
+      if(move<0&&player.x+player.w/2<=edge+FIRE_MAZE.tile/2&&player.y>=top&&player.y+player.h<=bottom+1){
+        returnToFireMaze();return;
+      }
+      player.x=Math.max(edge,player.x);if(player.x===edge&&player.vx<0)player.vx=0;
+    }
     if(fireMode==='king')player.x=Math.max(FIRE_KING_ARENA.left+8,Math.min(FIRE_KING_ARENA.right-player.w-8,player.x));
     const ground=fireSlopeY(player.x+player.w/2);
     if(player.onGround){player.y=ground-player.h;player.vy=0;}
@@ -2279,22 +2294,27 @@ function updateFireMaze(dt){
       const held=dirs.find(([key,alt])=>keys.has(key)||keys.has(alt));
       let move=held&&[held[2],held[3]];
       if(!move&&Math.hypot(joystick.dx,joystick.dy)>.25)move=Math.abs(joystick.dx)>Math.abs(joystick.dy)?[Math.sign(joystick.dx),0]:[0,Math.sign(joystick.dy)];
-      if(move&&mazeOpen(player.mazeC+move[0],player.mazeR+move[1])){
-        player.mazeTarget={c:player.mazeC+move[0],r:player.mazeR+move[1]};player.mazeProgress=0;
+      const exit=move&&move[0]===1&&player.mazeC===FIRE_MAZE.exit.c&&player.mazeR===FIRE_MAZE.exit.r&&fireArrow.owned;
+      if(move&&(exit||mazeOpen(player.mazeC+move[0],player.mazeR+move[1]))){
+        player.mazeTarget={c:player.mazeC+move[0],r:player.mazeR+move[1],exit:Boolean(exit)};player.mazeProgress=0;
         if(move[0])player.facing=move[0];if(fireWeaponEquipped())fireArrow.angle=move[1]?-move[1]*Math.PI/2:0;player.run+=.15;
       }
     }
     if(player.mazeTarget){
-      const from=mazeCenter(player.mazeC,player.mazeR),to=mazeCenter(player.mazeTarget.c,player.mazeTarget.r);
+      const target=player.mazeTarget,from=target.from||mazeCenter(player.mazeC,player.mazeR),to=mazeCenter(target.c,target.r);
+      if(target.exit)to.y=FIRE_SECOND_VOLCANO[0][1]-player.h/2;
       player.mazeProgress=Math.min(1,player.mazeProgress+dt*mazeMoveSpeed()/FIRE_MAZE.tile);
       player.x=from.x+(to.x-from.x)*player.mazeProgress-player.w/2;
       player.y=from.y+(to.y-from.y)*player.mazeProgress-player.h/2;
       player.run+=dt*6*mazeMoveSpeed()/165;
-      if(player.mazeProgress>=1){player.mazeC=player.mazeTarget.c;player.mazeR=player.mazeTarget.r;player.mazeTarget=null;}
+      if(player.mazeProgress>=1){
+        player.mazeC=target.c;player.mazeR=target.r;player.mazeTarget=null;
+        if(target.exit){beginSecondVolcano();return;}
+        if(target.reentry)checkpoint={x:player.x,y:player.y,mode:'maze',stage:7,mazeC:player.mazeC,mazeR:player.mazeR};
+      }
     }
     player.onGround=true;player.vx=player.mazeTarget?mazeMoveSpeed():0;player.vy=0;
     updateFireZombies(dt);collectFireArrow();updateFireArchery(dt);
-    if(fireArrow.owned&&!player.mazeTarget&&player.mazeC===FIRE_MAZE.exit.c&&player.mazeR===FIRE_MAZE.exit.r){beginSecondVolcano();return;}
   }
   for(const c of coins)if(!c.taken&&Math.hypot(player.x+21-c.x,player.y+29-c.y)<38){
     collectCoin(c);burst(c.x,c.y,THEME.gold,10);tone(700+score%4*80,.09,'sine',.04);

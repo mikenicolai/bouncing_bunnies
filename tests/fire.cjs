@@ -105,7 +105,9 @@ for(const goal of [JSON.parse(run('JSON.stringify(FIRE_ARROW_CELL)')),{c:24,r:1}
   assert.equal(run('player.mazeC'),next.c);assert.equal(run('player.mazeR'),next.r);
   cell=next;assert(++steps<300);
 }
-assert(down&&up&&steps>35);assert.equal(run('state'),'playing');assert.equal(run('fireMode'),'secondVolcano');assert.equal(run('fireFinished'),false);assert(run('lives')>=2);
+assert(down&&up&&steps>35);assert.equal(run('fireMode'),'maze','the exit cell still uses maze collision');
+run("keys.add('ArrowRight');for(let i=0;i<36;i++)update(1/60);keys.clear()");
+assert.equal(run('state'),'playing');assert.equal(run('fireMode'),'secondVolcano');assert.equal(run('fireFinished'),false);assert(run('lives')>=2);
 // The same combat applies to maze and outdoor zombies.
 for(const id of [0,4]){
   fireReset();run(`player.x=fireZombies[${id}].x-50;player.y=fireZombies[${id}].y+10;player.facing=1;fireZombies[${id}].hp=4.5;attack()`);
