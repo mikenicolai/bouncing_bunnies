@@ -1,4 +1,4 @@
-const assert=require('node:assert/strict');
+const assert=require('node:assert/strict'),fs=require('node:fs');
 const {run}=require('./air.cjs');
 const reset=()=>run("level='water';resetGame();soundOn=false");
 // Hold Up and swim strokes in every breathing chamber. The head reaches air,
@@ -33,4 +33,15 @@ reset();const collision=run(`(()=>{
 })()`);
 assert.equal(collision,null,JSON.stringify(collision));
 assert(run('waterPlatforms[0].x<-100&&waterPlatforms[0].x+waterPlatforms[0].w===WATER_FLOOR[0][0]'),'the starting sand extends beyond the screen and still joins the shore');
-console.log('PASS: surface-only breathing and respawns in all cave/ship chambers at 30/60/120 FPS; fish stay clear of stone, roof and floor for two minutes; filled beach start.');
+// Paintings stay inside the safe swimming envelope and flora uses its own slope point.
+const html=fs.readFileSync('index.html','utf8');assert.equal(html.split('// WATER_REEF_LIFE_BEGIN\n')[1].split('\n// WATER_REEF_LIFE_END')[0],fs.readFileSync('assets/water-reef-life-v1.js','utf8'));
+for(const [name,art] of Object.entries(run('WATER_REEF_ART'))){
+ const png=fs.readFileSync(art.asset);assert.equal(png[25],6);assert.equal(png.readUInt32BE(16),art.width);assert.equal(png.readUInt32BE(20),art.height);
+ for(const f of art.frames){assert(f.sx+f.sw<=art.width&&f.sy+f.sh<=art.height);if(name==='fish'){const scale=Math.min(32/f.sw,15/f.sh);assert(f.sw*scale*1.018<40&&f.sh*scale<=16,'painted fish fit the existing safe swimming box');}}
+}
+for(let i=0;i<92;i++)for(const kind of ['seagrass','coral']){
+ const p=run(`waterReefPlantPose(${i},'${kind}')`);assert.equal(p.base,run(`waterFloorY(${p.x})`),'root base follows its own position on the slope');
+ const roof=run(`${p.x}<WATER_CAVE_START?WATER_SURFACE:waterProfileY(WATER_ROOF,${p.x})`);assert(p.base-p.height>roof,'decorations stay under the waterline and roof');
+}
+assert(run("waterReefPlantPose(0,'coral').base>waterReefPlantPose(0).base+10"),'the first coral sits lower on the slope instead of floating');
+console.log('PASS: surface-only breathing and respawns in all cave/ship chambers at 30/60/120 FPS; fish stay clear of stone, roof and floor for two minutes; filled beach start; painted asset registration, safe fish sizes and independently rooted coral/sea grass.');

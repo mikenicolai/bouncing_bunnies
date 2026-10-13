@@ -1,0 +1,85 @@
+{
+  "fish": {
+    "asset": "assets/reef-fish-v1.png",
+    "width": 1254,
+    "height": 1254,
+    "frames": [
+      {
+        "sx": 38,
+        "sy": 214,
+        "sw": 576,
+        "sh": 349
+      },
+      {
+        "sx": 665,
+        "sy": 213,
+        "sw": 575,
+        "sh": 350
+      },
+      {
+        "sx": 39,
+        "sy": 736,
+        "sw": 574,
+        "sh": 349
+      },
+      {
+        "sx": 665,
+        "sy": 736,
+        "sw": 575,
+        "sh": 349
+      }
+    ]
+  },
+  "coral": {
+    "asset": "assets/reef-coral-v1.png",
+    "width": 1254,
+    "height": 1254,
+    "frames": [
+      {
+        "sx": 41,
+        "sy": 61,
+        "sw": 570,
+        "sh": 538
+      },
+      {
+        "sx": 663,
+        "sy": 69,
+        "sw": 552,
+        "sh": 530
+      },
+      {
+        "sx": 40,
+        "sy": 661,
+        "sw": 578,
+        "sh": 535
+      },
+      {
+        "sx": 661,
+        "sy": 660,
+        "sw": 564,
+        "sh": 537
+      }
+    ]
+  },
+  "seagrass": {
+    "asset": "assets/reef-seagrass-v1.png",
+    "width": 1402,
+    "height": 1122,
+    "frames": [
+      {
+        "sx": 177,
+        "sy": 33,
+        "sw": 445,
+        "sh": 1062,
+        "baseY": 1000
+      },
+      {
+        "sx": 838,
+        "sy": 15,
+        "sw": 448,
+        "sh": 1082,
+        "baseY": 1000
+      }
+    ]
+  }
+}

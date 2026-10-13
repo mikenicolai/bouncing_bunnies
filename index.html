@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.4',build:2026101311,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Painted sky birds'});
+const BUILD_INFO=Object.freeze({version:'0.21.5',build:2026101312,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Painted fish and rooted coral reefs'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -4145,6 +4145,10 @@ function drawWaterAirPockets(){
     ctx.restore();
   }
 }
+// WATER_REEF_LIFE_BEGIN
+// Painted fish, coral and sea grass; embedded verbatim in index.html.
+const WATER_REEF_ART={"fish":{"asset":"assets/reef-fish-v1.png","width":1254,"height":1254,"frames":[{"sx":38,"sy":214,"sw":576,"sh":349},{"sx":665,"sy":213,"sw":575,"sh":350},{"sx":39,"sy":736,"sw":574,"sh":349},{"sx":665,"sy":736,"sw":575,"sh":349}]},"coral":{"asset":"assets/reef-coral-v1.png","width":1254,"height":1254,"frames":[{"sx":41,"sy":61,"sw":570,"sh":538},{"sx":663,"sy":69,"sw":552,"sh":530},{"sx":40,"sy":661,"sw":578,"sh":535},{"sx":661,"sy":660,"sw":564,"sh":537}]},"seagrass":{"asset":"assets/reef-seagrass-v1.png","width":1402,"height":1122,"frames":[{"sx":177,"sy":33,"sw":445,"sh":1062,"baseY":1000},{"sx":838,"sy":15,"sw":448,"sh":1082,"baseY":1000}]}};
+for(const a of Object.values(WATER_REEF_ART)){a.image=new Image();a.image.src=a.asset;}
 // Bend decorative swimming paths around physical rocks, with room for tails.
 function waterCreatureY(x,preferred,halfWidth=20,halfHeight=8){
   const ceiling=Math.max(...[x-halfWidth,x,x+halfWidth].map(wx=>wx<WATER_CAVE_START?WATER_SURFACE:waterProfileY(WATER_ROOF,wx)));
@@ -4170,37 +4174,42 @@ function waterFishPose(school,i,time=waterTime){
   const preferred=ceiling+130+(school%3)*95+i%3*13+Math.sin(time*2+i+school)*5;
   return {x,y:waterCreatureY(x,Math.min(waterFloorY(x)-90,preferred)),direction};
 }
+function waterReefPlantPose(i,kind='seagrass'){
+  const x=1640+i*108+(i%4)*19+(kind==='coral'?29:0),base=waterFloorY(x);
+  const ceiling=x<WATER_CAVE_START?WATER_SURFACE:waterProfileY(WATER_ROOF,x);
+  const height=Math.min(kind==='coral'?52+i%3*5:62+i%5*11,Math.max(8,base-ceiling-10));
+  return {x,base,height,kind,variant:kind==='coral'?Math.floor(i/2)%4:i%2,facing:i%3===1?-1:1,sway:kind==='seagrass'?Math.sin(waterTime*1.8+i)*8:0};
+}
+function drawWaterReefPlant(p){
+  const a=WATER_REEF_ART[p.kind];if(!a.image.complete||!a.image.naturalWidth)return;
+  const f=a.frames[p.variant],baseY=f.baseY??f.sy+f.sh,scale=p.height/(baseY-f.sy);
+  const width=f.sw*scale,x=p.x-cameraX;
+  ctx.save();
+  // Root tips sink into the local sloping floor instead of hanging above it.
+  ctx.beginPath();ctx.moveTo(x-100,p.base-p.height-40);ctx.lineTo(x+100,p.base-p.height-40);
+  for(let wx=p.x+100;wx>=p.x-100;wx-=8)ctx.lineTo(wx-cameraX,waterFloorY(wx)+2);
+  ctx.closePath();ctx.clip();
+  ctx.translate(x,p.base+2);ctx.transform(1,0,-p.sway/p.height,1,0,0);ctx.scale(p.facing,1);
+  ctx.drawImage(a.image,f.sx,f.sy,f.sw,f.sh,-width/2,(f.sy-baseY)*scale,width,f.sh*scale);ctx.restore();
+}
+function drawWaterReefFish(pose,variant,time=waterTime){
+  const a=WATER_REEF_ART.fish;if(!a.image.complete||!a.image.naturalWidth)return;
+  const f=a.frames[variant],scale=Math.min(32/f.sw,15/f.sh),pulse=1+Math.sin(time*4+variant)*.018;
+  ctx.save();ctx.translate(pose.x-cameraX,pose.y);ctx.scale(pose.direction*pulse,1);
+  ctx.drawImage(a.image,f.sx,f.sy,f.sw,f.sh,-f.sw*scale/2,-f.sh*scale/2,f.sw*scale,f.sh*scale);ctx.restore();
+}
 function drawReefLife(){
-  const coralColors=['#ff896e','#f6b45f','#ff75a6','#b989e6','#f56f89'];
   for(let i=0;i<92;i++){
-    const worldX=1640+i*108+(i%4)*19,x=worldX-cameraX,floor=waterFloorY(worldX);
-    if(x<-90||x>W+90)continue;
-    const sway=Math.sin(waterTime*1.8+i)*8;
-    ctx.lineCap='round';ctx.lineWidth=4+i%3;ctx.strokeStyle=i%3?'#49b594':'#75ca9e';
-    for(let blade=-1;blade<=1;blade++){
-      const reach=54+i%5*11+blade*8;
-      ctx.beginPath();ctx.moveTo(x+blade*7,floor+2);
-      ctx.quadraticCurveTo(x+blade*10+sway*.4,floor-reach*.55,x+blade*18+sway,floor-reach);ctx.stroke();
-    }
-    if(i%2===0){
-      const cx=x+29,cy=floor+1,color=coralColors[i%coralColors.length];
-      ctx.strokeStyle='#4b5171';ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx,cy-41);
-      ctx.moveTo(cx,cy-20);ctx.lineTo(cx-20,cy-38);ctx.moveTo(cx,cy-31);ctx.lineTo(cx+18,cy-53);ctx.stroke();
-      ctx.strokeStyle=color;ctx.lineWidth=8;ctx.stroke();
-      ctx.fillStyle='#ffe2b9';for(const [dx,dy] of [[0,-41],[-20,-38],[18,-53]]){ctx.beginPath();ctx.arc(cx+dx,cy+dy,4,0,7);ctx.fill();}
-    }
-    if(i%5===1){ctx.fillStyle='#e6c6a4';ctx.beginPath();ctx.ellipse(x-20,floor-1,15,5,0,0,7);ctx.fill();}
+    const plant=waterReefPlantPose(i),x=plant.x-cameraX;
+    if(x<-100||x>W+100)continue;
+    drawWaterReefPlant(plant);
+    if(i%2===0)drawWaterReefPlant(waterReefPlantPose(i,'coral'));
+    if(i%5===1){ctx.fillStyle='#e6c6a4';ctx.beginPath();ctx.ellipse(x-20,waterFloorY(plant.x-20)-1,15,5,0,0,7);ctx.fill();}
   }
-  const fishColors=['#ffd477','#fa8f91','#9de2c5','#cda8f6'];
   for(let school=0;school<21;school++)for(let i=0;i<5;i++){
-    const pose=waterFishPose(school,i),direction=pose.direction;
-    const x=pose.x-cameraX,y=pose.y;
+    const pose=waterFishPose(school,i),x=pose.x-cameraX;
     if(x<-45||x>W+45)continue;
-    ctx.save();ctx.translate(x,y);ctx.scale(direction,1);
-    ctx.fillStyle=fishColors[(school+i)%fishColors.length];ctx.strokeStyle='#35637a';ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.moveTo(-9,0);ctx.lineTo(-18,-6);ctx.lineTo(-18,6);ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.beginPath();ctx.ellipse(0,0,11,6,0,0,7);ctx.fill();ctx.stroke();
-    ctx.fillStyle='#20384b';ctx.beginPath();ctx.arc(5,-2,1.4,0,7);ctx.fill();ctx.restore();
+    drawWaterReefFish(pose,(school+i)%4);
   }
   for(let i=0;i<5;i++){
     const direction=i%2?1:-1;
@@ -4217,6 +4226,8 @@ function drawReefLife(){
     ctx.fillStyle='#213c48';ctx.beginPath();ctx.arc(38,-4,2,0,7);ctx.fill();ctx.restore();
   }
 }
+
+// WATER_REEF_LIFE_END
 function waterGateFrameRect(){
   return {x:WATER_GATE.x-134,y:waterProfileY(WATER_ROOF,WATER_GATE.x+WATER_GATE.w/2)-35,w:494,h:655};
 }
@@ -4276,7 +4287,7 @@ function drawWaterWorld(){
     ctx.save();ctx.beginPath();ctx.roundRect(x,reef.y,reef.w,reef.h,22);ctx.clip();ctx.fillStyle='#315978';ctx.fillRect(x,reef.y,reef.w,reef.h);
     if(waterCaveSheet.complete&&waterCaveSheet.naturalWidth)ctx.drawImage(waterCaveSheet,0,0,waterCaveSheet.naturalWidth*.45,waterCaveSheet.naturalHeight*.65,x,reef.y,reef.w,reef.h);
     ctx.restore();
-    for(let i=0;i<4;i++){ctx.fillStyle=i%2?'#fc9b83':'#f9c681';ctx.beginPath();ctx.arc(x+17+i*26,reef.y+reef.h-5,10+i%2*5,0,7);ctx.fill();}
+    for(let i=0;i<4;i++)drawWaterReefPlant({x:reef.x+17+i*26,base:reef.y+reef.h-2,height:26,kind:'coral',variant:i,facing:i%2?-1:1,sway:0});
   }
   drawReefLife();drawWaterShip();drawWaterAirPockets();
   if(!waterPortalKeyTaken){
