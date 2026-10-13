@@ -95,6 +95,25 @@ html.game-expanded body { position:fixed; inset:0; touch-action:none; }
 .bunny-mark { width: 48px; height: 48px; margin: -54px auto 12px; display: grid; place-items: center; border-radius: 50%; color: #10243a; font-size: 1.4rem; background: #ffcb67; box-shadow: 0 0 0 7px rgba(255,203,103,.18); }
 #startButton { margin-top: 6px; border: 0; border-radius: 999px; padding: 13px 22px; color: #10243a; background: #ffcb67; font-weight: 900; cursor: pointer; box-shadow: 0 7px 0 #bf783c; }
 #startButton:active { transform: translateY(4px); box-shadow: 0 3px 0 #bf783c; }
+#reviveOptions { display:grid; gap:12px; margin:14px 0; }
+#reviveOptions[hidden] { display:none; }
+#reviveOptions button { width:100%; border:0; border-radius:999px; padding:13px 18px; color:#10243a; background:#ffcb67; font:900 14px system-ui; cursor:pointer; box-shadow:0 5px 0 #bf783c; }
+#reviveOptions button:disabled, #startButton:disabled { opacity:.5; cursor:default; }
+.revive-mode #startButton { width:100%; font:900 14px system-ui; box-shadow:0 5px 0 #bf783c; }
+.revive-mode .brand-logo { width:64px; height:64px; }
+.revive-mode .card { padding:22px; }
+#reviveWallet { margin:0; color:#ffdc8b; font-weight:800; }
+#reviveAdStatus { margin:0; font-size:13px; }
+@media(max-height:500px){
+  .game-frame .overlay.revive-mode { padding:10px; align-items:safe center; }
+  .revive-mode .brand-logo, .revive-mode .kicker, .revive-mode .build-info, .revive-mode .iphone-hint { display:none; }
+  .revive-mode .card { padding:12px; }
+  .revive-mode .card h2 { font-size:26px; margin:0 0 6px; }
+  .revive-mode .card > p:not(.kicker):not(.controls-copy) { font-size:12px; line-height:1.3; margin:6px 0; }
+  .revive-mode #reviveOptions { gap:6px; margin:8px 0; }
+  .revive-mode #reviveOptions button, .revive-mode #startButton { padding:10px 12px; font-size:12px; }
+  .revive-mode #reviveWallet, .revive-mode #reviveAdStatus { font-size:12px; line-height:1.3; }
+}
 .controls-copy { margin: 18px 0 0; font-size: .78rem; }
 .world-map { position:absolute; inset:0; z-index:6; display:grid; place-items:center; background:#dbc08a; }
 .world-map[hidden] { display:none; }
@@ -196,6 +215,12 @@ kbd { padding: 2px 6px; border: 1px solid #43505b; border-radius: 4px; color: #b
             <p class="kicker">Meadow One</p>
             <h2>Wake the ancient lantern</h2>
             <p>Gather sun-coins, dodge the mossy undead, and reach the elemental shrine.</p>
+            <div id="reviveOptions" hidden>
+              <p id="reviveWallet"></p>
+              <button id="reviveCoinButton" type="button">20 coins · Continue with 1 heart</button>
+              <button id="reviveAdButton" type="button">Test ad (5 seconds) · Continue with 3 hearts</button>
+              <p id="reviveAdStatus" role="status" aria-live="polite">Test ad only—no real advertisement.</p>
+            </div>
             <button id="startButton" type="button">Begin adventure</button>
             <p class="controls-copy"><strong>Move</strong> ← → &nbsp; <strong>Run</strong> Shift + ← → &nbsp; <strong>Jump</strong> ↑ / Space &nbsp; <strong>Hit</strong> X &nbsp; <strong>Map</strong> M</p>
             <small id="buildInfo" class="build-info" aria-label="Build information"></small>
@@ -232,6 +257,7 @@ kbd { padding: 2px 6px; border: 1px solid #43505b; border-radius: 4px; color: #b
 
       <footer>
         <span>Collect every coin for a perfect run.</span>
+        <span id="walletBalance" aria-live="polite">Wallet: 0 coins</span>
         <span><kbd>Shift</kbd> + arrows run · <kbd>R</kbd> restart · <kbd>M</kbd> map</span>
         <button id="mapOpen" class="icon-button" type="button">World map</button>
       </footer>
@@ -625,7 +651,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.20.3',build:2026101202,builtAt:'2026-10-12',builtLabel:'12 October 2026',deployment:'Castle bow and jump fixes'});
+const BUILD_INFO=Object.freeze({version:'0.20.4',build:2026101301,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Coin wallet and checkpoint revives'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -1807,6 +1833,9 @@ function updateFireSurfaceZombies(dt){
 function respawnFire(){
   lives--;burst(player.x+21,player.y+29,'#ff783b',18);tone(100,.25,'sawtooth');
   if(lives<=0){showEnd(false);return;}
+  restoreFireCheckpoint();
+}
+function restoreFireCheckpoint(){
   clearInputs();fireMode=checkpoint.mode||'surface';fireUnderground=fireMode==='maze';
   fireCraterViewBlend=0;fireDropCamera=null;
   Object.assign(player,{x:checkpoint.x,y:checkpoint.y,h:58,vx:0,vy:0,onGround:true,duck:false,invincible:2,mazeTarget:null});
@@ -1863,7 +1892,7 @@ function updateFireJourney(dt){
     if(fireDropRocks.some(rock=>overlap(player,rock))){respawnFire();return;}
     if(player.y+player.h>=FIRE_DROPPER.bottom){fireMode='landing';player.y=FIRE_DROPPER.bottom-player.h;player.vy=0;player.onGround=true;}
   }
-  for(const c of coins)if(!c.taken&&Math.hypot(player.x+21-c.x,player.y+29-c.y)<38){c.taken=true;score++;burst(c.x,c.y,THEME.gold,10);}
+  for(const c of coins)if(!c.taken&&Math.hypot(player.x+21-c.x,player.y+29-c.y)<38){collectCoin(c);burst(c.x,c.y,THEME.gold,10);}
   const onVolcano=fireJumpingMode(),centerX=player.x+player.w/2;
   const inCrater=['dropper','landing','entering'].includes(fireMode);
   fireCraterViewBlend=Math.max(0,Math.min(1,fireCraterViewBlend+dt*(inCrater?1:-1)/1.2));
@@ -1923,7 +1952,7 @@ function updateFireMaze(dt){
     if(fireArrow.owned&&!player.mazeTarget&&player.mazeC===FIRE_MAZE.exit.c&&player.mazeR===FIRE_MAZE.exit.r){beginSecondVolcano();return;}
   }
   for(const c of coins)if(!c.taken&&Math.hypot(player.x+21-c.x,player.y+29-c.y)<38){
-    c.taken=true;score++;burst(c.x,c.y,THEME.gold,10);tone(700+score%4*80,.09,'sine',.04);
+    collectCoin(c);burst(c.x,c.y,THEME.gold,10);tone(700+score%4*80,.09,'sine',.04);
   }
   const view=fireViewSize(),targetX=fireMode==='entering'?(FIRE_DROPPER.left+FIRE_DROPPER.right-view.width)/2:player.x-view.width*.46;
   cameraX+=(Math.max(0,Math.min(WORLD_W-view.width,targetX))-cameraX)*(1-Math.exp(-dt*6));
@@ -2381,7 +2410,96 @@ function drawMeadowZombieHearts(e,cx){
 }
 
 // MEADOW_ZOMBIE_END
+// COIN_REVIVE_BEGIN
+// Shared earned-coin wallet and local-only five-second reward simulation.
+// Embedded verbatim in index.html; no advertising SDK is loaded.
+const COIN_WALLET_KEY='bouncing-bunnies-coin-wallet-v1',REVIVE_PRICE=20,REVIVE_AD_SECONDS=5;
+let coinWallet=0,revivePending=false,reviveLevel=null,reviveAdEndsAt=0,reviveAdToken=0,reviveAdTimer=null;
+function refreshWallet(){document.querySelector('#walletBalance').textContent=`Wallet: ${coinWallet} coins`;}
+function restoreCoinWallet(){
+  try{
+    const raw=window.localStorage?.getItem(COIN_WALLET_KEY),saved=raw?JSON.parse(raw):null;
+    if(saved?.version===1&&Number.isSafeInteger(saved.coins)&&saved.coins>=0)coinWallet=saved.coins;
+  }catch { /* Keep the session wallet when storage is blocked or invalid. */ }
+  refreshWallet();
+}
+function saveCoinWallet(){
+  try{window.localStorage?.setItem(COIN_WALLET_KEY,JSON.stringify({version:1,coins:coinWallet}));}catch { /* Session play still works. */ }
+  refreshWallet();
+}
+function collectCoin(coin){
+  if(coin.taken)return false;
+  coin.taken=true;score++;coinWallet=Math.min(Number.MAX_SAFE_INTEGER,coinWallet+1);saveCoinWallet();return true;
+}
+function cancelRevive(){
+  revivePending=false;reviveLevel=null;reviveAdEndsAt=0;reviveAdToken++;
+  if(reviveAdTimer!==null&&typeof clearTimeout==='function')clearTimeout(reviveAdTimer);
+  reviveAdTimer=null;overlay.classList.remove('revive-mode');
+  document.querySelector('#reviveOptions').hidden=true;overlay.querySelector('.controls-copy').hidden=false;
+  startButton.disabled=false;document.querySelector('#mapOpen').disabled=false;
+}
+function refreshReviveOffer(){
+  const waiting=state==='reviveAd';
+  document.querySelector('#reviveWallet').textContent=`Your wallet: ${coinWallet} coins`;
+  document.querySelector('#reviveCoinButton').disabled=waiting||coinWallet<REVIVE_PRICE;
+  document.querySelector('#reviveAdButton').disabled=waiting;
+  startButton.disabled=waiting;document.querySelector('#mapOpen').disabled=waiting;
+  const status=document.querySelector('#reviveAdStatus'),message=waiting?
+    `Test ad · ${Math.max(0,Math.ceil((reviveAdEndsAt-performance.now())/1000))} seconds remaining`:
+    coinWallet<REVIVE_PRICE?`Need ${REVIVE_PRICE-coinWallet} more coins to buy a heart. Test ad only—no real advertisement.`:
+    'Test ad only—no real advertisement.';
+  if(status.textContent!==message)status.textContent=message;
+}
+function resumeWithHearts(hearts){
+  if(!revivePending||reviveLevel!==level||!['lost','reviveAd'].includes(state))return false;
+  clearInputs();
+  Object.assign(player,{x:checkpoint.x,y:checkpoint.y,h:58,vx:0,vy:0,duck:false,duckVisual:0,
+    ridingTurtle:false,blueContact:null,airCloud:null,breaching:false,attack:0,attackCooldown:0,jumpAge:9,boosts:0,landingPaint:0,mazeTarget:null});
+  player.onGround=platforms.some(p=>p.kind!=='blue'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x+player.w<=p.x+p.w);
+  bunnyArrows=[];fireArrow.cooldown=0;fireArrow.release=0;
+  if(level==='fire')restoreFireCheckpoint();
+  else if(level==='water'){
+    stopWaterDash();waterTrident.shot=null;waterTrident.cooldown=0;
+    player.inWater=!!checkpoint.water;player.air=WATER_AIR;neptunusShots=[];
+    if(neptunus.hp>0){neptunus.mode='idle';neptunus.age=0;neptunus.dizzy=1.2;neptunus.cooldown=1.5;}
+  }else if(level==='air'){
+    tempestWinds=[];tempest.dizzy=1.5;tempest.shotCooldown=Math.max(1.2,tempest.shotCooldown);
+    player.airCloud=airPlatforms.find(p=>!p.removed&&p.kind==='white'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x<p.x+p.w)||null;
+    if(descentStarted)descentBlueReached=false;
+  }else if(level==='earth'){
+    clearEarthBossHazards();
+    if(['small','giant'].includes(earthBoss.stage)){earthBoss.phase='idle';earthBoss.phaseAge=0;earthBoss.cooldown=1.5;earthBoss.dizzy=1;earthBoss.shot=false;}
+  }
+  player.invincible=3;lives=hearts;
+  if(level!=='fire'){
+    const view=level==='water'?waterViewSize():{width:W,height:playfieldHeight()};
+    cameraX=Math.max(0,Math.min(WORLD_W-view.width,player.x-view.width*.38));
+    cameraY=level==='water'&&player.inWater?Math.max(0,player.y-view.height*.5):
+      level==='air'||level==='earth'?Math.min(level==='air'?0:72,player.y-view.height*.5):touchDockHeight?phoneGroundCameraY():0;
+  }
+  cancelRevive();overlay.classList.add('hidden');overlay.inert=true;state='playing';tone(650,.15,'sine',.035);return true;
+}
+function buyReviveHeart(){
+  if(state!=='lost'||!revivePending||reviveLevel!==level||coinWallet<REVIVE_PRICE)return false;
+  coinWallet-=REVIVE_PRICE;saveCoinWallet();return resumeWithHearts(1);
+}
+function finishReviveAd(token){
+  if(state!=='reviveAd'||token!==reviveAdToken||performance.now()<reviveAdEndsAt)return false;
+  return resumeWithHearts(3);
+}
+function beginReviveAd(){
+  if(state!=='lost'||!revivePending||reviveLevel!==level)return false;
+  state='reviveAd';clearInputs();reviveAdEndsAt=performance.now()+REVIVE_AD_SECONDS*1000;
+  const token=++reviveAdToken;refreshReviveOffer();
+  reviveAdTimer=setTimeout(()=>finishReviveAd(token),REVIVE_AD_SECONDS*1000);return true;
+}
+function updateReviveAd(){if(state==='reviveAd'){refreshReviveOffer();finishReviveAd(reviveAdToken);}}
+document.querySelector('#reviveCoinButton').addEventListener('click',buyReviveHeart);
+document.querySelector('#reviveAdButton').addEventListener('click',beginReviveAd);
+
+// COIN_REVIVE_END
 function resetGame(autoPlay = true) {
+  cancelRevive();
   resetEarthBoss();resetEarthKnives();resetBackgroundBirds();
   fireCraterViewBlend=0;fireDropCamera=null;
   WORLD_W=level==='final'?FINAL_W:level==='air'?6900:level==='earth'?EARTH_W:level==='fire'?FIRE_W:level==='water'?WATER_W:4800;
@@ -2411,7 +2529,7 @@ function resetGame(autoPlay = true) {
 }
 
 function tone(freq, duration=.08, type="sine", volume=.035) {
-  if (!soundOn) return;
+  if (!soundOn||state==='reviveAd') return;
   audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
   const o = audioCtx.createOscillator(), g = audioCtx.createGain();
   o.type=type; o.frequency.value=freq; g.gain.setValueAtTime(volume,audioCtx.currentTime);
@@ -2420,6 +2538,7 @@ function tone(freq, duration=.08, type="sine", volume=.035) {
 }
 
 function start() {
+  if(state==='reviveAd')return;
   if(level==='final'&&!finalUnlocked()){openWorldMap();selectWorld('final');return;}
   overlay.inert=true;
   document.querySelector('#worldMap').hidden=true;
@@ -2431,12 +2550,15 @@ function showEnd(won) {
   overlay.inert=false;
   state = won ? "won" : "lost";
   if(won){completeWorld(level);openWorldMap();tone(880,.3,'sine',.05);return;}
+  lives=0;revivePending=true;reviveLevel=level;
+  overlay.classList.add('revive-mode');document.querySelector('#reviveOptions').hidden=false;
+  overlay.querySelector('.controls-copy').hidden=true;refreshReviveOffer();
   overlay.querySelector(".kicker").textContent = level==='final'?'The castle is waiting':level==='air'?'The clouds are waiting':level==='earth'?'The wildwood is waiting':level==='fire'?'The embers are waiting':level==='water'?'The tide is waiting':'The meadow rests';
-  overlay.querySelector("h2").textContent = won ? "A bright little victory!" : "One more hop?";
+  overlay.querySelector("h2").textContent = won ? "A bright little victory!" : "Keep your adventure going";
   overlay.querySelector(".card > p:not(.kicker):not(.controls-copy)").textContent = won
     ? `You rescued ${score} of ${coins.length} sun-coins. ${score===coins.length ? "A perfect run!" : "The rest are waiting."}`
-    : `You gathered ${score} sun-coin${score===1?"":"s"}. Try the ${level==='final'?'old castle':level==='air'?'cloud route':level==='earth'?'wildwood':level==='fire'?'ember pass':level==='water'?'tide pools':'meadow'} again.`;
-  startButton.textContent = won ? "Play again" : "Try again";
+    : `Your run is paused. Continue from your checkpoint with your collected coins, equipment and boss progress, or restart this level.`;
+  startButton.textContent = won ? "Play again" : "Restart level";
   overlay.classList.remove("hidden");
   tone(won?880:130,.3,won?"sine":"sawtooth",.05);
 }
@@ -2483,13 +2605,14 @@ function selectWorld(world){
   document.querySelector('#mapAvailability').disabled=!canPlayWorld(world);
 }
 function openWorldMap(){
+  if(state==='reviveAd')return;
   if(state!=='map')mapReturnState=state;
   state='map';clearInputs();
   overlay.classList.add('hidden');document.querySelector('#worldMap').hidden=false;
   overlay.inert=true;
   document.querySelector('#worldMap').classList.toggle('meadow-finished',meadowFinished&&level==='meadow');
   document.querySelector('#mapHeading').textContent=finalUnlocked()?'Castle unlocked!':level==='final'?'The old castle':level==='air'?(airFinished?'Air complete!':'Cloud Paths'):level==='earth'?(earthFinished?'Earth complete!':'Wildwood'):level==='fire'?(fireFinished?'Fire complete!':'Ember Pass'):level==='water'?(waterFinished?'Water complete!':'Tide Pools'):meadowFinished?'Meadow complete!':'Your adventure';
-  document.querySelector('#mapSummary').textContent=`${score} / ${coins.length} sun-coins`;
+  document.querySelector('#mapSummary').textContent=`${score} / ${coins.length} sun-coins · Wallet: ${coinWallet}`;
   document.querySelector('#meadowStatus').textContent=meadowFinished?'✓':'1';
   document.querySelector('[data-world="meadow"]').setAttribute('aria-label',meadowFinished?'First Meadow — finished':'First Meadow — starting map');
   document.querySelectorAll('[data-world]').forEach(button=>{
@@ -2768,7 +2891,7 @@ function updateWater(dt){
   }
   player.onGround=false;player.invincible=Math.max(0,player.invincible-dt);
   player.attack=Math.max(0,player.attack-dt);player.attackCooldown=Math.max(0,player.attackCooldown-dt);
-  collectWaterAdventure();updateWaterTrident(dt,waterSolids);updateNeptunus(dt);
+  collectWaterAdventure();updateWaterTrident(dt,waterSolids);updateNeptunus(dt);if(state!=='playing')return;
   if(waterBreathing()){player.air=WATER_AIR;waterCheckpoint();}
   else player.air=Math.max(0,player.air-dt);
   if(player.air<=0){
@@ -2780,7 +2903,7 @@ function updateWater(dt){
   if(!waterPortalKeyTaken&&waterAirPocket()===waterAirPockets[3]&&Math.hypot(player.x+player.w/2-WATER_PORTAL_KEY.x,player.y+player.h/2-WATER_PORTAL_KEY.y)<38){
     waterPortalKeyTaken=true;burst(WATER_PORTAL_KEY.x,WATER_PORTAL_KEY.y,'#ffd477',20);tone(820,.18,'triangle',.035);
   }
-  for(const c of coins)if(!c.taken&&Math.hypot(player.x+21-c.x,player.y+29-c.y)<38){c.taken=true;score++;burst(c.x,c.y,THEME.gold,10);tone(700+score%4*80,.09,'sine',.04);}
+  for(const c of coins)if(!c.taken&&Math.hypot(player.x+21-c.x,player.y+29-c.y)<38){collectCoin(c);burst(c.x,c.y,THEME.gold,10);tone(700+score%4*80,.09,'sine',.04);}
   for(const shark of waterSharks){
     if(shark.hp<=0)continue;
     shark.dizzy=Math.max(0,shark.dizzy-dt);shark.phase+=dt*5;
@@ -2818,6 +2941,7 @@ function updateWater(dt){
 
 // Landing artwork follows real contact; animation never delays the physics.
 function update(dt) {
+  updateReviveAd();
   if(state!=="playing")return;
   updateBackgroundBirds(dt);
   if(level==='earth'&&player.ridingTurtle){
@@ -2897,7 +3021,7 @@ function updateWorld(dt) {
   player.attack=Math.max(0,player.attack-dt);player.attackCooldown=Math.max(0,player.attackCooldown-dt);
 
   for(const c of coins) if(!c.taken && Math.hypot(player.x+21-c.x,player.y+29-c.y)<38) {
-    c.taken=true; score++; burst(c.x,c.y,THEME.gold,10); tone(700+score%4*80,.09,"sine",.04);
+    collectCoin(c); burst(c.x,c.y,THEME.gold,10); tone(700+score%4*80,.09,"sine",.04);
   }
   updateMeadowZombies(dt);
   if(level==='water')for(const cactus of waterCacti)if(waterCactusBoxes(cactus).some(box=>overlap(player,box)))hurt(player.x<cactus.x?-1:1);
@@ -2947,7 +3071,7 @@ function updateWorld(dt) {
 
 function jump() {
   if(level==='earth'&&player.ridingTurtle)leaveEarthTurtle();
-  if(state==='map')return;
+  if(state==='map'||state==='reviveAd'||state==='lost'&&revivePending)return;
   if(state==="title"||state==="won"||state==="lost"){start();return;}
   if(fireArcheryMode()||level==='fire'&&fireMode!=='surface'&&!fireJumpingMode())return;
   if(level==='water'&&player.inWater){
@@ -4820,6 +4944,7 @@ function drawHUD() {
   ctx.translate(W/2,18);ctx.scale(hudScale,hudScale);ctx.translate(-123,-18);
   ctx.fillStyle="rgba(13,32,43,.82)";roundRect(18,18,210,54,16);ctx.fillStyle=THEME.gold;ctx.beginPath();ctx.arc(46,45,12,0,7);ctx.fill();
   ctx.fillStyle=THEME.cream;ctx.font="800 18px system-ui";ctx.textAlign="left";ctx.fillText(`${score} / ${coins.length}`,67,51);
+  ctx.font='700 10px system-ui';ctx.fillStyle='#ffdc8b';ctx.fillText(`Wallet: ${coinWallet}`,67,66);
   ctx.fillStyle=THEME.coral;for(let i=0;i<lives;i++){ctx.beginPath();ctx.arc(157+i*22,44,8,0,7);ctx.fill();ctx.beginPath();ctx.ellipse(153+i*22,35,3,7,-.3,0,7);ctx.ellipse(161+i*22,35,3,7,.3,0,7);ctx.fill();}
   ctx.restore();
   const progress=Math.max(0,Math.min(1,(level==='air'?(descentStarted?.78+.22*Math.max(0,Math.min(1,(player.y+1690)/3460)):.78*player.x/5910):level==='earth'?player.x/EARTH_GATE_X:level==='fire'?(fireMode==='king'?.9+.1*(10-lavaKing.hp)/10:fireMode==='secondVolcano'?.65+.25*Math.max(0,(player.x-6680)/(10350-6680)):fireMode==='maze'?.45+.2*Math.max(0,(player.mazeC-1)/22):fireUnderground?.3+.15*Math.max(0,Math.min(1,(player.y+1050)/3070)):.3*player.x/4750):level==='water'?player.x/WATER_ARENA.exit:player.x/(WORLD_W-150)))),progressY=H>540?86:28;ctx.fillStyle="rgba(13,32,43,.4)";roundRect(W-210,progressY,180,10,5);ctx.fillStyle=THEME.shrine;roundRect(W-210,progressY,180*progress,10,5);
@@ -4876,7 +5001,7 @@ function render(time) {
 
 function loop(ms) { const t=ms/1000,dt=Math.min(.033,t-lastTime||0);lastTime=t;update(dt);render(t);requestAnimationFrame(loop); }
 
-window.addEventListener("keydown",e=>{if(e.code==='KeyO'){if(level==='earth'){e.preventDefault();if(!e.repeat)toggleEarthTurtle();}return;}if(e.code==='KeyM'){e.preventDefault();if(!e.repeat&&state!=='map')openWorldMap();return;}if(state==='map'){if(e.code==='KeyR')start();return;}if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(["ArrowUp","KeyW","Space"].includes(e.code)&&!e.repeat)jump();if(e.code==='KeyZ'&&!e.repeat){if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}if(["KeyX","KeyF"].includes(e.code)&&!e.repeat)attack();if(e.code==="KeyR")start();});
+window.addEventListener("keydown",e=>{if(state==='reviveAd'){e.preventDefault();return;}if(e.code==='KeyO'){if(level==='earth'){e.preventDefault();if(!e.repeat)toggleEarthTurtle();}return;}if(e.code==='KeyM'){e.preventDefault();if(!e.repeat&&state!=='map')openWorldMap();return;}if(state==='map'){if(e.code==='KeyR')start();return;}if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(["ArrowUp","KeyW","Space"].includes(e.code)&&!e.repeat)jump();if(e.code==='KeyZ'&&!e.repeat){if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}if(["KeyX","KeyF"].includes(e.code)&&!e.repeat)attack();if(e.code==="KeyR")start();});
 window.addEventListener("keyup",e=>keys.delete(e.code));
 function canvasPoint(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
 function fitTouchControls(){
@@ -4941,7 +5066,7 @@ canvas.addEventListener('lostpointercapture',releaseJoystick);
 window.addEventListener('blur',clearInputs);
 canvas.addEventListener("pointerup",releaseJoystick);canvas.addEventListener("pointercancel",releaseJoystick);
 startButton.addEventListener("click",start);soundButton.addEventListener("click",()=>{soundOn=!soundOn;soundButton.textContent=`Sound: ${soundOn?"on":"off"}`;document.querySelector('#mapSound').setAttribute('aria-pressed',String(!soundOn));document.querySelector('#mapSound').setAttribute('aria-label',soundOn?'Mute sound':'Enable sound');});
-restoreWorldProgress();fitGameViewport();fallbackFullscreen=standaloneMode();syncFullscreen();
+restoreWorldProgress();restoreCoinWallet();fitGameViewport();fallbackFullscreen=standaloneMode();syncFullscreen();
 resetGame(false);requestAnimationFrame(loop);
     </script>
   </body>
