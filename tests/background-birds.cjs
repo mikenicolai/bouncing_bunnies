@@ -1,5 +1,8 @@
-const assert=require('node:assert/strict');
+const assert=require('node:assert/strict'),fs=require('node:fs');
 const {run,reset}=require('./air.cjs');
+const html=fs.readFileSync('index.html','utf8');assert.equal(html.split('// BACKGROUND_BIRDS_BEGIN\n')[1].split('\n// BACKGROUND_BIRDS_END')[0],fs.readFileSync('assets/background-birds-v1.js','utf8'));
+const art=run('SKY_BIRD_ART'),png=fs.readFileSync(art.asset);assert.equal(png[25],6);assert.equal(png.readUInt32BE(16),art.width);assert.equal(png.readUInt32BE(20),art.height);
+for(const f of art.frames)assert(f.sx>=0&&f.sy>=0&&f.sx+f.sw<=art.width&&f.sy+f.sh<=art.height&&f.ax>f.sx&&f.ax<f.sx+f.sw&&f.ay>f.sy&&f.ay<f.sy+f.sh,'registered frame and body anchor fit the original image');
 const counts={};
 for(const fps of [30,60,120]){
  for(const world of ['air','earth','water','fire']){

@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.3',build:2026101310,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Natural rooted Wildwood cliffs'});
+const BUILD_INFO=Object.freeze({version:'0.21.4',build:2026101311,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Painted sky birds'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -3718,11 +3718,12 @@ function drawFinalGateForeground(){
   const width=440,height=660,x=2820-cameraX,y=FINAL_FLOOR-height*1445/1536;
   ctx.save();ctx.beginPath();ctx.rect(x+width*.70,y,width*.30,height);ctx.clip();ctx.drawImage(finalArchSheet,x,y,width,height);ctx.restore();
 }
+// BACKGROUND_BIRDS_BEGIN
 // Small distant flocks are scenery only, with quiet gaps between flybys.
 const BACKGROUND_BIRD_SETTINGS={
-  air:{delay:4,interval:22,count:4,body:'#eee9cf',wing:'#819ea7',ink:'#536e7a'},
-  earth:{delay:12,interval:46,count:2,body:'#e0dec4',wing:'#829887',ink:'#567368'},
-  water:{delay:8,interval:58,count:2,body:'#f0f1db',wing:'#8ba9b7',ink:'#557f94'}
+  air:{delay:4,interval:22,count:4},
+  earth:{delay:12,interval:46,count:2},
+  water:{delay:8,interval:58,count:2}
 };
 const BIRD_PARALLAX=.12;
 let backgroundBirds=[],backgroundBirdClock=0,nextBackgroundFlock=Infinity,backgroundFlockNumber=0;
@@ -3759,8 +3760,34 @@ function backgroundBirdPose(bird){
     y:bird.y-cameraY*(level==='water'?1:.07)+Math.sin(bird.age*1.6+bird.phase)*5,
     flap:Math.sin(bird.age*8+bird.phase)*9};
 }
+const SKY_BIRD_ART={"asset":"assets/sky-birds-flight-v1.png","width":1254,"height":1254,"bodyWidth":573,"frames":[{"sx":49,"sy":35,"sw":585,"sh":565,"ax":450,"ay":480},{"sx":650,"sy":178,"sw":576,"sh":422,"ax":1042,"ay":482},{"sx":36,"sy":744,"sw":598,"sh":444,"ax":450,"ay":944},{"sx":648,"sy":747,"sw":580,"sh":323,"ax":1044,"ay":948}]};
+const skyBirdSheet=new Image();skyBirdSheet.src=SKY_BIRD_ART.asset;
+const SKY_BIRD_FLAP=[0,1,3,2,3,1];
+const skyBirdPaintings=[];
+function skyBirdPainting(slot,mixStep){
+  const key=slot*6+mixStep;if(skyBirdPaintings[key])return skyBirdPaintings[key];
+  const c=document.createElement('canvas');c.width=c.height=96;
+  const paint=c.getContext('2d'),mix=mixStep/6;
+  // Registered bodies keep the beak and torso steady through each wing stroke.
+  // Add on transparency to blend feather poses without fading the shared body.
+  paint.globalCompositeOperation='lighter';
+  for(const [frame,weight] of [[SKY_BIRD_FLAP[slot],1-mix],[SKY_BIRD_FLAP[(slot+1)%6],mix]]){
+    if(!weight)continue;const f=SKY_BIRD_ART.frames[frame],scale=.09;
+    paint.globalAlpha=weight;
+    paint.drawImage(skyBirdSheet,f.sx,f.sy,f.sw,f.sh,48+(f.sx-f.ax)*scale,64+(f.sy-f.ay)*scale,f.sw*scale,f.sh*scale);
+  }
+  skyBirdPaintings[key]=c;return c;
+}
+function drawPaintedSkyBird(bird){
+  if(!skyBirdSheet.complete||!skyBirdSheet.naturalWidth)return;
+  const p=backgroundBirdPose(bird),phase=((bird.age*8+bird.phase)/(Math.PI*2)*6%6+6)%6;
+  const slot=Math.floor(phase),mixStep=Math.floor((phase-slot)*6),scale=33/SKY_BIRD_ART.bodyWidth/.09;
+  ctx.save();ctx.translate(p.x,p.y);ctx.scale(bird.vx>0?bird.scale:-bird.scale,bird.scale);
+  ctx.globalAlpha=.84*Math.max(0,Math.min(1,bird.age/.5,(bird.life-bird.age)/.7));
+  ctx.drawImage(skyBirdPainting(slot,mixStep),-48*scale,-64*scale,96*scale,96*scale);ctx.restore();
+}
 function drawBackgroundBirds(){
-  const palette=BACKGROUND_BIRD_SETTINGS[level];if(!palette)return;
+  if(!BACKGROUND_BIRD_SETTINGS[level])return;
   ctx.save();
   if(level==='water'){
     const skyHeight=Math.max(0,Math.min(H,WATER_SURFACE-cameraY-12));
@@ -3770,25 +3797,12 @@ function drawBackgroundBirds(){
   for(const bird of backgroundBirds){
     const p=backgroundBirdPose(bird);
     if(p.x<-90||p.x>W+90||p.y<-30||p.y>H+30)continue;
-    ctx.save();ctx.translate(p.x,p.y);ctx.scale(bird.vx>0?bird.scale:-bird.scale,bird.scale);
-    ctx.globalAlpha=.66*Math.min(1,bird.age/.5,(bird.life-bird.age)/.7);
-    ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=palette.ink;ctx.lineWidth=.8;
-    // Curved wings open and fold, with a smaller wing behind the body.
-    ctx.fillStyle=palette.wing;ctx.beginPath();ctx.moveTo(-1,-1);
-    ctx.quadraticCurveTo(-9,-8-p.flap*.55,-14,-3-p.flap*.65);
-    ctx.quadraticCurveTo(-8,2,-1,2);ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.fillStyle=palette.body;ctx.beginPath();ctx.moveTo(-5,1);ctx.lineTo(-12,-1);ctx.lineTo(-10,4);ctx.closePath();ctx.fill();
-    ctx.beginPath();ctx.ellipse(0,1,6,3.3,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-    ctx.fillStyle=palette.wing;ctx.beginPath();ctx.moveTo(-2,0);
-    ctx.quadraticCurveTo(-5,-7-p.flap,6,-10-p.flap);
-    ctx.quadraticCurveTo(4,-2-p.flap*.35,2,2);ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.fillStyle=palette.body;ctx.beginPath();ctx.ellipse(5,-1,3,2.6,-.2,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#d5b47a';ctx.beginPath();ctx.moveTo(7,-1.5);ctx.lineTo(11,-.5);ctx.lineTo(7,0);ctx.closePath();ctx.fill();
-    ctx.fillStyle=palette.ink;ctx.beginPath();ctx.arc(5.7,-1.6,.55,0,Math.PI*2);ctx.fill();
-    ctx.restore();
+    drawPaintedSkyBird(bird);
   }
   ctx.restore();
 }
+
+// BACKGROUND_BIRDS_END
 
 function drawEarthBackground(){
   const sky=ctx.createLinearGradient(0,0,0,H);

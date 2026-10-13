@@ -1,22 +1,18 @@
-<!doctype html>
-<html lang="en">
-<meta charset="utf-8">
-<title>Background birds</title>
-<style>
-body{margin:0;padding:16px;background:#1b2830;color:#fff7df;font:16px system-ui}h1{margin:0 0 8px;font-size:24px}p{margin:0 0 12px}button{font:inherit;border:0;border-radius:8px;padding:8px 14px;margin:0 6px 12px 0;background:#b8d7c3;color:#243b42;cursor:pointer}iframe{display:block;width:min(1100px,100%);height:760px;border:1px solid #51766b;border-radius:12px}
-</style>
-<h1>Birds in the background</h1>
-<p>Small flocks in Air, occasional birds in Earth and Water, and an empty sky in Fire. Birds stay behind the gameplay.</p>
-<button data-world="air">Air</button><button data-world="earth">Earth</button><button data-world="water">Water</button><button data-world="fire">Fire · no birds</button><button id="pause">Freeze frame</button>
-<iframe src="../index.html" title="Bouncing Bunnies bird preview"></iframe>
-<script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Painted sky birds</title><style>
+body{margin:0;padding:16px;background:#1b2830;color:#fff7df;font:16px system-ui}main{max-width:1100px;margin:auto}h1{margin:0 0 8px;font-size:24px}p{margin:0 0 12px;line-height:1.5}button{font:inherit;border:0;border-radius:8px;padding:8px 14px;margin:0 6px 12px 0;background:#b8d7c3;color:#243b42;cursor:pointer}button:disabled{opacity:.4}iframe{display:block;width:100%;height:660px;border:1px solid #51766b;border-radius:12px;box-sizing:border-box}.poses{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}.poses figure{margin:0;text-align:center}.poses canvas{width:100%;max-width:180px;border-radius:12px;background:#8bc8c8}.poses figcaption{margin-top:6px;color:#c7dccd}@media(max-width:600px){body{padding:10px}.poses{grid-template-columns:repeat(2,1fr)}iframe{height:75dvh}}
+</style></head><body><main><h1>Painted birds in flight</h1><p>Blue feathers and warm cream plumage match the forest animals. Small flocks fly behind the game; larger pose views below show the artwork. This preview keeps your normal progress and wallet unchanged.</p><nav><button disabled data-world="air">Air</button><button disabled data-world="earth">Earth</button><button disabled data-world="water">Water</button><button disabled data-world="fire">Fire · no birds</button><button disabled id="pause">Freeze frame</button></nav><iframe src="../index.html" title="Painted background birds in the game"></iframe><div class="poses"><figure><canvas width="180" height="180" data-slot="0"></canvas><figcaption>Raised wings</figcaption></figure><figure><canvas width="180" height="180" data-slot="1"></canvas><figcaption>Downstroke</figcaption></figure><figure><canvas width="180" height="180" data-slot="3"></canvas><figcaption>Lowered wings</figcaption></figure><figure><canvas width="180" height="180" data-slot="2"></canvas><figcaption>Glide</figcaption></figure></div></main><script>
 const frame=document.querySelector('iframe');let ready=false,paused=false,last=0;
 function show(world){
- frame.contentWindow.eval(`level='${world}';soundOn=false;start();state='review';cameraX=0;cameraY=0;player.onGround=true;nextBackgroundFlock=0;updateBackgroundBirds(2.8);`);ready=true;
+ if(!ready)return;
+ frame.contentWindow.eval(`beginDeveloperSession();level='${world}';soundOn=false;start();fallbackFullscreen=true;syncFullscreen();state='review';cameraX=0;cameraY=0;player.onGround=true;nextBackgroundFlock=0;updateBackgroundBirds(2.8);backgroundBirds.forEach((b,i)=>{b.x=W*.62-i*43;b.y=135+i*18;});render(0);`);
 }
-frame.addEventListener('load',()=>show('air'));
-document.querySelectorAll('[data-world]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.world)));
-document.querySelector('#pause').addEventListener('click',e=>{paused=!paused;e.target.textContent=paused?'Resume birds':'Freeze frame';});
+frame.onload=async()=>{
+ const style=frame.contentDocument.createElement('style');style.textContent='html,body{margin:0;padding:0}.game-shell,main{width:100%;max-width:none;padding:0;margin:0}header,footer{display:none}.game-frame{border:0;border-radius:0;box-shadow:none}.game-frame:not(.expanded){min-height:0}';frame.contentDocument.head.append(style);
+ try{await frame.contentWindow.eval('skyBirdSheet.decode()');ready=true;document.querySelectorAll('button').forEach(b=>b.disabled=false);show('air');
+  for(const c of document.querySelectorAll('[data-slot]')){const p=c.getContext('2d'),a=frame.contentWindow.eval('SKY_BIRD_ART'),f=a.frames[frame.contentWindow.eval(`SKY_BIRD_FLAP[${c.dataset.slot}]`)],scale=.16875;p.drawImage(frame.contentWindow.eval('skyBirdSheet'),f.sx,f.sy,f.sw,f.sh,90+(f.sx-f.ax)*scale,120+(f.sy-f.ay)*scale,f.sw*scale,f.sh*scale);}
+ }catch(e){console.error(e);}
+};
+document.querySelectorAll('[data-world]').forEach(b=>b.onclick=()=>show(b.dataset.world));
+document.querySelector('#pause').onclick=e=>{paused=!paused;e.target.textContent=paused?'Resume birds':'Freeze frame';};
 function tick(t){if(ready&&!paused)frame.contentWindow.eval(`updateBackgroundBirds(${Math.min(.033,(t-last)/1000||0)})`);last=t;requestAnimationFrame(tick);}requestAnimationFrame(tick);
-</script>
-</html>
+</script></body></html>

@@ -1,0 +1,15 @@
+# Painted sky birds flight v1
+
+Generated on 13 October 2026 with the built-in imagegen tool. `assets/wildwood-bird-v1.png` was the art style and character reference. The original transparent 1254 × 1254 RGBA sprite sheet is saved unmodified as `assets/sky-birds-flight-v1.png`.
+
+The four painted poses show raised wings, a downstroke, lowered wings, and a glide. `sky-birds-flight-v1.json` records each full silhouette crop and body anchor; registration keeps the torso and beak steady during wing movement. A six-position flap cycle interpolates through 36 small cached Canvas paintings. The original atlas is preserved, and rendering does not read image pixels, so direct-file play works. Bird width is 33 units before the existing distance scales, with 0.84 maximum opacity and the usual spawn/exit fades.
+
+The shared Air/Earth/Water background bird renderer uses these paintings. Flock timing, counts, flight speed, bobbing, parallax, paused behavior, and the surface-only Water clipping are preserved. Fire remains clear of background birds. The Wildwood birds standing on the ground are a separate asset and behavior.
+
+Runtime source: `assets/background-birds-v1.js`, embedded verbatim inside the `BACKGROUND_BIRDS_BEGIN/END` markers in `index.html`. Isolated animation preview: `previews/background-birds.html`. Tests: `tests/background-birds.cjs` and `tests/background-birds-browser.cjs`.
+
+## Exact generation prompt
+
+```
+Use case: illustration-story. Asset type: transparent animation sprite sheet for the friendly distant flying birds in Bouncing Bunnies, a painted storybook side-scrolling game. Reference image wildwood-bird-v1.png is the exact art style and character/material reference: softly textured blue-teal feathers, creamy warm ivory breast, sage head, golden little beak, friendly dark eye, rounded body and warm contour shadows. Create the same bird FLYING, not standing. One square sheet with FOUR distinct full-body flight poses in a clean 2 by 2 grid of equal square cells. Every bird faces RIGHT in orthographic side view; identical body size, head, tail, colors, and proportions in all four cells. Keep the body center and beak in the same relative position inside every cell; only the wings change. Top-left pose: both wings raised high, layered feather tips spread. Top-right: wings extended halfway on the downstroke. Bottom-left: wings swept down below the body, strong downstroke. Bottom-right: wings nearly level in a gentle glide, transitioning back upward. Both wings visible with the far wing smaller and behind the body. Short tail to the left and little feet tucked beneath the belly, no ground. Fully contained silhouettes and generous transparent margins in all four cells; no overlapping cells, no grid lines or labels. Rich hand-painted game art with readable feather groups and soft sculpted volume, never flat vector geometry, photorealistic wildlife or a harsh black outline. Warm gentle lighting, clear silhouette at a small 30-pixel gameplay scale. Genuinely transparent alpha background, no clouds, sky, scenery, glow, background shadows, text, watermark or checkerboard drawn into pixels.
+```
