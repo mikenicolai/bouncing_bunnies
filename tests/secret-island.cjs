@@ -34,6 +34,18 @@ for(const width of [480,960])for(const fps of [30,60,120]){
   assert.equal(run('state'),'map',`return to wind gate at ${width}/${fps}`);
   assert(run('airFinished'));assert.equal(run('lives'),3);
 }
+// Returning from the hidden island must never re-enter the downdraft's horizontal clamp.
+// Exercise both edge returns; ordinary physics cannot move the bunny hundreds of pixels in one frame.
+for(const fps of [30,60,120])for(const direction of ['ArrowLeft','ArrowRight']){
+ reset();run(`beginDescent();descentBlueReached=true;player.x=${direction==='ArrowLeft'?6760:6700};player.y=airSecretIsland.y-player.h;player.onGround=true;player.airCloud=airSecretIsland;player.vx=0;keys.add('${direction}');jump()`);
+ let previousX=run('player.x');
+ for(let f=0;f<fps*1.5&&run("state==='playing'");f++){
+  if(f===Math.round(fps/12)||f===Math.round(fps/6))run('jump()');
+  run(`update(1/${fps})`);const x=run('player.x');
+  assert(Math.abs(x-previousX)<=320/fps+1,`return jump cannot teleport at ${fps} FPS, ${direction}: ${previousX} -> ${x}`);
+  assert.equal(run('lives'),3,'returning through the cloud never respawns or loses a heart');previousX=x;
+ }
+}
 // Ground beyond the gate is safe for exploration until the portal is touched.
 reset();run('beginDescent();descentBlueReached=true;player.x=6815;player.y=1712;player.vx=0;player.vy=0;update(1/60)');
 assert.equal(run('state'),'playing');

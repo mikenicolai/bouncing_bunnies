@@ -249,8 +249,7 @@ function drawWaterAdventure(){
     ctx.fillStyle='rgba(114,246,226,.25)';ctx.fillRect(WATER_ARENA.left-65-cameraX,680,55,820);
   }
   const exit=WATER_ARENA.right-cameraX;
-  ctx.strokeStyle=neptunus.hp<=0&&neptunus.deathAge>=1.6?'#c2ffdc':'#dfa65b';ctx.lineWidth=6;
-  ctx.beginPath();ctx.ellipse(exit+40,1270,50,135,0,0,7);ctx.stroke();
+  drawElementPortal('water',WATER_ARENA.exit,waterFloorY(WATER_ARENA.exit),420,waterTime,neptunus.hp<=0&&neptunus.deathAge>=1.6);
   if(neptunus.hp>0||neptunus.deathAge<1.6){ctx.fillStyle='rgba(66,106,121,.7)';ctx.fillRect(exit,680,64,820);}
   ctx.fillStyle='#e0fff1';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(neptunus.hp>0?'DEFEAT NEPTUNUS':'WATER EXIT',exit+32,1100);
   const t=waterTrident;if(t.shot){drawWaterTrident(t.shot.x,t.shot.y,82,Math.atan2(t.shot.vy,t.shot.vx),t.shot.returning?.65:1);}
