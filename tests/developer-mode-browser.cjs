@@ -8,7 +8,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   assert.equal(await page.evaluate(()=>selectedWorld),'meadow');assert.equal(await page.locator('[data-world]:disabled').count(),6);
   assert(!(await page.locator('#developerMenu').isVisible()));assert(!(await page.locator('footer').innerText()).includes('Developer'));
   await page.keyboard.press('d');assert.equal(await page.evaluate(()=>state),'developer');
-  assert(await page.locator('#developerBuild').innerText().then(s=>s.includes('2026101309')));
+  assert(await page.locator('#developerBuild').innerText().then(s=>s.includes('2026101310')));
   const input=page.getByLabel('Test wallet · 0–1,000 coins');
   await input.fill('1000');await page.getByRole('button',{name:'Set coins',exact:true}).click();assert.equal(await page.evaluate(()=>coinWallet),1000);
   await input.fill('1001');await page.getByRole('button',{name:'Set coins',exact:true}).click();assert.equal(await page.evaluate(()=>coinWallet),1000,'native bounds reject extra coins');
