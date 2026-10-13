@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.15',build:2026101322,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Fallen Lava King and checkpoint continuation'});
+const BUILD_INFO=Object.freeze({version:'0.21.16',build:2026101323,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Smooth touch running and high jumps'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -800,7 +800,7 @@ function freshTempest(){return{x:5330,y:-1865,w:120,h:175,hp:TEMPEST_MAX_HP,dizz
 let tempest=freshTempest(),tempestWinds=[];
 const keys = new Set();
 let state = "title", cameraX = 0, cameraY = 0, lastTime = 0, soundOn = true, audioCtx;
-const joystick = { active:false, pointerId:null, dx:0, dy:0, jumpArmed:true, duck:false };
+const joystick = { active:false, pointerId:null, dx:0, dy:0, jumpArmed:true, duck:false, sprint:false, motion:false, jumpGesture:null };
 const JOY = { x: W-92, y:H-94, radius:57, knob:25 };
 const ACTIONS = {
   jump:{x:82,y:H-80,r:40,label:"JUMP",color:THEME.gold},
@@ -873,11 +873,12 @@ function respawnMeadowLesson(){
 function updateMeadowSwimming(dt){
   const p=MEADOW_POOL;storeMeadowBow();
   player.duck=false;player.duckVisual=0;player.h=58;player.onGround=false;player.inWater=true;player.swimClock+=dt;player.stroke=Math.max(0,player.stroke-dt);
-  const left=keys.has('ArrowLeft')||keys.has('KeyA')||joystick.dx<-.22,right=keys.has('ArrowRight')||keys.has('KeyD')||joystick.dx>.22;
-  const up=keys.has('ArrowUp')||keys.has('KeyW')||joystick.dy<-.28,down=keys.has('ArrowDown')||keys.has('KeyS')||duckPointer!==null||joystick.dy>.28;
+  const swimX=(keys.has('ArrowRight')||keys.has('KeyD')?1:0)-(keys.has('ArrowLeft')||keys.has('KeyA')?1:0)||joystickAxis(joystick.dx);
+  const swimY=(keys.has('ArrowDown')||keys.has('KeyS')||duckPointer!==null?1:0)-(keys.has('ArrowUp')||keys.has('KeyW')?1:0)||joystickAxis(joystick.dy);
+  const left=swimX<0,right=swimX>0,up=swimY<0,down=swimY>0;
   if(left)player.facing=-1;if(right)player.facing=1;
-  player.vx+=((right?1:0)-(left?1:0))*690*dt;
-  player.vy+=((down?1:0)-(up?1:0))*650*dt;
+  if(swimX)player.vx+=Math.max(-690*dt,Math.min(690*dt,swimX*215-player.vx));
+  if(swimY)player.vy+=Math.max(-650*dt,Math.min(650*dt,swimY*215-player.vy));
   if(!left&&!right)player.vx*=Math.pow(.055,dt);
   if(!up&&!down)player.vy=player.vy*Math.pow(.11,dt)-20*dt;
   player.vx=Math.max(-215,Math.min(215,player.vx));player.vy=Math.max(-215,Math.min(215,player.vy));
@@ -1213,9 +1214,31 @@ let waterSharks=[],waterPirates=[];
 const EARTH_W=8100, EARTH_GATE_X=8000;
 const GROUND_RUN_SPEED=260, GROUND_RUN_ACCEL=1500, GROUND_SPRINT_SPEED=360;
 const BUNNY_ART_SCALE=.7;
-function sprintHeld(){return keys.has('ShiftLeft')||keys.has('ShiftRight');}
+function sprintHeld(){return keys.has('ShiftLeft')||keys.has('ShiftRight')||joystick.sprint;}
 function bunnyMoveSpeed(){return sprintHeld()&&!player.duck?GROUND_SPRINT_SPEED:GROUND_RUN_SPEED;}
 function mazeMoveSpeed(){return sprintHeld()?230:165;}
+// A small dead zone and a smooth curve give the stick useful slow movement.
+function joystickAxis(value){
+  const t=Math.max(0,Math.min(1,(Math.abs(value)-.12)/.7));
+  return Math.sign(value)*t*t*(3-2*t);
+}
+function moveBunnyHorizontal(dt){
+  const keyboard=(keys.has('ArrowRight')||keys.has('KeyD')?1:0)-(keys.has('ArrowLeft')||keys.has('KeyA')?1:0);
+  const accel=player.onGround?(sprintHeld()&&!player.duck?1900:GROUND_RUN_ACCEL):820,max=player.duck?70:bunnyMoveSpeed();
+  const move=keyboard||joystickAxis(joystick.dx);
+  if(!keyboard&&joystick.motion){
+    // Approach an analog target instead of accelerating every small pull to full speed.
+    const target=move*max,change=accel*dt;
+    player.vx+=Math.max(-change,Math.min(change,target-player.vx));
+  }else{
+    if(move)player.vx+=move*accel*dt;
+    else player.vx*=Math.pow(player.onGround?.0008:.08,dt);
+    player.vx=Math.max(-max,Math.min(max,player.vx));
+  }
+  if(move)player.facing=Math.sign(move);
+  return move;
+}
+
 const FIRE_GROUND_SCREEN=.8;
 let fireCraterViewBlend=0,fireDropCamera=null;
 function fireViewSize(){
@@ -2228,13 +2251,9 @@ function updateFireJourney(dt){
   if(fireMode==='king'&&lavaKing.defeated)updateDuck();
   else if(player.duck){const feet=player.y+player.h;player.duck=false;player.h=58;player.y=feet-58;}
   player.duckVisual=Math.max(0,Math.min(.18,(player.duckVisual||0)+(player.duck?dt:-dt)));
-  const move=(keys.has('ArrowRight')||keys.has('KeyD')?1:0)-(keys.has('ArrowLeft')||keys.has('KeyA')?1:0)|| (Math.abs(joystick.dx)>.22?joystick.dx:0);
-  if(fireJumpingMode()){
-    const accel=player.onGround?(sprintHeld()&&!player.duck?1900:GROUND_RUN_ACCEL):820,max=player.duck?70:bunnyMoveSpeed();
-    if(move)player.vx+=move*accel*dt;
-    else player.vx*=Math.pow(player.onGround?.0008:.08,dt);
-    player.vx=Math.max(-max,Math.min(max,player.vx));
-  }else player.vx=move*bunnyMoveSpeed();
+  const move=fireJumpingMode()?moveBunnyHorizontal(dt):
+    (keys.has('ArrowRight')||keys.has('KeyD')?1:0)-(keys.has('ArrowLeft')||keys.has('KeyA')?1:0)||joystickAxis(joystick.dx);
+  if(!fireJumpingMode())player.vx=move*bunnyMoveSpeed();
   if(move&&!fireArcheryMode())player.facing=Math.sign(move);
   if(fireArcheryMode()&&fireMode==='king')player.facing=player.x+player.w/2<lavaKing.x+lavaKing.w/2?1:-1;
   const previousX=player.x,previousFeet=player.y+player.h;
@@ -3333,17 +3352,16 @@ function updateWater(dt){
   waterPirates.filter(p=>p.hp>0).forEach(positionWaterPirate);
   const waterSolids=[...waterReefs,...waterShipSolids(),...waterGateSolid(),...waterAdventureSolids(),...waterPirates.filter(p=>p.hp>0).flatMap(waterTetherSolids)];
   if(!player.breaching)resolveWaterTetherContact(waterSolids);
-  const left=keys.has('ArrowLeft')||keys.has('KeyA')||joystick.dx<-.22;
-  const right=keys.has('ArrowRight')||keys.has('KeyD')||joystick.dx>.22;
-  const up=keys.has('ArrowUp')||keys.has('KeyW')||joystick.dy<-.28;
-  const down=keys.has('ArrowDown')||keys.has('KeyS')||duckPointer!==null||joystick.dy>.28;
+  const swimX=(keys.has('ArrowRight')||keys.has('KeyD')?1:0)-(keys.has('ArrowLeft')||keys.has('KeyA')?1:0)||joystickAxis(joystick.dx);
+  const swimY=(keys.has('ArrowDown')||keys.has('KeyS')||duckPointer!==null?1:0)-(keys.has('ArrowUp')||keys.has('KeyW')?1:0)||joystickAxis(joystick.dy);
+  const left=swimX<0,right=swimX>0,up=swimY<0,down=swimY>0;
   if(left)player.facing=-1;if(right)player.facing=1;
   updateWaterGate(dt,right);
   const oldX=player.x,oldY=player.y;
   if(waterTrident.dash>0){moveWaterDash(dt,waterSolids);}
   else if(player.breaching){
     player.jumpAge+=dt;
-    player.vx+=((right?1:0)-(left?1:0))*480*dt;
+    player.vx+=swimX*480*dt;
     if(!left&&!right)player.vx*=Math.pow(.25,dt);
     player.vx=Math.max(-260,Math.min(260,player.vx));
     player.vy=Math.min(850,player.vy+1450*dt);
@@ -3362,8 +3380,8 @@ function updateWater(dt){
     }
   }else{
     if(waterGate.phase==='inserting')player.vx=0;
-    else player.vx+=((right?1:0)-(left?1:0))*690*dt;
-    player.vy+=((down?1:0)-(up?1:0))*650*dt;
+    else player.vx+=Math.max(-690*dt,Math.min(690*dt,swimX*215-player.vx));
+    if(swimY)player.vy+=Math.max(-650*dt,Math.min(650*dt,swimY*215-player.vy));
     if(!left&&!right)player.vx*=Math.pow(.055,dt);
     if(!up&&!down)player.vy=player.vy*Math.pow(.11,dt)-20*dt;
     player.vx=Math.max(-215,Math.min(215,player.vx));player.vy=Math.max(-215,Math.min(215,player.vy));
@@ -3463,11 +3481,7 @@ function updateWorld(dt) {
   }
   updateDuck();
   player.duckVisual=Math.max(0,Math.min(.18,(player.duckVisual||0)+(player.duck?dt:-dt)));
-  const left=keys.has("ArrowLeft")||keys.has("KeyA")||joystick.dx<-.22, right=keys.has("ArrowRight")||keys.has("KeyD")||joystick.dx>.22;
-  const accel=player.onGround?(sprintHeld()?1900:GROUND_RUN_ACCEL):820, max=player.duck?70:bunnyMoveSpeed();
-  if(left){player.vx-=accel*dt;player.facing=-1;} if(right){player.vx+=accel*dt;player.facing=1;}
-  if(!left&&!right) player.vx*=Math.pow(player.onGround?.0008:.08,dt);
-  player.vx=Math.max(-max,Math.min(max,player.vx));
+  moveBunnyHorizontal(dt);
   player.vy+=1450*dt; player.vy=Math.min(player.vy,level==='air'&&descentStarted&&player.y>airPlatforms[19].y+60?300:850);
   player.x+=player.vx*dt;
   const movementPlatforms=level==='meadow'?[...platforms,...meadowLessonSolids()]:level==='earth'?[earthTurtlePlatform(),...platforms]:platforms;
@@ -5721,11 +5735,12 @@ function drawTouchControls() {
   }
   ctx.globalAlpha=.82;ctx.fillStyle="rgba(13,32,43,.38)";ctx.strokeStyle="rgba(255,255,255,.6)";ctx.lineWidth=3;
   ctx.beginPath();ctx.arc(JOY.x,JOY.y,JOY.radius,0,Math.PI*2);ctx.fill();ctx.stroke();
-  const kx=JOY.x+joystick.dx*32,ky=JOY.y+joystick.dy*32;
-  ctx.fillStyle="rgba(131,220,200,.9)";ctx.beginPath();ctx.arc(kx,ky,JOY.knob,0,Math.PI*2);ctx.fill();
+  const travel=JOY.radius-JOY.knob,kx=JOY.x+joystick.dx*travel,ky=JOY.y+joystick.dy*travel;
+  ctx.fillStyle=joystick.sprint?'rgba(255,207,111,.95)':"rgba(131,220,200,.9)";ctx.beginPath();ctx.arc(kx,ky,JOY.knob,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#fff8de';ctx.font=`bold ${JOY.radius>60?20:14}px system-ui`;ctx.textAlign='center';
   const inMaze=level==='fire'&&fireMode==='maze',fireWalking=level==='fire'&&fireMode!=='surface'&&!fireJumpingMode(),postKing=level==='fire'&&fireMode==='king'&&lavaKing.defeated;
   ctx.fillText(inMaze?'↑ CLIMB':fireArcheryMode()?'↑ AIM':fireWalking&&!inMaze?'← MOVE →':inMaze?'↑ CLIMB':bunnySwimming()?'↑ SWIM':'↑ JUMP',JOY.x,JOY.y-JOY.radius+20);ctx.fillText(inMaze?'↓ CLIMB':fireArcheryMode()?'↓ AIM':(level==='fire'&&fireJumpingMode()&&!postKing)||fireWalking&&!inMaze?'':inMaze?'↓ CLIMB':bunnySwimming()?'↓ DIVE':'↓ DUCK',JOY.x,JOY.y+JOY.radius-10);
+  if(joystick.sprint&&!bunnySwimming()){ctx.font='bold 11px system-ui';ctx.fillText('RUN',JOY.x,JOY.y+4);}
   for(const [name,b] of Object.entries(ACTIONS)){
     if(fireArcheryMode()&&(name==='jump'||name==='duck'))continue;
     if(fireWalking&&(name==='jump'||name==='duck')||level==='fire'&&fireJumpingMode()&&!postKing&&name==='duck')continue;
@@ -5772,19 +5787,37 @@ function fitTouchControls(){
 }
 function clearInputs(){
   keys.clear();duckPointer=null;
-  Object.assign(joystick,{active:false,pointerId:null,dx:0,dy:0,jumpArmed:true,duck:false});
+  Object.assign(joystick,{active:false,pointerId:null,dx:0,dy:0,jumpArmed:true,duck:false,sprint:false,motion:false,jumpGesture:null});
   if(player)updateDuck();
+}
+function jumpFromJoystick(){
+  if(joystick.dy>=-.25){joystick.jumpArmed=true;joystick.jumpGesture=null;}
+  if(joystick.dy<=-.6&&joystick.jumpArmed){
+    joystick.jumpArmed=false;const before=player.vy;jump();
+    joystick.jumpGesture=player.vy<before&&player.jumpAge<.52?
+      {base:player.boosts,extra:0}:null;
+  }
+  const gesture=joystick.jumpGesture;
+  if(!gesture||player.duck||player.jumpAge>=.52||player.vy>=180||player.boosts!==gesture.base+Math.ceil(gesture.extra))return;
+  // Once aimed upward, distance controls power even on a diagonal run/jump.
+  const strength=Math.max(0,Math.min(1,(Math.hypot(joystick.dx,joystick.dy)-.6)/.3));
+  const extra=Math.round((2-gesture.base)*strength*1e6)/1e6,delta=extra-gesture.extra;
+  if(delta>0){
+    player.vy=Math.min(player.vy,Math.max(-720,player.vy-145*delta));
+    gesture.extra=extra;player.boosts=gesture.base+Math.ceil(extra);
+  }
 }
 function updateJoystick(p){
   if(state!=='playing'){clearInputs();return;}
   const dx=p.x-JOY.x,dy=p.y-JOY.y,d=Math.hypot(dx,dy)||1,limit=Math.min(JOY.radius-12,d);
-  joystick.dx=dx/d*limit/(JOY.radius-12);joystick.dy=dy/d*limit/(JOY.radius-12);
+  joystick.dx=dx/d*limit/(JOY.radius-12);joystick.dy=dy/d*limit/(JOY.radius-12);joystick.motion=true;
+  if(Math.abs(joystick.dx)>=.68)joystick.sprint=true;
+  else if(Math.abs(joystick.dx)<=.56)joystick.sprint=false;
   if((level==='final'||level==='meadow')&&fireArcheryMode()){joystick.duck=false;return;}
   if(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated)){
     joystick.duck=false;
     if(fireJumpingMode()&&!fireArcheryMode()){
-      if(joystick.dy>=-.25)joystick.jumpArmed=true;
-      if(joystick.dy<=-.6&&joystick.jumpArmed){joystick.jumpArmed=false;jump();}
+      jumpFromJoystick();
     }
     return;
   }
@@ -5792,8 +5825,7 @@ function updateJoystick(p){
   if(joystick.dy>=.55)joystick.duck=true;
   else if(joystick.dy<=.25)joystick.duck=false;
   updateDuck();
-  if(joystick.dy>=-.25)joystick.jumpArmed=true;
-  if(joystick.dy<=-.6&&joystick.jumpArmed){joystick.jumpArmed=false;jump();}
+  jumpFromJoystick();
 }
 canvas.addEventListener("pointerdown",e=>{
   if(state!=='playing')return;
@@ -5808,7 +5840,7 @@ canvas.addEventListener("pointerdown",e=>{
 canvas.addEventListener("pointermove",e=>{if(joystick.active&&e.pointerId===joystick.pointerId){e.preventDefault();updateJoystick(canvasPoint(e));}});
 function releaseJoystick(e){
   if(e.pointerId===duckPointer){duckPointer=null;updateDuck();}
-  if(joystick.active&&e.pointerId===joystick.pointerId){Object.assign(joystick,{active:false,pointerId:null,dx:0,dy:0,jumpArmed:true,duck:false});updateDuck();}
+  if(joystick.active&&e.pointerId===joystick.pointerId){Object.assign(joystick,{active:false,pointerId:null,dx:0,dy:0,jumpArmed:true,duck:false,sprint:false,motion:true,jumpGesture:null});updateDuck();}
 }
 canvas.addEventListener('lostpointercapture',releaseJoystick);
 window.addEventListener('blur',clearInputs);
