@@ -11,6 +11,7 @@ function restoreCoinWallet(){
   refreshWallet();
 }
 function saveCoinWallet(){
+  if(developerRun){refreshWallet();return;}
   try{window.localStorage?.setItem(COIN_WALLET_KEY,JSON.stringify({version:1,coins:coinWallet}));}catch { /* Session play still works. */ }
   refreshWallet();
 }

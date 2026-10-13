@@ -22,7 +22,7 @@ function overlay(){frame.contentWindow.eval(`cabinReviewBounds=${showBounds};ren
 function show(scene){
   if(!ready)return;
   const overview=scene==='overview',x=scene==='exit'?5732:5531,y=scene==='entry'?1120:916;
-  frame.contentWindow.eval(`level='water';soundOn=false;start();player.inWater=true;player.x=${x};player.y=${y};player.vx=0;player.vy=0;waterPortalKeyTaken=${scene==='exit'};W=${overview?2060:960};H=${overview?720:540};canvas.width=W;canvas.height=H;canvas.style.setProperty('--game-aspect',W+' / '+H);cameraX=${overview?4950:5300};cameraY=${overview?620:760};waterCheckpoint();state='review';render(1);`);
+  frame.contentWindow.eval(`beginDeveloperSession();level='water';soundOn=false;start();player.inWater=true;player.x=${x};player.y=${y};player.vx=0;player.vy=0;waterPortalKeyTaken=${scene==='exit'};W=${overview?2060:960};H=${overview?720:540};canvas.width=W;canvas.height=H;canvas.style.setProperty('--game-aspect',W+' / '+H);cameraX=${overview?4950:5300};cameraY=${overview?620:760};waterCheckpoint();state='review';render(1);`);
   frame.style.height=overview?Math.max(240,frame.clientWidth*720/2060+50)+'px':'650px';
   overlay();status.textContent=overview?'Two sealed air cabins, four floor hatches and a solid lower hull. Toggle the overlay to see exactly what blocks movement.':scene==='entry'?'Hold Up to swim through this open floor hatch. Solid timber on either side blocks entry.':scene==='exit'?'Hold Down to leave through the second hatch. The other cabin and its two hatches work the same way.':'The bunny’s head is above the cabin waterline. Swim right to collect the key, then dive through a hatch to leave.';
 }

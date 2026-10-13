@@ -9,9 +9,9 @@
 <script>
 const frame=document.querySelector('iframe'),status=document.querySelector('#status');
 function show(scene){
- let code="soundOn=false;level='air';start();beginDescent();descentBlueReached=true;player.x=6815;player.y=airPlatforms[DESCENT.finish].y-player.h;player.onGround=true;player.airCloud=airPlatforms[DESCENT.finish];cameraX=WORLD_W-W;cameraY=airPlatforms[DESCENT.finish].y-playfieldHeight()*.86;state='review';";
+ let code="soundOn=false;beginDeveloperSession();level='air';start();beginDescent();descentBlueReached=true;player.x=6815;player.y=airPlatforms[DESCENT.finish].y-player.h;player.onGround=true;player.airCloud=airPlatforms[DESCENT.finish];cameraX=WORLD_W-W;cameraY=airPlatforms[DESCENT.finish].y-playfieldHeight()*.86;state='review';";
  if(scene==='island')code+="player.x=airSecretIsland.x+70;player.y=airSecretIsland.y-player.h;player.airCloud=airSecretIsland;cameraY=airSecretIsland.y-playfieldHeight()*.7;";
- if(scene==='fire'||scene==='victory')code="soundOn=false;level='fire';start();fireArrow.owned=true;fireArrow.ammo.fill('normal');beginLavaKing();player.x=10400;player.y=FIRE_KING_ARENA.y-player.h;player.onGround=true;cameraX=FIRE_KING_ARENA.left-70;cameraY=FIRE_KING_ARENA.y-fireViewSize().height*.82;state='review';";
+ if(scene==='fire'||scene==='victory')code="soundOn=false;beginDeveloperSession();level='fire';start();fireArrow.owned=true;fireArrow.ammo.fill('normal');beginLavaKing();player.x=10400;player.y=FIRE_KING_ARENA.y-player.h;player.onGround=true;cameraX=FIRE_KING_ARENA.left-70;cameraY=FIRE_KING_ARENA.y-fireViewSize().height*.82;state='review';";
  if(scene==='victory')code+="lavaKing.hp=0;lavaKing.defeated=true;lavaKing.phase='defeated';";
  frame.contentWindow.eval(code+'render(1)');
  status.textContent=scene==='portal'?'The secret island is out of sight beneath the portal cloud.':scene==='island'?'The island is visible after dropping down.':scene==='victory'?'The barriers are extinguished and the victory portal is open.':'The flames hold both sides of the arena. Touching them costs one heart.';

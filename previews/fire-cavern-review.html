@@ -17,7 +17,7 @@ let current='surface';
 const scenes={surface:[500,392,0,0,'surface',1,1],volcano:[3500,-189,3100,-460,'volcano',1,1],dropper:[5050,575,4470,500,'dropper',1,1],maze:[4899,1991,4610,1750,'maze',1,1],turn:[5699,2791,5350,2540,'maze',11,11],exit:[6659,1991,5940,1750,'maze',23,1]};
 function show(name){
   current=name;const [x,y,cx,cy,mode,c,r]=scenes[name];
-  frame.contentWindow.eval(`level='fire';soundOn=false;start();fireMode='${mode}';player.x=${x};player.y=${y};player.mazeC=${c};player.mazeR=${r};player.vx=0;player.vy=0;player.invincible=0;fireUnderground=${y>520};cameraX=${cx};cameraY=${cy};checkpoint={x:4650,y:-1108,mode:'volcano',stage:6};state='review';`);
+  frame.contentWindow.eval(`beginDeveloperSession();level='fire';soundOn=false;start();fireMode='${mode}';player.x=${x};player.y=${y};player.mazeC=${c};player.mazeR=${r};player.vx=0;player.vy=0;player.invincible=0;fireUnderground=${y>520};cameraX=${cx};cameraY=${cy};checkpoint={x:4650,y:-1108,mode:'volcano',stage:6};state='review';`);
 }
 frame.addEventListener('load',()=>show('surface'));
 document.querySelectorAll('[data-scene]').forEach(button=>button.addEventListener('click',()=>show(button.dataset.scene)));

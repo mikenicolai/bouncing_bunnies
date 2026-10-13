@@ -26,9 +26,9 @@ function show(scene){
  if(!ready)return;
  document.querySelector('#pauseArtwork').textContent='Pause artwork';
  const owned=['quiver','slopeQuiver','afterMaze','stones','zombies','king','mazeExit'].includes(scene),slope=scene.startsWith('slope')||scene==='stones';
- let code="level='fire';soundOn=false;start();fireZombies=[];fireArrow.aiming=false;lavaKing.active=false;";
+ let code="beginDeveloperSession();level='fire';soundOn=false;start();fireZombies=[];fireArrow.aiming=false;lavaKing.active=false;";
  if(scene==='forestEdges'){
-  code="level='earth';soundOn=false;start();earthGoblins=[];player.x=1050;player.y=462;player.onGround=true;cameraX=850;cameraY=0;";
+  code="beginDeveloperSession();level='earth';soundOn=false;start();earthGoblins=[];player.x=1050;player.y=462;player.onGround=true;cameraX=850;cameraY=0;";
  }else if(scene==='firePits'||scene==='meadowPits'||scene==='shorePits'){
   const world=scene==='meadowPits'?'meadow':scene==='shorePits'?'water':'fire';
   code=`level='${world}';soundOn=false;start();fireZombies=[];enemies=[];player.x=${world==='water'?100:480};player.y=${world==='water'?292:world==='fire'?392:412};player.onGround=true;cameraX=150;cameraY=${world==='fire'?18:0};`;

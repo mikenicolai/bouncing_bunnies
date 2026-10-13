@@ -17,7 +17,7 @@ body{margin:0;padding:24px;background:#291d2a;color:#fff0d8;font:16px system-ui}
 <script>
 const frame=document.querySelector('iframe');
 function show(scene){
- let code="level='fire';soundOn=false;start();beginFireMaze();fireZombies=[];";
+ let code="beginDeveloperSession();level='fire';soundOn=false;start();beginFireMaze();fireZombies=[];";
  if(scene==='pickup')code+="player.mazeC=FIRE_ARROW_CELL.c;player.mazeR=FIRE_ARROW_CELL.r;player.x=mazeCenter(FIRE_ARROW_CELL.c,FIRE_ARROW_CELL.r).x-100;player.y=mazeCenter(FIRE_ARROW_CELL.c,FIRE_ARROW_CELL.r).y-29;cameraX=player.x+21-W*.35;cameraY=player.y-H*.5;state='review';";
  else if(scene==='fight')code+="fireArrow.owned=true;beginSecondVolcano();player.x=10340;player.y=-558;player.onGround=true;beginLavaKing();cameraX=player.x+21-W*.35;cameraY=fireCameraTargetY();state='playing';";
  else code+="fireArrow.owned=true;fireArrow.aiming=true;player.mazeC=11;player.mazeR=11;player.x=mazeCenter(11,11).x-21;player.y=mazeCenter(11,11).y-29;cameraX=player.x+21-W*.35;cameraY=player.y-H*.5;fireArrow.ammo=['normal','fire','rainbow','normal','normal'];"+(scene==='recharge'?"fireArrow.ammo=[null,null,null,null,null];state='playing';":"state='review';");

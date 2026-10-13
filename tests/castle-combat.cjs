@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict');
 const {run}=require('./air.cjs');
-const reset=()=>run("keys.clear();joystick.active=false;joystick.dx=joystick.dy=0;airFinished=waterFinished=earthFinished=fireFinished=true;level='final';start();soundOn=false;player.onGround=true;player.y=FINAL_FLOOR-58;finalGateLift=1");
+const reset=()=>run("keys.clear();joystick.active=false;joystick.dx=joystick.dy=0;meadowFinished=airFinished=waterFinished=earthFinished=fireFinished=true;level='final';start();soundOn=false;player.onGround=true;player.y=FINAL_FLOOR-58;finalGateLift=1");
 for(const fps of [30,60,120]){
  const tick=(seconds)=>{for(let i=0;i<Math.round(seconds*fps);i++)run(`update(1/${fps})`);};
  // A falling head contact must preserve Fire's damaging lava-zombie rule.

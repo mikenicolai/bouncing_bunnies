@@ -3,7 +3,7 @@ const {run}=require('./air.cjs');
 const html=fs.readFileSync('index.html','utf8');
 assert.equal(html.split('// COIN_REVIVE_BEGIN\n')[1].split('\n// COIN_REVIVE_END')[0],fs.readFileSync('assets/coin-revive-v1.js','utf8'));
 run("const walletTestStore=new Map();window.localStorage={getItem:k=>walletTestStore.get(k)||null,setItem:(k,v)=>walletTestStore.set(k,v)};let walletTestNow=0;performance.now=()=>walletTestNow;let walletTestTimers=[];setTimeout=(fn,delay)=>{walletTestTimers.push({fn,delay});return walletTestTimers.length};clearTimeout=()=>{};soundOn=false");
-const reset=world=>run(`level='${world}';airFinished=waterFinished=earthFinished=fireFinished=true;resetGame();coinWallet=0;player.invincible=999;keys.clear()`);
+const reset=world=>run(`level='${world}';meadowFinished=airFinished=waterFinished=earthFinished=fireFinished=true;resetGame();coinWallet=0;player.invincible=999;keys.clear()`);
 // Exercise every real collection path, not just the shared helper.
 for(const world of ['meadow','air','earth','water','final','fire','fireMaze','fireJourney']){
  reset(world.startsWith('fire')?'fire':world);

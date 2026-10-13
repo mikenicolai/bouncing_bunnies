@@ -126,6 +126,27 @@ html.game-expanded body { position:fixed; inset:0; touch-action:none; }
 .world-map h2:focus { outline:none; }
 .map-hotspot { position:absolute; padding:0; border:0; background:transparent; cursor:pointer; border-radius:40%; touch-action:manipulation; }
 .map-hotspot:hover { background:#fff7d51a; }
+.map-hotspot[data-world]:disabled { cursor:default; }
+.map-hotspot[data-world]:disabled:hover { background:transparent; }
+.developer-menu { position:absolute; inset:0; z-index:7; overflow:auto; padding:18px; display:grid; place-items:safe center; background:#102333; color:#eef5ef; }
+.developer-menu[hidden] { display:none; }
+.developer-card { width:min(520px,100%); }
+.developer-card h2 { margin:0 0 12px; font-size:24px; }
+.developer-card p { font-size:13px; line-height:1.5; }
+.developer-levels { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:18px 0; }
+.developer-card button, .developer-card input { font:inherit; border:1px solid #81958d; border-radius:5px; padding:10px; }
+.developer-card button { background:#e8ede7; color:#142b31; cursor:pointer; }
+.developer-wallet { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:10px 0; }
+.developer-wallet input { width:110px; background:#fff; color:#142b31; }
+#developerStatus { min-height:20px; }
+@media(max-height:500px){
+  .developer-menu { padding:10px; }
+  .developer-card h2 { margin-bottom:8px; }
+  .developer-card p { margin:6px 0; font-size:12px; }
+  .developer-levels { gap:6px; margin:10px 0; }
+  .developer-card button, .developer-card input { padding:8px; font-size:14px; }
+  .developer-wallet { margin:8px 0; }
+}
 .map-hotspot.completed:not(.map-meadow)::after { content:'✓'; position:absolute; right:2%; top:2%; display:grid; place-items:center; width:clamp(24px,4cqw,44px); aspect-ratio:1; border:2px solid #efffc9; border-radius:50%; background:#479349; color:#fffbd8; font:bold clamp(18px,3cqw,32px) system-ui; box-shadow:0 2px 5px #14261680; pointer-events:none; }
 .map-final-seal { position:absolute; left:80.5%; top:46%; width:5%; height:10%; display:grid; place-items:center; border:2px solid #efffc9; border-radius:50%; background:#479349; font-size:2.5cqw; pointer-events:none; }
 .map-final-seal[hidden] { display:none; }
@@ -251,6 +272,30 @@ kbd { padding: 2px 6px; border: 1px solid #43505b; border-radius: 4px; color: #b
               <p id="mapDetail">Jump in, swim and dive past sharks and pirate skeletons. Surface every 15 seconds for air.</p>
               <button id="mapAvailability" type="button">Play Water level</button>
             </div>
+          </div>
+        </section>
+        <section id="developerMenu" class="developer-menu" aria-label="Developer mode" hidden>
+          <div class="developer-card">
+            <h2 tabindex="-1" id="developerHeading">Developer mode</h2>
+            <p id="developerBuild"></p>
+            <p>Test levels directly. Test coins and completed levels are not saved to your normal adventure.</p>
+            <div class="developer-levels">
+              <button data-dev-world="meadow" type="button">First Meadow</button>
+              <button data-dev-world="air" type="button">Air · Cloud Paths</button>
+              <button data-dev-world="water" type="button">Water · Tide Pools</button>
+              <button data-dev-world="earth" type="button">Earth · Wildwood</button>
+              <button data-dev-world="fire" type="button">Fire · Ember Pass</button>
+              <button data-dev-world="final" type="button">Castle opening</button>
+            </div>
+            <label for="developerCoins">Test wallet · 0–1,000 coins</label>
+            <form id="developerWalletForm" class="developer-wallet">
+              <input id="developerCoins" type="number" min="0" max="1000" step="1" inputmode="numeric" value="0" required>
+              <button type="submit">Set coins</button>
+              <button id="developerCoins100" type="button">100 coins</button>
+              <button id="developerCoins1000" type="button">1,000 coins</button>
+            </form>
+            <p id="developerStatus" role="status" aria-live="polite"></p>
+            <button id="developerExit" type="button">Return to normal map</button>
           </div>
         </section>
       </section>
@@ -651,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.20.4',build:2026101301,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Coin wallet and checkpoint revives'});
+const BUILD_INFO=Object.freeze({version:'0.20.5',build:2026101302,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Ordered world progression'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -1628,7 +1673,7 @@ function chooseFireArrowCell(){
 function resetFireArrow(){
   if(level==='fire')chooseFireArrowCell();
   // Fire victory requires this relic, so saved completion restores it in the castle.
-  if(level==='final'&&fireFinished){
+  if(level==='final'&&(fireFinished||developerRun)){
     const ammo=fireArrow.owned&&fireArrow.ammo.length===FIRE_ARROW_CAPACITY?fireArrow.ammo.slice():Array.from({length:FIRE_ARROW_CAPACITY},rollFireArrowType);
     fireArrow={owned:true,aiming:false,angle:.1,cooldown:0,release:0,ammo,recharge:fireArrow.owned?fireArrow.recharge:0};bunnyArrows=[];return;
   }
@@ -2424,6 +2469,7 @@ function restoreCoinWallet(){
   refreshWallet();
 }
 function saveCoinWallet(){
+  if(developerRun){refreshWallet();return;}
   try{window.localStorage?.setItem(COIN_WALLET_KEY,JSON.stringify({version:1,coins:coinWallet}));}catch { /* Session play still works. */ }
   refreshWallet();
 }
@@ -2539,10 +2585,10 @@ function tone(freq, duration=.08, type="sine", volume=.035) {
 
 function start() {
   if(state==='reviveAd')return;
-  if(level==='final'&&!finalUnlocked()){openWorldMap();selectWorld('final');return;}
+  if(!developerRun&&!canPlayWorld(level)){level=nextWorld();resetGame(false);openWorldMap();return;}
   overlay.inert=true;
   document.querySelector('#worldMap').hidden=true;
-  resetGame(true); overlay.classList.add("hidden"); tone(440,.08); setTimeout(()=>tone(660,.12),70);
+  resetGame(true);document.querySelector('#developerMenu').hidden=true; overlay.classList.add("hidden"); tone(440,.08); setTimeout(()=>tone(660,.12),70);
 }
 
 function showEnd(won) {
@@ -2566,10 +2612,11 @@ function showEnd(won) {
 function overlap(a,b) { return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y; }
 let meadowFinished=false, mapReturnState='title';
 const WORLD_ORDER=['air','water','earth','fire'];
+const PROGRESSION_ORDER=['meadow',...WORLD_ORDER,'final'];
 const WORLD_PROGRESS_KEY='bouncing-bunnies-world-progress-v1';
 function worldCompleted(world){return world==='meadow'?meadowFinished:world==='air'?airFinished:world==='water'?waterFinished:world==='earth'?earthFinished:world==='fire'?fireFinished:false;}
-function finalUnlocked(){return WORLD_ORDER.every(worldCompleted);}
-function nextWorld(){return WORLD_ORDER.find(world=>!worldCompleted(world))||'final';}
+function finalUnlocked(){return PROGRESSION_ORDER.slice(0,-1).every(worldCompleted);}
+function nextWorld(){return PROGRESSION_ORDER.slice(0,-1).find(world=>!worldCompleted(world))||'final';}
 function restoreWorldProgress(){
   try {
     const saved=JSON.parse(window.localStorage?.getItem(WORLD_PROGRESS_KEY)||'null');
@@ -2582,10 +2629,11 @@ function saveWorldProgress(){
   try {window.localStorage?.setItem(WORLD_PROGRESS_KEY,JSON.stringify({version:1,completed:Object.fromEntries(['meadow',...WORLD_ORDER].map(world=>[world,worldCompleted(world)]))}));}catch { /* Completion stays available for this session when storage is unavailable. */ }
 }
 function completeWorld(world){
+  if(developerRun)return;
   if(world==='meadow')meadowFinished=true;else if(world==='air')airFinished=true;else if(world==='water')waterFinished=true;else if(world==='earth')earthFinished=true;else if(world==='fire')fireFinished=true;
   saveWorldProgress();
 }
-function canPlayWorld(world){return ['meadow',...WORLD_ORDER].includes(world)||world==='final'&&finalUnlocked();}
+function canPlayWorld(world){const index=PROGRESSION_ORDER.indexOf(world);return index>=0&&PROGRESSION_ORDER.slice(0,index).every(worldCompleted);}
 const worldDetails={
   meadow:['First Meadow','Collect sun-coins and reach the shrine.','Playable now'],
   water:['Water · Tide Pools','Find the ship key and open the tide gate. Beyond it, discover a two-mode trident and the aqua suit in ancient ruins, then defeat Neptunus.','Play Water level'],
@@ -2595,19 +2643,23 @@ const worldDetails={
   final:['Final Villain · Old Castle','Cross the dead woods and explore a much larger torch-lit castle guarded by zombies, goblins, air creatures and pirates.','Enter the castle']
 };
 function selectWorld(world){
+  if(!worldDetails[world])return;
+  if(state==='map'&&world!==nextWorld())return;
   selectedWorld=world;
   const [title,description,availability]=worldDetails[world];
   document.querySelectorAll('[data-world]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.world===world)));
   document.querySelector('#mapDestination').textContent=title;
-  const locked=world==='final'&&!finalUnlocked();
-  document.querySelector('#mapDetail').textContent=locked?`Complete the four worlds to open the castle. Still needed: ${WORLD_ORDER.filter(w=>!worldCompleted(w)).map(w=>worldDetails[w][0].split(' · ')[0]).join(', ')}.`:description;
-  document.querySelector('#mapAvailability').textContent=locked?'Locked · four worlds needed':availability;
+  const locked=!canPlayWorld(world);
+  document.querySelector('#mapDetail').textContent=locked?'Complete the earlier levels first.':description;
+  document.querySelector('#mapAvailability').textContent=locked?'Complete earlier levels first':availability;
   document.querySelector('#mapAvailability').disabled=!canPlayWorld(world);
 }
 function openWorldMap(){
   if(state==='reviveAd')return;
+  if(state==='developer'){exitDeveloperMode();return;}
   if(state!=='map')mapReturnState=state;
   state='map';clearInputs();
+  document.querySelector('#developerMenu').hidden=true;
   overlay.classList.add('hidden');document.querySelector('#worldMap').hidden=false;
   overlay.inert=true;
   document.querySelector('#worldMap').classList.toggle('meadow-finished',meadowFinished&&level==='meadow');
@@ -2617,6 +2669,7 @@ function openWorldMap(){
   document.querySelector('[data-world="meadow"]').setAttribute('aria-label',meadowFinished?'First Meadow — finished':'First Meadow — starting map');
   document.querySelectorAll('[data-world]').forEach(button=>{
     const world=button.dataset.world,done=worldCompleted(world);
+    button.disabled=true;
     button.classList.toggle('completed',done);
     button.setAttribute('aria-label',world==='final'?`Final Villain — ${finalUnlocked()?'unlocked, enter the castle':'locked, four worlds needed'}`:`${worldDetails[world][0]}${done?' — completed':''}`);
   });
@@ -2624,13 +2677,65 @@ function openWorldMap(){
   document.querySelector('#mapBack').textContent=mapReturnState==='playing'?`Continue ${level}`:`Replay ${level}`;
   selectWorld(nextWorld());
   document.querySelector('#mapHeading').focus();
+  if(developerRun)openDeveloperMenu();
 }
+// DEVELOPER_MODE_BEGIN
+// Set false in a production build to remove the hidden map shortcut and test entry points.
+const DEVELOPER_TOOLS_ENABLED=true;
+let developerRun=false,developerWalletBefore=null,developerStartedLevel=false;
+function beginDeveloperSession(){
+  if(!DEVELOPER_TOOLS_ENABLED)return false;
+  if(!developerRun){developerWalletBefore=coinWallet;developerStartedLevel=false;developerRun=true;}
+  return true;
+}
+function openDeveloperMenu(){
+  if(!DEVELOPER_TOOLS_ENABLED||state!=='map')return false;
+  state='developer';clearInputs();
+  document.querySelector('#worldMap').hidden=true;document.querySelector('#developerMenu').hidden=false;
+  document.querySelector('#developerBuild').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · Built ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
+  document.querySelector('#developerCoins').value=String(Math.min(1000,coinWallet));
+  document.querySelector('#developerStatus').textContent=developerRun?`Test wallet: ${coinWallet} coins`:'Normal saves stay unchanged.';
+  document.querySelector('#developerHeading').focus();return true;
+}
+function setDeveloperCoins(value){
+  if(state!=='developer'||!DEVELOPER_TOOLS_ENABLED)return false;
+  const amount=Number(value);
+  if(String(value).trim()===''||!Number.isInteger(amount)||amount<0||amount>1000){
+    document.querySelector('#developerStatus').textContent='Enter a whole number from 0 to 1,000.';return false;
+  }
+  beginDeveloperSession();coinWallet=amount;refreshWallet();
+  document.querySelector('#developerCoins').value=String(amount);
+  document.querySelector('#developerStatus').textContent=`Test wallet: ${amount} coins. Normal wallet unchanged.`;return true;
+}
+function launchDeveloperWorld(world){
+  if(state!=='developer'||!DEVELOPER_TOOLS_ENABLED||!PROGRESSION_ORDER.includes(world))return false;
+  beginDeveloperSession();developerStartedLevel=true;level=world;
+  document.querySelector('#developerMenu').hidden=true;start();
+  if(world==='final')finalGateLift=1;
+  return true;
+}
+function exitDeveloperMode(){
+  if(state!=='developer')return false;
+  const restartNormal=developerStartedLevel;
+  if(developerRun){coinWallet=developerWalletBefore;refreshWallet();}
+  developerRun=false;developerWalletBefore=null;developerStartedLevel=false;
+  document.querySelector('#developerMenu').hidden=true;
+  if(restartNormal){level=nextWorld();resetGame(false);openWorldMap();}
+  else{state='map';document.querySelector('#worldMap').hidden=false;}
+  document.querySelector('#mapHeading').focus();return true;
+}
+document.querySelectorAll('[data-dev-world]').forEach(button=>button.addEventListener('click',()=>launchDeveloperWorld(button.dataset.devWorld)));
+document.querySelector('#developerWalletForm').addEventListener('submit',event=>{event.preventDefault();setDeveloperCoins(document.querySelector('#developerCoins').value);});
+document.querySelector('#developerCoins100').addEventListener('click',()=>setDeveloperCoins(100));
+document.querySelector('#developerCoins1000').addEventListener('click',()=>setDeveloperCoins(1000));
+document.querySelector('#developerExit').addEventListener('click',exitDeveloperMode);
+
+// DEVELOPER_MODE_END
 document.querySelector('#mapOpen').addEventListener('click',openWorldMap);
-document.querySelectorAll('[data-world]').forEach(button=>button.addEventListener('click',()=>selectWorld(button.dataset.world)));
 document.querySelector('#mapFullscreen').addEventListener('click',()=>fullscreenButton.click());
 document.querySelector('#mapSound').addEventListener('click',()=>soundButton.click());
 document.querySelector('#mapAvailability').addEventListener('click',()=>{
-  if(!canPlayWorld(selectedWorld))return;
+  if(state!=='map'||selectedWorld!==nextWorld()||!canPlayWorld(selectedWorld))return;
   level=selectedWorld;start();
 });
 document.querySelector('#mapBack').addEventListener('click',()=>{
@@ -3071,7 +3176,7 @@ function updateWorld(dt) {
 
 function jump() {
   if(level==='earth'&&player.ridingTurtle)leaveEarthTurtle();
-  if(state==='map'||state==='reviveAd'||state==='lost'&&revivePending)return;
+  if(state==='map'||state==='developer'||state==='reviveAd'||state==='lost'&&revivePending)return;
   if(state==="title"||state==="won"||state==="lost"){start();return;}
   if(fireArcheryMode()||level==='fire'&&fireMode!=='surface'&&!fireJumpingMode())return;
   if(level==='water'&&player.inWater){
@@ -4996,12 +5101,12 @@ function render(time) {
   ctx.save();ctx.beginPath();ctx.rect(0,0,W,fieldH);ctx.clip();ctx.scale(view.scale,view.scale);W=view.width;H=view.height;
   drawBackground();ctx.save();ctx.translate(0,-cameraY);if(level==='fire'){drawFireTrees();drawFireVolcano();drawFireMaze();drawSecondFireVolcano();drawFireMazeTransition();}if(level==='earth')drawEarthTrees();platforms.forEach(drawPlatform);if(level==='air')drawAirWorld();else if(level==='earth')drawEarthWorld();else if(level==='fire'){drawFireRollingStones();drawLavaKingBarriers();drawFireGate();drawLavaKing();drawFireArrowPickup();drawFireAimPath();drawBunnyArrows();}else if(level==='water')drawWaterWorld();else if(level==='final'){drawFinalWorld();drawFireAimPath();drawBunnyArrows();}else drawShrine(time);
   coins.forEach(c=>drawCoin(c,time));enemies.forEach(drawEnemy);fireZombies.forEach(drawFireZombie);waterSharks.forEach(drawWaterShark);waterPirates.forEach(drawWaterPirate);if(level==='final')drawFinalMonsters();drawBunny();if(level==='air')drawHeldWindStar();if(level==='earth')drawHeldEarthKnife();if(level==='water'){drawHeldWaterEquipment();drawWaterGateForeground();drawWaterCacti();}if(level==='final')drawFinalGateForeground();drawBlueCloudForeground();
-  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;ctx.restore();ctx.restore();W=nativeW;H=nativeH;drawHUD();drawEarthBossHearts();if(level==='fire')drawLavaKingHearts();if(level==='fire'||level==='final')drawFireArrowInventory();if(level==='air')drawWindStarInventory();if(level==='earth')drawEarthKnifeInventory();drawWaterAdventureHUD();drawTouchControls();
+  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;ctx.restore();ctx.restore();W=nativeW;H=nativeH;drawHUD();drawEarthBossHearts();if(level==='fire')drawLavaKingHearts();if(level==='fire'||level==='final')drawFireArrowInventory();if(level==='air')drawWindStarInventory();if(level==='earth')drawEarthKnifeInventory();drawWaterAdventureHUD();drawTouchControls();if(developerRun){ctx.save();ctx.font='bold 11px system-ui';ctx.textAlign='left';ctx.fillStyle='#fff4ae';ctx.fillText('DEVELOPER MODE · test progress',12,playfieldHeight()-12);ctx.restore();}
 }
 
 function loop(ms) { const t=ms/1000,dt=Math.min(.033,t-lastTime||0);lastTime=t;update(dt);render(t);requestAnimationFrame(loop); }
 
-window.addEventListener("keydown",e=>{if(state==='reviveAd'){e.preventDefault();return;}if(e.code==='KeyO'){if(level==='earth'){e.preventDefault();if(!e.repeat)toggleEarthTurtle();}return;}if(e.code==='KeyM'){e.preventDefault();if(!e.repeat&&state!=='map')openWorldMap();return;}if(state==='map'){if(e.code==='KeyR')start();return;}if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(["ArrowUp","KeyW","Space"].includes(e.code)&&!e.repeat)jump();if(e.code==='KeyZ'&&!e.repeat){if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}if(["KeyX","KeyF"].includes(e.code)&&!e.repeat)attack();if(e.code==="KeyR")start();});
+window.addEventListener("keydown",e=>{if(state==='reviveAd'){e.preventDefault();return;}if(state==='developer'){if(e.code==='Escape')exitDeveloperMode();return;}if(e.code==='KeyO'){if(level==='earth'){e.preventDefault();if(!e.repeat)toggleEarthTurtle();}return;}if(e.code==='KeyM'){e.preventDefault();if(!e.repeat&&state!=='map')openWorldMap();return;}if(state==='map'){if(e.code==='KeyD'&&!e.repeat){e.preventDefault();openDeveloperMenu();}else if(e.code==='KeyR')start();return;}if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(["ArrowUp","KeyW","Space"].includes(e.code)&&!e.repeat)jump();if(e.code==='KeyZ'&&!e.repeat){if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}if(["KeyX","KeyF"].includes(e.code)&&!e.repeat)attack();if(e.code==="KeyR")start();});
 window.addEventListener("keyup",e=>keys.delete(e.code));
 function canvasPoint(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
 function fitTouchControls(){
@@ -5067,7 +5172,7 @@ window.addEventListener('blur',clearInputs);
 canvas.addEventListener("pointerup",releaseJoystick);canvas.addEventListener("pointercancel",releaseJoystick);
 startButton.addEventListener("click",start);soundButton.addEventListener("click",()=>{soundOn=!soundOn;soundButton.textContent=`Sound: ${soundOn?"on":"off"}`;document.querySelector('#mapSound').setAttribute('aria-pressed',String(!soundOn));document.querySelector('#mapSound').setAttribute('aria-label',soundOn?'Mute sound':'Enable sound');});
 restoreWorldProgress();restoreCoinWallet();fitGameViewport();fallbackFullscreen=standaloneMode();syncFullscreen();
-resetGame(false);requestAnimationFrame(loop);
+level=nextWorld();resetGame(false);if(level!=='meadow'){overlay.querySelector('.kicker').textContent=worldDetails[level][0];overlay.querySelector('h2').textContent='Continue your adventure';overlay.querySelector('.card > p:not(.kicker):not(.controls-copy)').textContent=worldDetails[level][1];startButton.textContent=worldDetails[level][2];}requestAnimationFrame(loop);
     </script>
   </body>
 </html>

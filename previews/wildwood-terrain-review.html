@@ -5,7 +5,7 @@
 const frame=document.querySelector('iframe');
 function show(scene){
 const x={cliff:1060,mushroom:970,upper:5400,arena:7220}[scene];
-frame.contentWindow.eval(`level='earth';start();soundOn=false;earthGoblins.forEach(g=>g.alive=false);state='review';player.x=${x};player.y=${scene==='cliff'?520:scene==='mushroom'?'earthPlatforms[3].y':scene==='upper'?'earthPlatforms[19].y':-1480}-58;player.vx=0;player.vy=0;player.onGround=true;cameraX=player.x-W*.28;cameraY=player.y-playfieldHeight()*.68;render(0);`);
+frame.contentWindow.eval(`beginDeveloperSession();level='earth';start();soundOn=false;earthGoblins.forEach(g=>g.alive=false);state='review';player.x=${x};player.y=${scene==='cliff'?520:scene==='mushroom'?'earthPlatforms[3].y':scene==='upper'?'earthPlatforms[19].y':-1480}-58;player.vx=0;player.vy=0;player.onGround=true;cameraX=player.x-W*.28;cameraY=player.y-playfieldHeight()*.68;render(0);`);
 }
 frame.onload=()=>show('cliff');document.querySelectorAll('[data-scene]').forEach(button=>button.onclick=()=>show(button.dataset.scene));
 </script></html>

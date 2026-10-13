@@ -19,12 +19,12 @@ const frame=document.querySelector('iframe'),closeup=document.querySelector('#cl
 const labels={run:'Upright two-leg run and jump on flat ground · arrow stowed',carry:'Upright two-leg run and slope-aligned jump uphill · arrow stowed',climb:'Climbing the labyrinth · arrow carried',aim:'Equipped bow · aiming mode',stow:'Arrow stowed · normal jumping restored'};
 function show(scene){
  if(!ready)return;current=scene;elapsed=0;cycle=-1;animationLabel.textContent=labels[scene]||'Arrow and bow animation';arrowCaption.textContent=['aim','up','release'].includes(scene)?'With bow equipped':scene==='pickup'?'Before finding the arrow':'With the arrow stored on the back';
- let code="level='fire';soundOn=false;start();state='review';fireArrow.owned=true;beginSecondVolcano();player.x=10380;player.y=-558;player.onGround=true;player.facing=1;beginLavaKing();lavaKing.phase='recover';cameraX=player.x+21-W/3;cameraY=-500-H*.62;";
- if(scene==='pickup')code="level='fire';soundOn=false;start();state='review';beginFireMaze();player.x=mazeCenter(FIRE_ARROW_CELL.c,FIRE_ARROW_CELL.r).x-100;player.y=mazeCenter(FIRE_ARROW_CELL.c,FIRE_ARROW_CELL.r).y-29;player.mazeC=FIRE_ARROW_CELL.c;player.mazeR=FIRE_ARROW_CELL.r;cameraX=player.x+21-W/3;cameraY=player.y-H*.48;";
- if(scene==='carry')code="level='fire';soundOn=false;start();state='review';fireArrow.owned=true;beginSecondVolcano();player.x=8260;player.y=fireSlopeY(8281)-58;player.onGround=true;player.vx=260;player.run=1;cameraX=8281-W/3;cameraY=fireSlopeY(8281)-H*.62;";
+ let code="beginDeveloperSession();level='fire';soundOn=false;start();state='review';fireArrow.owned=true;beginSecondVolcano();player.x=10380;player.y=-558;player.onGround=true;player.facing=1;beginLavaKing();lavaKing.phase='recover';cameraX=player.x+21-W/3;cameraY=-500-H*.62;";
+ if(scene==='pickup')code="beginDeveloperSession();level='fire';soundOn=false;start();state='review';beginFireMaze();player.x=mazeCenter(FIRE_ARROW_CELL.c,FIRE_ARROW_CELL.r).x-100;player.y=mazeCenter(FIRE_ARROW_CELL.c,FIRE_ARROW_CELL.r).y-29;player.mazeC=FIRE_ARROW_CELL.c;player.mazeR=FIRE_ARROW_CELL.r;cameraX=player.x+21-W/3;cameraY=player.y-H*.48;";
+ if(scene==='carry')code="beginDeveloperSession();level='fire';soundOn=false;start();state='review';fireArrow.owned=true;beginSecondVolcano();player.x=8260;player.y=fireSlopeY(8281)-58;player.onGround=true;player.vx=260;player.run=1;cameraX=8281-W/3;cameraY=fireSlopeY(8281)-H*.62;";
  if(scene==='run')code+="fireArrow.aiming=false;player.vx=260;player.run=1;";
  if(scene==='stow')code+="fireArrow.aiming=false;";
- if(scene==='climb')code="level='fire';soundOn=false;start();state='review';beginFireMaze();fireArrow.owned=true;player.x=mazeCenter(11,10).x-21;player.y=mazeCenter(11,10).y-29;player.mazeC=11;player.mazeR=10;player.vx=165;player.run=1;cameraX=player.x+21-W/3;cameraY=player.y-H*.48;";
+ if(scene==='climb')code="beginDeveloperSession();level='fire';soundOn=false;start();state='review';beginFireMaze();fireArrow.owned=true;player.x=mazeCenter(11,10).x-21;player.y=mazeCenter(11,10).y-29;player.mazeC=11;player.mazeR=10;player.vx=165;player.run=1;cameraX=player.x+21-W/3;cameraY=player.y-H*.48;";
  if(scene==='up')code+="fireArrow.angle=.6;";
  if(scene==='release')code+="state='playing';fireBunnyArrow();updateFireArchery(.08);fireArrow.release=.22;state='review';";
  frame.contentWindow.eval(code);

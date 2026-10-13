@@ -10,9 +10,9 @@
 <script>
 const frame=document.querySelector('iframe');
 function show(scene){
- let code="level='fire';soundOn=false;start();state='review';fireArrow.owned=true;beginSecondVolcano();player.x=10380;player.y=-558;player.onGround=true;player.facing=1;beginLavaKing();lavaKing.phase='"+(scene==='defeated'?'defeated':scene)+"';cameraX=player.x+21-W/3;cameraY=-500-H*.62;";
- if(scene==='exit')code="level='fire';soundOn=false;start();state='review';beginFireMaze();player.mazeC=23;player.mazeR=1;player.x=6659;beginSecondVolcano();cameraX=player.x+21-W/3;cameraY=2050-H*.62;";
- if(scene==='climb')code="level='fire';soundOn=false;start();state='review';beginSecondVolcano();player.x=8260;player.y=fireSlopeY(8281)-58;player.onGround=true;player.vx=260;cameraX=8281-W/3;cameraY=fireSlopeY(8281)-H*.62;fireRollingStones=[{x:8460,y:fireSlopeY(8460)-25,r:18,speed:150,angle:.5,variant:1,alive:true}];";
+ let code="beginDeveloperSession();level='fire';soundOn=false;start();state='review';fireArrow.owned=true;beginSecondVolcano();player.x=10380;player.y=-558;player.onGround=true;player.facing=1;beginLavaKing();lavaKing.phase='"+(scene==='defeated'?'defeated':scene)+"';cameraX=player.x+21-W/3;cameraY=-500-H*.62;";
+ if(scene==='exit')code="beginDeveloperSession();level='fire';soundOn=false;start();state='review';beginFireMaze();player.mazeC=23;player.mazeR=1;player.x=6659;beginSecondVolcano();cameraX=player.x+21-W/3;cameraY=2050-H*.62;";
+ if(scene==='climb')code="beginDeveloperSession();level='fire';soundOn=false;start();state='review';beginSecondVolcano();player.x=8260;player.y=fireSlopeY(8281)-58;player.onGround=true;player.vx=260;cameraX=8281-W/3;cameraY=fireSlopeY(8281)-H*.62;fireRollingStones=[{x:8460,y:fireSlopeY(8460)-25,r:18,speed:150,angle:.5,variant:1,alive:true}];";
  if(scene==='defeated')code+="lavaKing.hp=0;lavaKing.defeated=true;player.x=10920;cameraX=player.x+21-W/3;";
  if(scene==='cast')code+="lavaKingFireballs=[{x:10640,y:-535,r:13,vx:-255,age:0,alive:true}];";
  frame.contentWindow.eval(code);

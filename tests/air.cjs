@@ -8,7 +8,7 @@ const window=node('window');window.scrollTo=()=>{};
 const sandbox={document:{querySelector:node,querySelectorAll:()=>[],addEventListener(n,f){node('document').addEventListener(n,f);},documentElement:node('root')},window,Image:class{},performance:{now:()=>0},requestAnimationFrame(){},setTimeout(){},location:{search:''},URLSearchParams,Math,console};
 vm.createContext(sandbox);vm.runInContext(script,sandbox);
 const run=s=>vm.runInContext(s,sandbox);
-run("soundOn=false;level='air';resetGame();");
+run("soundOn=false;meadowFinished=true;level='air';resetGame();");
 const reset=()=>run("level='air';resetGame();");
 function place(x,y,vy=0){run(`player.blueContact=null;player.x=${x};player.y=${y};player.vx=0;player.vy=${vy};player.onGround=false;`);}
 function step(n=1){for(let i=0;i<n;i++)run('update(1/120)');}
