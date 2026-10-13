@@ -62,6 +62,7 @@ for(const width of [480,960])for(const fps of [30,60,120]){
     const target=run(`(()=>{const rock=fireDropRocks.find(r=>player.y<r.y+r.h+10);return rock?(rock.x===FIRE_DROPPER.left?(rock.x+rock.w+FIRE_DROPPER.right)/2:(FIRE_DROPPER.left+rock.x)/2):mazeCenter(1,1).x;})()`);
     const x=run('player.x+player.w/2');run('keys.clear()');
     if(Math.abs(target-x)>6)run(`keys.add('${target>x?'ArrowRight':'ArrowLeft'}')`);
+    if(run("fireMode==='landing'&&Math.abs(player.x+player.w/2-mazeCenter(1,1).x)<=19"))run("keys.add('ArrowDown')");
     run(`update(1/${fps})`);
   }
   assert.equal(run('fireMode'),'maze',`crater route ${width}/${fps}`);

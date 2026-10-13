@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.13',build:2026101320,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Game over and rewarded level restarts'});
+const BUILD_INFO=Object.freeze({version:'0.21.14',build:2026101321,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Two-way labyrinth entrance ladder'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -1945,6 +1945,11 @@ function beginFireMaze(){
   Object.assign(player,{x:p.x-player.w/2,y:p.y-29,h:58,vx:0,vy:0,onGround:true,duck:false,mazeC:1,mazeR:1,mazeTarget:null,mazeProgress:0});
   checkpoint={x:player.x,y:player.y,mode:'maze',stage:7,mazeC:1,mazeR:1};
 }
+function leaveFireMazeEntrance(){
+  fireMode='landing';fireUnderground=true;
+  Object.assign(player,{y:FIRE_DROPPER.bottom-player.h,vx:0,vy:0,onGround:true,mazeTarget:null,mazeProgress:0,jumpAge:9,boosts:0});
+  checkpoint={x:player.x,y:player.y,mode:'landing',stage:7};
+}
 function returnToFireMaze(){
   const from={x:player.x+player.w/2,y:player.y+player.h/2};
   fireMode='maze';fireUnderground=true;resetFireStones();
@@ -2188,7 +2193,7 @@ function respawnFire(){
   restoreFireCheckpoint();
 }
 function restoreFireCheckpoint(){
-  clearInputs();fireMode=checkpoint.mode||'surface';fireUnderground=fireMode==='maze';
+  clearInputs();fireMode=checkpoint.mode||'surface';fireUnderground=['maze','dropper','landing','entering'].includes(fireMode);
   fireCraterViewBlend=0;fireDropCamera=null;
   Object.assign(player,{x:checkpoint.x,y:checkpoint.y,h:58,vx:0,vy:0,onGround:true,duck:false,invincible:2,mazeTarget:null});
   if(fireMode==='maze'){player.mazeC=checkpoint.mazeC??1;player.mazeR=checkpoint.mazeR??1;player.mazeProgress=0;}
@@ -2244,7 +2249,10 @@ function updateFireJourney(dt){
   }else if(fireMode==='landing'){
     player.x=Math.max(FIRE_DROPPER.left+8,Math.min(FIRE_DROPPER.right-player.w-8,player.x));
     player.y=FIRE_DROPPER.bottom-player.h;player.onGround=true;player.vy=0;
-    if(Math.abs(player.x+player.w/2-mazeCenter(1,1).x)<24){fireMode='entering';player.x=mazeCenter(1,1).x-player.w/2;player.vx=0;}
+    const down=keys.has('ArrowDown')||keys.has('KeyS')||joystick.dy>.28;
+    // The ladder works both ways: walking over its mouth does not pull the
+    // bunny back inside after climbing out. Down deliberately enters it.
+    if(down&&Math.abs(player.x+player.w/2-mazeCenter(1,1).x)<=(FIRE_MAZE.tile-player.w)/2){fireMode='entering';player.vx=0;}
   }else{
     player.jumpAge+=dt;
     player.onGround=false;player.x=Math.max(FIRE_DROPPER.left+8,Math.min(FIRE_DROPPER.right-player.w-8,player.x));
@@ -2285,6 +2293,7 @@ function updateFireMaze(dt){
   fireTime+=dt;player.attack=Math.max(0,player.attack-dt);player.attackCooldown=Math.max(0,player.attackCooldown-dt);
   player.invincible=Math.max(0,player.invincible-dt);
   if(fireMode==='entering'){
+    player.x+=(mazeCenter(1,1).x-player.w/2-player.x)*Math.min(1,dt*12);
     player.y=Math.min(mazeCenter(1,1).y-player.h/2,player.y+240*dt);
     player.onGround=false;player.vx=0;player.vy=240;
     if(player.y>=mazeCenter(1,1).y-player.h/2)beginFireMaze();
@@ -2295,14 +2304,16 @@ function updateFireMaze(dt){
       let move=held&&[held[2],held[3]];
       if(!move&&Math.hypot(joystick.dx,joystick.dy)>.25)move=Math.abs(joystick.dx)>Math.abs(joystick.dy)?[Math.sign(joystick.dx),0]:[0,Math.sign(joystick.dy)];
       const exit=move&&move[0]===1&&player.mazeC===FIRE_MAZE.exit.c&&player.mazeR===FIRE_MAZE.exit.r&&fireArrow.owned;
-      if(move&&(exit||mazeOpen(player.mazeC+move[0],player.mazeR+move[1]))){
-        player.mazeTarget={c:player.mazeC+move[0],r:player.mazeR+move[1],exit:Boolean(exit)};player.mazeProgress=0;
+      const entranceExit=move&&move[1]===-1&&player.mazeC===FIRE_MAZE.entrance.c&&player.mazeR===0;
+      if(move&&(exit||entranceExit||mazeOpen(player.mazeC+move[0],player.mazeR+move[1]))){
+        player.mazeTarget={c:player.mazeC+move[0],r:player.mazeR+move[1],exit:Boolean(exit),entranceExit:Boolean(entranceExit)};player.mazeProgress=0;
         if(move[0])player.facing=move[0];if(fireWeaponEquipped())fireArrow.angle=move[1]?-move[1]*Math.PI/2:0;player.run+=.15;
       }
     }
     if(player.mazeTarget){
       const target=player.mazeTarget,from=target.from||mazeCenter(player.mazeC,player.mazeR),to=mazeCenter(target.c,target.r);
       if(target.exit)to.y=FIRE_SECOND_VOLCANO[0][1]-player.h/2;
+      if(target.entranceExit)to.y=FIRE_DROPPER.bottom-player.h/2;
       player.mazeProgress=Math.min(1,player.mazeProgress+dt*mazeMoveSpeed()/FIRE_MAZE.tile);
       player.x=from.x+(to.x-from.x)*player.mazeProgress-player.w/2;
       player.y=from.y+(to.y-from.y)*player.mazeProgress-player.h/2;
@@ -2310,6 +2321,7 @@ function updateFireMaze(dt){
       if(player.mazeProgress>=1){
         player.mazeC=target.c;player.mazeR=target.r;player.mazeTarget=null;
         if(target.exit){beginSecondVolcano();return;}
+        if(target.entranceExit){leaveFireMazeEntrance();return;}
         if(target.reentry)checkpoint={x:player.x,y:player.y,mode:'maze',stage:7,mazeC:player.mazeC,mazeR:player.mazeR};
       }
     }
