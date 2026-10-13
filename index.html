@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.10',build:2026101317,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Stable labyrinth ground texture'});
+const BUILD_INFO=Object.freeze({version:'0.21.11',build:2026101318,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Painted Lava King and gentler pace'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -2103,6 +2103,8 @@ function hitLavaKing(source=player,ranged=false,damage=1){
   return true;
 }
 const LAVA_KING_FIREBALL_SPEED=330;
+// A small pace reduction gives the existing attacks a little more room to react.
+const LAVA_KING_PACE=.9;
 function launchLavaKingFireball(airborne=false){
   const k=lavaKing,x=k.x+k.w/2+k.facing*(airborne?50:115),y=k.y+45;
   let vx=k.facing*LAVA_KING_FIREBALL_SPEED,vy=150;
@@ -2122,6 +2124,7 @@ function lavaKingPhase(phase){
 }
 function updateLavaKing(dt){
   const k=lavaKing;if(!k.active||k.defeated)return;
+  dt*=LAVA_KING_PACE;
   k.flash=Math.max(0,k.flash-dt);k.dizzy=Math.max(0,k.dizzy-dt);k.flightClock+=dt;
   if(k.phase!=='flight'&&k.flightClock>=5.5&&k.dizzy<=0)lavaKingPhase('flight');
   if(k.phase!=='flight')k.y=Math.min(FIRE_KING_ARENA.y-k.h,k.y+240*dt);
@@ -5464,12 +5467,14 @@ function drawLavaKingBarriers(){
     ctx.restore();
   }
 }
-const lavaKingSheet=new Image();lavaKingSheet.src='assets/lava-king-v1.png';
+const lavaKingSheet=new Image();lavaKingSheet.src='assets/lava-king-v2.png';
+// Helmet centers register the new poses without changing the boss's hitbox.
+const LAVA_KING_ART={width:1774,height:887,scale:.56,anchors:[[268,376.5],[255.5,378],[258.5,375.5],[246,376.5],[231,375],[263.5,373.5],[283.5,369.5],[268,373]]};
 function lavaKingFrame(){
   const k=lavaKing;
   if(k.dizzy>0||k.defeated)return 7;
   if(k.phase==='flight')return 6;
-  return k.phase==='shield'?3:k.phase==='windup'?4:k.phase==='slash'?5:k.phase==='cast'||k.phase==='throw'?6:k.phase==='patrol'?1+Math.floor(fireTime*5)%2:0;
+  return k.phase==='shield'?3:k.phase==='windup'?4:k.phase==='slash'?5:k.phase==='cast'||k.phase==='throw'?6:k.phase==='patrol'?1+Math.floor(fireTime*5*LAVA_KING_PACE)%2:0;
 }
 function drawFireball(x,y,r){
   ctx.save();ctx.shadowBlur=18;ctx.shadowColor='#ff7534';ctx.fillStyle='#f7662e';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
@@ -5482,14 +5487,14 @@ function drawLavaKing(){
     ctx.save();ctx.globalAlpha=.22;ctx.fillStyle='#120e1c';ctx.beginPath();ctx.ellipse(k.x+k.w/2-cameraX,FIRE_KING_ARENA.y-2,Math.max(18,50-lift*.1),9,0,0,7);ctx.fill();ctx.restore();
     if(lift>20)drawFireball(k.x+k.w/2-cameraX,k.y+k.h-2,9+Math.sin(fireTime*14)*2);
   }
-  ctx.save();ctx.translate(k.x+k.w/2-cameraX,k.y+k.h-6+Math.sin(fireTime*3)*3);
+  ctx.save();ctx.translate(k.x+k.w/2-cameraX,k.y+k.h-6+Math.sin(fireTime*3*LAVA_KING_PACE)*3);
   if(k.defeated)ctx.globalAlpha=.3;
   if(k.flash>0)ctx.globalAlpha=.55;
   ctx.scale(-k.facing,1);
   if(lavaKingSheet.complete&&lavaKingSheet.naturalWidth){
     const f=lavaKingFrame(),sw=lavaKingSheet.naturalWidth/4,sh=lavaKingSheet.naturalHeight/2;
-    const anchors=[[270,357],[231,357],[240,357],[239,364],[236,357],[275,357],[323,361],[287,359]],scale=.62;
-    const [ax,ay]=anchors[f];
+    const scale=LAVA_KING_ART.scale;
+    const [ax,ay]=LAVA_KING_ART.anchors[f];
     ctx.drawImage(lavaKingSheet,f%4*sw,Math.floor(f/4)*sh,sw,sh,-ax*scale,-ay*scale,sw*scale,sh*scale);
   }else{ctx.fillStyle='#cb4237';ctx.fillRect(-45,-145,90,145);ctx.fillStyle='#999088';ctx.fillRect(-32,-145,64,60);}
   ctx.restore();

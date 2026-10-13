@@ -48,7 +48,7 @@ for(const [width,height] of [[960,540],[480,920]])for(const fps of [30,60,120]){
 for(const fps of [30,60,120]){
  reset();run("W=960;H=540;fireArrow.owned=true;fireArrow.ammo.fill('normal');fireArrow.aiming=true;fireMode='king';player.x=10400;player.y=-558;player.onGround=true;lavaKing.active=true;lavaKingPhase('flight');");
  const start=run('lavaKing.x');let maxLift=0,shots=0,lastShot=0;
- for(let f=0;f<fps*4.2;f++){
+ for(let f=0;f<fps*4.7;f++){
   run(`updateLavaKing(1/${fps})`);maxLift=Math.max(maxLift,run('FIRE_KING_ARENA.y-(lavaKing.y+lavaKing.h)'));
   const count=run('lavaKing.flightShot');if(count>lastShot){shots+=count-lastShot;lastShot=count;assert(run('lavaKingFireballs.some(b=>b.airborne&&b.vy>0)'));}
  }
@@ -60,9 +60,9 @@ reset();run("fireArrow.owned=true;fireArrow.ammo.fill('normal');fireArrow.aiming
 // Aim ballistically at the current flying hitbox, then update the real projectile.
 run("bunnyArrows=[];fireArrow.cooldown=0;player.facing=player.x+21<lavaKing.x+45?1:-1;fireArrow.angle=Math.atan2(player.y+player.h-35-(lavaKing.y+70),Math.abs(lavaKing.x+45-player.x-55));fireBunnyArrow();");
 for(let i=0;i<60&&run('bunnyArrows.length');i++)run('updateFireArchery(1/120)');assert.equal(run('lavaKing.hp'),9);assert.equal(run('lavaKing.phase'),'flight');
-// Ground fireballs are faster and have a shorter tell, while pause/respawn clear live attacks.
-reset();place('king',10400);run("beginLavaKing();lavaKingPhase('cast');updateLavaKing(.5)");assert.equal(run('lavaKingFireballs.length'),0);
-run('updateLavaKing(.06)');assert.equal(run('lavaKingFireballs.length'),1);assert.equal(run('Math.abs(lavaKingFireballs[0].vx)'),330);
+// Ground fireballs keep their tell with the gentler boss pace, while pause/respawn clear live attacks.
+reset();place('king',10400);run("beginLavaKing();lavaKingPhase('cast');updateLavaKing(.6)");assert.equal(run('lavaKingFireballs.length'),0);
+run('updateLavaKing(.03)');assert.equal(run('lavaKingFireballs.length'),1);assert.equal(run('Math.abs(lavaKingFireballs[0].vx)'),330);
 run("state='map';var pausedKingY=lavaKing.y,pausedBallX=lavaKingFireballs[0].x;update(.2)");assert.equal(run('lavaKing.y'),run('pausedKingY'));assert.equal(run('lavaKingFireballs[0].x'),run('pausedBallX'));
 run("state='playing';respawnFire()");assert.equal(run('lavaKingFireballs.length'),0);assert.equal(run('lavaKing.flightClock'),0);
 console.log('PASS fire update: slope-only paws/upright jumping, Shift movement and ladders, zombie arrows and wall occlusion, vertical shooting/Z, low camera, flying/moving/shooting boss, airborne hits, faster fireballs, pause/respawn.');

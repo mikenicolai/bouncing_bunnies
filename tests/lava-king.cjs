@@ -13,11 +13,11 @@ for(const width of [480,960])for(const fps of [30,60,120]){
  }
  assert.equal(run('fireMode'),'king');assert.equal(run('lives'),3);assert(jumps>=4);assert.equal(run('lavaKing.hp'),10);assert(run('lavaKing.active'));assert(run('fireArcheryMode()'));assert.equal(run('checkpoint.mode'),'king');assert.equal(run('fireRollingStones.length'),0);
 }
-// Aiming disables jumps, while sword and casting warnings retain their timing.
+// Aiming disables jumps, while sword and casting warnings give slightly more reaction time.
 arena();run('jump()');assert(run('player.onGround'));assert.equal(run('player.vy'),0);
-run("lavaKingPhase('windup');updateLavaKing(.6)");assert.equal(run('lavaKing.phase'),'windup');assert.equal(run('lives'),3);
-run('updateLavaKing(.06)');assert.equal(run('lavaKing.phase'),'slash');run('updateLavaKing(.25)');assert.equal(run('lavaKing.phase'),'recover');
-run("lavaKingPhase('cast');updateLavaKing(.5)");assert.equal(run('lavaKingFireballs.length'),0);run('updateLavaKing(.06)');assert.equal(run('lavaKingFireballs.length'),1);
+run("lavaKingPhase('windup');updateLavaKing(.7)");assert.equal(run('lavaKing.phase'),'windup');assert.equal(run('lives'),3);
+run('updateLavaKing(.04)');assert.equal(run('lavaKing.phase'),'slash');run('updateLavaKing(.28)');assert.equal(run('lavaKing.phase'),'recover');
+run("lavaKingPhase('cast');updateLavaKing(.6)");assert.equal(run('lavaKingFireballs.length'),0);run('updateLavaKing(.03)');assert.equal(run('lavaKingFireballs.length'),1);
 const x=run('lavaKingFireballs[0].x'),y=run('lavaKingFireballs[0].y');run('updateLavaKing(.1)');assert(run('lavaKingFireballs[0].x')<x);assert(run('lavaKingFireballs[0].y')>y);
 // The portal is still locked until defeating the ten-heart king.
 arena();run('player.x=FIRE_EXIT_X;update(0)');assert.equal(run('state'),'playing');assert.equal(run('fireFinished'),false);
