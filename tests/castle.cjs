@@ -37,13 +37,13 @@ run('updateFinalCastle(1.4)');assert.equal(run('finalGateLift'),1);
 for(const fps of [30,60,120]){
   run("level='final';start();player.onGround=true;player.y=FINAL_FLOOR-58;player.invincible=1000;keys.add('ArrowRight')");
   const jumps=[855,2090,3370,3850,4320];let nextJump=0;
-  for(let frame=0;frame<fps*50&&run("state==='playing'");frame++){
+  for(let frame=0;frame<fps*50&&run("state==='playing'&&!(finalTowerEntered&&player.x>FINAL_TOWER.left)");frame++){
     if(nextJump<jumps.length&&run('player.onGround')&&run('player.x')>=jumps[nextJump]){run('jump()');nextJump++;}
     run(`update(1/${fps})`);
   }
-  assert.equal(run('state'),'castleOpeningComplete',`forest, gaps, gate and hall are reachable at ${fps} FPS`);
+  assert.equal(run('state'),'playing');assert(run('finalTowerEntered'),`forest, gaps, gate and hall reach the tower at ${fps} FPS`);
   assert.equal(run('lives'),3,`terrain traversal is safe at ${fps} FPS`);
   assert.equal(run('finalGateLift'),1);assert(!run("worldCompleted('final')"),'opening does not claim the unbuilt villain is defeated');
 }
 run("level='final';start();player.x=1300;player.y=412;player.onGround=true;updateFinalCastle(.1)");const checkpointX=run('checkpoint.x');run('player.y=800');step();assert.equal(run('player.x'),checkpointX);assert.equal(run('lives'),2);assert(run('finalUnlocked()'));
-console.log('PASS 8,500px castle, nine cross-world enemies and combat, Meadow/four-world lock, gate, route at 30/60/120 FPS, checkpoints and no false final victory.');
+console.log('PASS extended castle, nine cross-world enemies and combat, Meadow/four-world lock, gate, route at 30/60/120 FPS, checkpoints and no false final victory.');

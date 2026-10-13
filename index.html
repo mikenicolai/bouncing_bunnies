@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.20.9',build:2026101306,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Castle doors and mounted torch lighting'});
+const BUILD_INFO=Object.freeze({version:'0.21.0',build:2026101307,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Three-screen Castle lava tower'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -789,6 +789,7 @@ function fitGameViewport(){
   fitTouchControls();
   if(changed&&typeof player!=='undefined'&&player){
     if(level==='fire')cameraY=fireCameraTargetY();
+    else if(level==='final'&&finalTowerEntered){cameraX=finalTowerCameraX();cameraY=Math.max(FINAL_TOWER.top-playfieldHeight()*.7,Math.min(touchDockHeight?phoneGroundCameraY():0,player.y+player.h-playfieldHeight()*.7));}
     else if(level==='meadow'||level==='final'||!player.inWater&&level==='water')cameraY=touchDockHeight?phoneGroundCameraY():0;
     else cameraY=player.y+player.h-playfieldHeight()*.7;
   }
@@ -1311,29 +1312,34 @@ function earthMushroomBough(p){
 }
 const earthMushroomBoughs=earthPlatforms.filter(p=>p.kind==='mushroom').map(earthMushroomBough);
 const earthGoblinPlatforms=[2,6,10,14,19,22];
-const FINAL_W=8500,FINAL_FLOOR=470,FINAL_GATE={x:3020,y:170,w:28,h:300},FINAL_END_X=8290;
+const FINAL_W=9500,FINAL_FLOOR=470,FINAL_GATE={x:3020,y:170,w:28,h:300},FINAL_END_X=8290;
+const FINAL_TOWER={left:8500,right:9420,height:1620,top:FINAL_FLOOR-1620,lavaY:520,entryX:8560,summitX:8695};
+const finalTowerPlatforms=[{x:8360,y:FINAL_FLOOR,w:410,h:32,kind:'tower',oneWay:true,entry:true},
+  ...Array.from({length:12},(_,i)=>({x:i%2?8580:8850,y:FINAL_FLOOR-(i+1)*135,w:230,h:24,kind:'tower',oneWay:true,towerStep:i+1}))];
+const finalTowerWalls=[{x:FINAL_TOWER.left-30,y:FINAL_TOWER.top-260,w:30,h:FINAL_TOWER.height+40,kind:'castle',towerWall:true},
+  {x:FINAL_TOWER.right,y:FINAL_TOWER.top-260,w:40,h:FINAL_TOWER.height+600,kind:'castle',towerWall:true}];
 const finalPlatforms=[
   [0,470,930,1800,'forest'],[1060,470,1100,1800,'forest'],[2280,470,850,1800,'forest'],
   [3130,470,5370,1800,'castle'],[600,365,180,30,'ruin'],[1430,355,190,30,'ruin'],[1900,310,170,30,'ruin'],
   [3480,435,110,35,'ruin'],[3980,408,120,62,'ruin'],[4450,432,125,38,'ruin'],
   [5480,350,220,28,'gallery'],[6120,310,200,28,'gallery'],[7080,345,230,28,'gallery'],[7760,325,200,28,'gallery']
-].map(([x,y,w,h,kind])=>({x,y,w,h,kind,oneWay:kind==='gallery'}));
-const finalCoinSpots=[[300,390],[650,310],[870,375],[990,340],[1300,395],[1500,300],[1840,390],[1980,255],[2210,335],[2430,390],[2750,390],[3210,385],[3525,345],[3850,390],[4025,310],[4320,390],[4500,340],[4850,390],[5150,390],[5540,300],[5840,385],[6200,255],[6510,390],[6850,385],[7170,295],[7500,390],[7840,265],[8110,385]];
-const FINAL_HALL={start:3130,top:FINAL_FLOOR-660*.725,height:660,scaleX:1050/1536,bodyX:210,bodyWidth:1100,doorX:1280};
+].map(([x,y,w,h,kind])=>({x,y,w,h,kind,oneWay:kind==='gallery'})).concat(finalTowerPlatforms,finalTowerWalls);
+const finalCoinSpots=[[300,390],[650,310],[870,375],[990,340],[1300,395],[1500,300],[1840,390],[1980,255],[2210,335],[2430,390],[2750,390],[3210,385],[3525,345],[3850,390],[4025,310],[4320,390],[4500,340],[4850,390],[5150,390],[5540,300],[5840,385],[6200,255],[6510,390],[6850,385],[7170,295],[7500,390],[7840,265],[8110,385],...finalTowerPlatforms.filter(p=>!p.entry).map(p=>[p.x+p.w*.5,p.y-45])];
+const FINAL_HALL={start:3130,end:8500,top:FINAL_FLOOR-660*.725,height:660,scaleX:1050/1536,bodyX:210,bodyWidth:1100,doorX:1280};
 const FINAL_HALL_TILE_W=FINAL_HALL.bodyWidth*FINAL_HALL.scaleX;
 const FINAL_INNER_DOOR_HALF_W=(1536-FINAL_HALL.doorX)*FINAL_HALL.scaleX;
 const FINAL_INNER_DOOR_X=FINAL_END_X-FINAL_INNER_DOOR_HALF_W;
 // Flame centers come from the painted sconces, so every glow has a wall bracket.
 const finalTorches=[
   ...[132,884].map(x=>({x:2820+x*440/1024,y:FINAL_FLOOR-660*1445/1536+760*660/1536,arch:true})),
-  ...Array.from({length:Math.ceil((FINAL_W-FINAL_HALL.start)/FINAL_HALL_TILE_W)},(_,i)=>
+  ...Array.from({length:Math.ceil((FINAL_HALL.end-FINAL_HALL.start)/FINAL_HALL_TILE_W)},(_,i)=>
     [[292,414],[605,521],[902,524],[1255,414]].map(([x,y])=>({x:FINAL_HALL.start+i*FINAL_HALL_TILE_W+(x-FINAL_HALL.bodyX)*FINAL_HALL.scaleX,y:FINAL_HALL.top+y*FINAL_HALL.height/1024}))).flat().filter(t=>t.x<FINAL_INNER_DOOR_X)
 ];
 const finalMonsterSpawns=[
   ['zombie',3670],['goblin',4220],['pirate',4740],['air',5220],['lava',5810],
   ['goblin',6330],['zombie',6840],['air',7350],['pirate',7860]
 ];
-let finalTime=0,finalGateLift=0,finalMonsters=[];
+let finalTime=0,finalGateLift=0,finalTowerEntered=false,finalTowerDoorLift=0,finalMonsters=[];
 function resetFinalMonsters(){
   finalMonsters=finalMonsterSpawns.map(([kind,center],i)=>{
     const w=kind==='air'?52:kind==='goblin'?54:kind==='zombie'?44:48;
@@ -1381,23 +1387,50 @@ function updateFinalMonsters(dt){
     else if(!wasDizzy&&m.dizzy<=0)hurt(player.x+player.w/2<m.x+m.w/2?-1:1);
   }
 }
+function enterFinalTower(){
+  if(finalTowerEntered)return;
+  finalTowerEntered=true;finalTowerDoorLift=1;
+  checkpoint={x:FINAL_TOWER.entryX,y:FINAL_FLOOR-58,tower:true};
+}
+function finalTowerFall(){
+  lives--;burst(player.x+player.w/2,FINAL_TOWER.lavaY,'#ffac51',22);tone(100,.22,'sawtooth');
+  if(lives<=0){showEnd(false);return;}
+  clearInputs();Object.assign(player,{x:checkpoint.x,y:checkpoint.y,h:58,vx:0,vy:0,onGround:true,duck:false,duckVisual:0,attack:0,attackCooldown:0,jumpAge:9,boosts:0,invincible:2});
+  bunnyArrows=[];fireArrow.cooldown=0;fireArrow.release=0;
+  cameraX=finalTowerCameraX();cameraY=touchDockHeight?phoneGroundCameraY():0;
+}
+function finalTowerCameraX(){
+  const center=(FINAL_TOWER.left+FINAL_TOWER.right-W)/2;
+  const target=W>=FINAL_TOWER.right-FINAL_TOWER.left?center:
+    Math.max(FINAL_TOWER.left-50,Math.min(FINAL_TOWER.right+50-W,player.x-W*.5));
+  return Math.max(0,Math.min(FINAL_W-W,target));
+}
+function finalCastleProgress(){
+  return finalTowerEntered?.78+.22*Math.max(0,Math.min(1,(FINAL_FLOOR-player.y-player.h)/FINAL_TOWER.height)):.78*Math.min(1,player.x/FINAL_TOWER.left);
+}
 function updateFinalCastle(dt){
   finalTime+=dt;
+  if(player.x+player.w>FINAL_END_X-220)finalTowerDoorLift=Math.min(1,finalTowerDoorLift+dt*1.4);
+  if(finalTowerDoorLift<.9&&player.x<FINAL_END_X&&player.x+player.w>FINAL_END_X-117&&player.y+player.h>191){player.x=FINAL_END_X-117-player.w;player.vx=0;}
+  if(player.x+player.w/2>=FINAL_TOWER.left&&!finalTowerEntered)enterFinalTower();
+  if(player.x+player.w>FINAL_TOWER.left+30&&player.x<FINAL_TOWER.right-30&&player.y+player.h>=FINAL_TOWER.lavaY){
+    if(!finalTowerEntered)enterFinalTower();finalTowerFall();return;
+  }
   if(finalUnlocked()&&player.x+player.w>FINAL_GATE.x-180)finalGateLift=Math.min(1,finalGateLift+dt/1.4);
   const gate={...FINAL_GATE,y:FINAL_GATE.y-FINAL_GATE.h*finalGateLift};
   if(overlap(player,gate)){player.x=player.vx<0?gate.x+gate.w:gate.x-player.w;player.vx=0;}
-  if(player.onGround&&player.x>checkpoint.x+350){
+  if(!finalTowerEntered&&player.onGround&&player.x>checkpoint.x+350){
     const floor=finalPlatforms.find(p=>p.h>100&&player.x>=p.x&&player.x+player.w<=p.x+p.w&&Math.abs(player.y+player.h-p.y)<1);
     if(floor)checkpoint={x:Math.max(floor.x+40,player.x-100),y:floor.y-58};
   }
   updateFireArchery(dt);updateFinalMonsters(dt);
-  if(player.onGround&&player.x>FINAL_END_X)showCastleOpeningEnd();
+  if(state==='playing'&&finalTowerEntered&&player.onGround&&Math.abs(player.y+player.h-FINAL_TOWER.top)<1&&Math.abs(player.x+player.w/2-FINAL_TOWER.summitX)<28)showCastleOpeningEnd();
 }
 function showCastleOpeningEnd(){
   clearInputs();state='castleOpeningComplete';overlay.inert=false;
-  overlay.querySelector('.kicker').textContent='THE OLD CASTLE';
-  overlay.querySelector('h2').textContent='The inner castle awaits';
-  overlay.querySelector('.card > p:not(.kicker):not(.controls-copy)').textContent='You crossed the dead woods and reached the torch-lit hall. This is the opening of the final level; the villain lies deeper inside.';
+  overlay.querySelector('.kicker').textContent='THE LAVA TOWER';
+  overlay.querySelector('h2').textContent='The tower summit awaits';
+  overlay.querySelector('.card > p:not(.kicker):not(.controls-copy)').textContent='You crossed the castle and climbed the lava tower. The final villain lies beyond the summit door.';
   startButton.textContent='Explore castle again';overlay.classList.remove('hidden');tone(330,.25,'triangle',.04);
 }
 const earthHazardPlatforms=[4,9,13,18,23];
@@ -2791,7 +2824,7 @@ function resetGame(autoPlay = true) {
   fireCraterViewBlend=0;fireDropCamera=null;
   WORLD_W=level==='final'?FINAL_W:level==='air'?6900:level==='earth'?EARTH_W:level==='fire'?FIRE_W:level==='water'?WATER_W:MEADOW_W;
   platforms=level==='final'?finalPlatforms:level==='air'?airPlatforms.filter(p=>!p.removed):level==='earth'?[...earthGround,...earthPlatforms,...earthMushroomBoughs,earthKnifeLedge]:level==='fire'?firePlatforms:level==='water'?waterPlatforms:[...meadowPlatforms,...meadowTutorialGround];
-  finalTime=0;finalGateLift=0;airTime=0;fireTime=0;waterTime=0;earthTime=0;fireUnderground=false;fireMode='surface';resetFireStones();resetLavaKing();resetFireArrow();resetMeadowLesson();bossTime=0;bossAwake=false;descentStarted=false;descentBlueReached=false;resetAirMonsters();clearInputs();
+  finalTime=0;finalGateLift=0;finalTowerEntered=false;finalTowerDoorLift=0;airTime=0;fireTime=0;waterTime=0;earthTime=0;fireUnderground=false;fireMode='surface';resetFireStones();resetLavaKing();resetFireArrow();resetMeadowLesson();bossTime=0;bossAwake=false;descentStarted=false;descentBlueReached=false;resetAirMonsters();clearInputs();
   tempest=freshTempest();tempestWinds=[];resetWindStars();
   airPlatforms.forEach(p=>p.spring=0);storms.forEach(s=>s.lastPhase='off');allDescentClouds.forEach(o=>o.lastPhase='off');
   player = {x:90,y:390,w:42,h:58,vx:0,vy:0,onGround:false,facing:1,invincible:0,run:0,attack:0,attackCooldown:0,jumpAge:9,boosts:0,landingPaint:0,fireCameraFloor:450};
@@ -3406,8 +3439,13 @@ function updateWorld(dt) {
       if(earthBoss.stage!=='done')player.x=Math.min(player.x,EARTH_GATE_X-62);
       else if(player.onGround&&player.x>EARTH_GATE_X-35)showEnd(true);
    }else if(level==='meadow'&&meadowBalloonsPopped()===3&&meadowLesson.swamThrough&&player.onGround&&player.x>MEADOW_SHRINE_X-30)showEnd(true);
-  cameraX+=(Math.max(0,Math.min(WORLD_W-W,player.x-W*.38))-cameraX)*Math.min(1,dt*5);
-  if(level==='air'||level==='earth'){
+  if(!(level==='final'&&finalTowerEntered))cameraX+=(Math.max(0,Math.min(WORLD_W-W,player.x-W*.38))-cameraX)*Math.min(1,dt*5);
+  if(level==='final'&&finalTowerEntered){
+    cameraX+=(finalTowerCameraX()-cameraX)*Math.min(1,dt*8);
+    const field=playfieldHeight(),screenY=player.y-cameraY,top=field*.3,bottom=field*.7;
+    const target=screenY<top?player.y-top:screenY>bottom?player.y-bottom:cameraY;
+    cameraY+=(Math.max(FINAL_TOWER.top-field*.7,Math.min(touchDockHeight?phoneGroundCameraY():0,target))-cameraY)*Math.min(1,dt*8);
+  }else if(level==='air'||level==='earth'){
     // A vertical dead zone leaves small hops steady and follows long ascents/falls.
     const falling=descentStarted&&player.y>airPlatforms[19].y+60;
     const fieldH=playfieldHeight(),screenY=player.y-cameraY,top=fieldH*(falling?.22:.32),bottom=fieldH*(falling?.30:touchDockHeight?.80:.64);
@@ -3523,14 +3561,14 @@ function drawFinalBackground(){
   }
   const hallX=FINAL_HALL.start-cameraX;
   if(hallX<W){
-    ctx.save();ctx.beginPath();ctx.rect(hallX,0,FINAL_W-FINAL_HALL.start,H);ctx.clip();
-    ctx.fillStyle='#242734';ctx.fillRect(hallX,0,FINAL_W-FINAL_HALL.start,H);
+    ctx.save();ctx.beginPath();ctx.rect(hallX,0,FINAL_HALL.end-FINAL_HALL.start,H);ctx.clip();
+    ctx.fillStyle='#242734';ctx.fillRect(hallX,0,FINAL_HALL.end-FINAL_HALL.start,H);
     if(finalHallSheet.complete&&finalHallSheet.naturalWidth){
       // Tall portrait screens keep a painted masonry ceiling above the fixed walking plane.
       const top=FINAL_HALL.top-cameraY;
       for(let y=top-160;y>-160;y-=160)for(let x=hallX;x<W;x+=450)ctx.drawImage(finalHallSheet,320,0,600,180,x,y,450,160);
       // Repeat only masonry/window bays; the painted exterior opening and door are endpoints.
-      for(let x=hallX;x<W;x+=FINAL_HALL_TILE_W)ctx.drawImage(finalHallSheet,FINAL_HALL.bodyX,0,FINAL_HALL.bodyWidth,1024,x,top,FINAL_HALL_TILE_W,FINAL_HALL.height);
+      for(let x=hallX;x<Math.min(W,FINAL_HALL.end-cameraX);x+=FINAL_HALL_TILE_W)ctx.drawImage(finalHallSheet,FINAL_HALL.bodyX,0,FINAL_HALL.bodyWidth,1024,x,top,FINAL_HALL_TILE_W,FINAL_HALL.height);
       const doorX=FINAL_INNER_DOOR_X-cameraX;
       if(doorX<W&&doorX+FINAL_INNER_DOOR_HALF_W*2>0){
         // The source ends halfway across its door; mirror the leaf and jamb to close the full arch.
@@ -3539,10 +3577,61 @@ function drawFinalBackground(){
         ctx.drawImage(finalHallSheet,FINAL_HALL.doorX,0,1536-FINAL_HALL.doorX,1024,0,top,FINAL_INNER_DOOR_HALF_W,FINAL_HALL.height);ctx.restore();
       }
     }
-    ctx.restore();
+    drawFinalTowerDoor();ctx.restore();
   }
+  drawFinalTowerBackground();
   // A continuous tint makes the ember edge fade into the deep wood, rather than switching sky palettes.
   const night=Math.min(.27,cameraX/6000);ctx.fillStyle=`rgba(8,10,25,${night})`;ctx.fillRect(0,0,W,H);
+}
+function drawFinalTowerBackground(){
+  const t=FINAL_TOWER,x=t.left-cameraX,width=t.right-t.left;
+  if(x>W||x+width<0)return;
+  ctx.save();ctx.beginPath();ctx.rect(x,0,width,H);ctx.clip();ctx.fillStyle='#242734';ctx.fillRect(x,0,width,H);
+  if(finalHallSheet.complete&&finalHallSheet.naturalWidth){
+    for(let floor=FINAL_FLOOR;floor>=t.top-540;floor-=540){
+      const y=floor-540-cameraY;if(y>H||y+540<0)continue;
+      ctx.drawImage(finalHallSheet,FINAL_HALL.bodyX,0,FINAL_HALL.bodyWidth,800,x,y,width,540);
+      ctx.fillStyle='rgba(13,16,26,.3)';ctx.fillRect(x,floor-12-cameraY,width,12);
+    }
+  }
+  const heat=ctx.createLinearGradient(0,t.lavaY-300-cameraY,0,t.lavaY-cameraY);heat.addColorStop(0,'rgba(245,76,26,0)');heat.addColorStop(1,'rgba(255,101,28,.32)');
+  ctx.fillStyle=heat;ctx.fillRect(x,t.lavaY-300-cameraY,width,420);
+  ctx.restore();
+}
+function drawFinalTower(){
+  const t=FINAL_TOWER,left=t.left+30-cameraX,right=t.right-30-cameraX,y=t.lavaY;
+  if(left>W||right<0)return;
+  // A continuous molten pool lies beneath the entire climb.
+  const lava=ctx.createLinearGradient(0,y,0,y+180);lava.addColorStop(0,'#ffcf65');lava.addColorStop(.17,'#fa792e');lava.addColorStop(1,'#9f2834');
+  ctx.fillStyle=lava;ctx.beginPath();ctx.moveTo(left,y+220);
+  for(let x=left;x<=right;x+=12)ctx.lineTo(x,y+Math.sin((x+cameraX)*.025+finalTime*2.5)*3);
+  ctx.lineTo(right,y+220);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#ffe6a1';ctx.lineWidth=3;ctx.beginPath();
+  for(let x=left;x<=right;x+=12){const sy=y+Math.sin((x+cameraX)*.025+finalTime*2.5)*3;x===left?ctx.moveTo(x,sy):ctx.lineTo(x,sy);}ctx.stroke();
+  for(let i=0;i<18;i++){
+    const x=left+20+i*(right-left-40)/18,dy=y+22+(i*31)%105;
+    ctx.fillStyle='#803d36';ctx.beginPath();ctx.ellipse(x+Math.sin(finalTime+i)*5,dy,12+i%4*6,4+i%3,Math.sin(i)*.2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,206,109,.65)';ctx.beginPath();ctx.arc(x,y-6-(finalTime*22+i*13)%65,1.5+i%2,0,Math.PI*2);ctx.fill();
+  }
+  // Reuse the painted closed doorway at the summit, registered to the top ledge.
+  const doorLeft=t.summitX-140-cameraX,doorTop=t.top-320;
+  if(finalHallSheet.complete&&finalHallSheet.naturalWidth){
+    ctx.drawImage(finalHallSheet,1280,0,256,744,doorLeft,doorTop,140,320);
+    ctx.save();ctx.translate(doorLeft+280,0);ctx.scale(-1,1);ctx.drawImage(finalHallSheet,1280,0,256,744,0,doorTop,140,320);ctx.restore();
+  }
+
+}
+function drawFinalTowerDoor(){
+  if(finalTowerDoorLift<=0)return;
+  const left=FINAL_END_X-117-cameraX,center=FINAL_END_X-cameraX,right=FINAL_END_X+117-cameraX;
+  function aperture(){ctx.beginPath();ctx.moveTo(left,FINAL_FLOOR);ctx.lineTo(left,315);ctx.bezierCurveTo(left,265,center-60,208,center,191);ctx.bezierCurveTo(center+60,208,right,265,right,315);ctx.lineTo(right,FINAL_FLOOR);ctx.closePath();}
+  ctx.save();aperture();ctx.clip();ctx.fillStyle='#181d2b';ctx.fillRect(left,191,right-left,FINAL_FLOOR-191);
+  const width=117*(1-finalTowerDoorLift);
+  if(width>.5&&finalHallSheet.naturalWidth){
+    ctx.drawImage(finalHallSheet,1365,310,171,434,left,FINAL_HALL.top+310*660/1024,width,434*660/1024);
+    ctx.translate(right,0);ctx.scale(-1,1);ctx.drawImage(finalHallSheet,1365,310,171,434,0,FINAL_HALL.top+310*660/1024,width,434*660/1024);
+  }
+  ctx.restore();
 }
 function drawFinalPlatform(p){
   const x=p.x-cameraX;if(x>W||x+p.w<0)return;
@@ -3561,6 +3650,7 @@ function drawFinalPlatform(p){
   }
   ctx.fillStyle=p.kind==='forest'?'#77745b':'#898784';ctx.fillRect(x,p.y,p.w,3);
   ctx.restore();
+  if(p.kind==='tower'){ctx.save();ctx.strokeStyle='#403b37';ctx.lineWidth=5;for(const offset of [32,p.w-32]){ctx.beginPath();ctx.moveTo(x+offset,p.y+p.h);ctx.lineTo(x+offset,p.y+p.h+27);ctx.lineTo(x+offset+20,p.y+p.h);ctx.stroke();}ctx.restore();}
 }
 function drawFinalTorch(x,y){
   const flicker=1+.09*Math.sin(finalTime*11+x),radius=52*flicker;
@@ -3583,7 +3673,7 @@ function drawFinalWorld(){
   for(let x=FINAL_GATE.x-45;x<FINAL_GATE.x+75;x+=22){ctx.beginPath();ctx.moveTo(x-cameraX,FINAL_GATE.y);ctx.lineTo(x-cameraX,FINAL_FLOOR);ctx.stroke();}
   for(let y=FINAL_GATE.y;y<FINAL_FLOOR;y+=54){ctx.beginPath();ctx.moveTo(FINAL_GATE.x-55-cameraX,y);ctx.lineTo(FINAL_GATE.x+85-cameraX,y);ctx.stroke();}
   ctx.restore();
-  // The painted hall's closed inner door ends this chapter; the villain comes later.
+  drawFinalTower();
 }
 function drawFinalMonsters(){
   for(const m of finalMonsters){
@@ -5319,8 +5409,8 @@ function drawHUD() {
   ctx.font='600 10px system-ui';ctx.fillStyle='#dfede2';ctx.fillText(walletRunSummary(),34,84,240);
   ctx.fillStyle=THEME.coral;for(let i=0;i<lives;i++){ctx.beginPath();ctx.arc(219+i*22,41,8,0,7);ctx.fill();ctx.beginPath();ctx.ellipse(215+i*22,32,3,7,-.3,0,7);ctx.ellipse(223+i*22,32,3,7,.3,0,7);ctx.fill();}
   ctx.restore();
-  const progress=Math.max(0,Math.min(1,(level==='air'?(descentStarted?.78+.22*Math.max(0,Math.min(1,(player.y+1690)/3460)):.78*player.x/5910):level==='earth'?player.x/EARTH_GATE_X:level==='fire'?(fireMode==='king'?.9+.1*(10-lavaKing.hp)/10:fireMode==='secondVolcano'?.65+.25*Math.max(0,(player.x-6680)/(10350-6680)):fireMode==='maze'?.45+.2*Math.max(0,(player.mazeC-1)/22):fireUnderground?.3+.15*Math.max(0,Math.min(1,(player.y+1050)/3070)):.3*player.x/4750):level==='water'?player.x/WATER_ARENA.exit:player.x/(WORLD_W-150)))),progressY=H>540?110:28;ctx.fillStyle="rgba(13,32,43,.4)";roundRect(W-210,progressY,180,10,5);ctx.fillStyle=THEME.shrine;roundRect(W-210,progressY,180*progress,10,5);
-  ctx.fillStyle=level==='final'?'#f5e5bf':"rgba(13,32,43,.75)";ctx.font="700 11px system-ui";ctx.textAlign="right";ctx.fillText(level==='final'?(player.x<3130?'FINAL · DEAD WOODS':'FINAL · OLD CASTLE'):level==='air'?(descentStarted?"AIR · DOWNDRAFT":"AIR · CLIMB"):level==='earth'?"EARTH · WILDWOOD":level==='fire'?(fireMode==='king'?"FIRE · LAVA KING":fireMode==='secondVolcano'?"FIRE · KING’S VOLCANO":fireMode==='maze'?"FIRE · LABYRINTH":fireMode==='dropper'?"FIRE · CRATER DROP":fireMode==='volcano'?"FIRE · VOLCANO":"FIRE · EMBER PASS"):level==='water'?(player.x<WATER_CAVE_START?"WATER · SANDY SHORE":player.x<5050?"WATER · KELP GROTTO":player.x<7000?"WATER · PIRATE WRECK":player.x<WATER_GATE.exitX?"WATER · DEEP CAVE":player.x<WATER_RUINS_START?"WATER · TRIDENT PASSAGE":neptunus.active?"WATER · NEPTUNUS":"WATER · ANCIENT RUINS"):level==='meadow'?(player.inWater?'MEADOW · DIVE PASSAGE':player.x>=6920?'MEADOW · SHRINE':player.x>=MEADOW_BOW_RACK_X?'MEADOW · SWIMMING':player.x>=4800?'MEADOW · BALLOON RANGE':'FIRST MEADOW'):'ELEMENTAL SHRINE',W-30,progressY+28);
+  const progress=Math.max(0,Math.min(1,(level==='air'?(descentStarted?.78+.22*Math.max(0,Math.min(1,(player.y+1690)/3460)):.78*player.x/5910):level==='earth'?player.x/EARTH_GATE_X:level==='fire'?(fireMode==='king'?.9+.1*(10-lavaKing.hp)/10:fireMode==='secondVolcano'?.65+.25*Math.max(0,(player.x-6680)/(10350-6680)):fireMode==='maze'?.45+.2*Math.max(0,(player.mazeC-1)/22):fireUnderground?.3+.15*Math.max(0,Math.min(1,(player.y+1050)/3070)):.3*player.x/4750):level==='water'?player.x/WATER_ARENA.exit:level==='final'?finalCastleProgress():player.x/(WORLD_W-150)))),progressY=H>540?110:28;ctx.fillStyle="rgba(13,32,43,.4)";roundRect(W-210,progressY,180,10,5);ctx.fillStyle=THEME.shrine;roundRect(W-210,progressY,180*progress,10,5);
+  ctx.fillStyle=level==='final'?'#f5e5bf':"rgba(13,32,43,.75)";ctx.font="700 11px system-ui";ctx.textAlign="right";ctx.fillText(level==='final'?(finalTowerEntered?'FINAL · LAVA TOWER':player.x<3130?'FINAL · DEAD WOODS':'FINAL · OLD CASTLE'):level==='air'?(descentStarted?"AIR · DOWNDRAFT":"AIR · CLIMB"):level==='earth'?"EARTH · WILDWOOD":level==='fire'?(fireMode==='king'?"FIRE · LAVA KING":fireMode==='secondVolcano'?"FIRE · KING’S VOLCANO":fireMode==='maze'?"FIRE · LABYRINTH":fireMode==='dropper'?"FIRE · CRATER DROP":fireMode==='volcano'?"FIRE · VOLCANO":"FIRE · EMBER PASS"):level==='water'?(player.x<WATER_CAVE_START?"WATER · SANDY SHORE":player.x<5050?"WATER · KELP GROTTO":player.x<7000?"WATER · PIRATE WRECK":player.x<WATER_GATE.exitX?"WATER · DEEP CAVE":player.x<WATER_RUINS_START?"WATER · TRIDENT PASSAGE":neptunus.active?"WATER · NEPTUNUS":"WATER · ANCIENT RUINS"):level==='meadow'?(player.inWater?'MEADOW · DIVE PASSAGE':player.x>=6920?'MEADOW · SHRINE':player.x>=MEADOW_BOW_RACK_X?'MEADOW · SWIMMING':player.x>=4800?'MEADOW · BALLOON RANGE':'FIRST MEADOW'):'ELEMENTAL SHRINE',W-30,progressY+28);
   if(level==='water'){
     const x=20,y=H>540?152:130;ctx.save();ctx.fillStyle='rgba(13,42,65,.8)';roundRect(x,y,176,32,10);
     ctx.globalAlpha=waterPortalKeyTaken?1:.55;drawWaterKeyIcon(x+19,y+16,25);ctx.globalAlpha=1;ctx.fillStyle=waterPortalKeyTaken?'#ffdf86':'#dcece7';ctx.font='bold 12px system-ui';ctx.textAlign='left';ctx.fillText(waterGate.phase==='open'?'GATE OPEN':waterPortalKeyTaken?'KEY · SWIM TO LOCK':'FIND THE SHIP KEY',x+36,y+20);ctx.restore();
