@@ -36,23 +36,15 @@ function updateMeadowZombies(dt){
   }
 }
 function measureMeadowZombieAtlas(image){
-  const c=document.createElement('canvas');c.width=image.naturalWidth;c.height=image.naturalHeight;
-  const paint=c.getContext('2d',{willReadFrequently:true});paint.drawImage(image,0,0);
-  const data=paint.getImageData(0,0,c.width,c.height).data,frames=[];
-  for(let i=0;i<8;i++){
-    const sx=Math.round((i%4)*c.width/4),ex=Math.round((i%4+1)*c.width/4);
-    const sy=Math.round(Math.floor(i/4)*c.height/2),ey=Math.round((Math.floor(i/4)+1)*c.height/2);
-    let left=ex,right=sx,top=ey,bottom=sy;
-    for(let y=sy;y<ey;y++)for(let x=sx;x<ex;x++)if(data[(y*c.width+x)*4+3]>48){
-      left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);
-    }
-    if(left>right)throw new Error('Empty meadow zombie pose '+i);
-    // Anchor the body between its boots, avoiding an offset from its reaching hands.
-    let sum=0,count=0;
-    for(let y=bottom-Math.round((bottom-top)*.08);y<=bottom;y++)for(let x=left;x<=right;x++)if(data[(y*c.width+x)*4+3]>100){sum+=x;count++;}
-    frames.push({x:left,y:top,w:right-left+1,h:bottom-top+1,anchorX:count?sum/count:(left+right)/2});
-  }
-  return frames;
+  // Registered from the v1 atlas once; local file play cannot read canvas pixels.
+  // Keeping those exact bounds also avoids scanning the image on the first frame.
+  const frames=[
+    [17,19,330,488,184.2711461275457],[388,19,321,487,565.3357131770914],
+    [770,19,328,488,927.8823529411765],[1171,19,326,488,1341.6359678499666],
+    [19,523,365,483,191.69819385082036],[384,527,384,478,591.6547872340426],
+    [817,563,290,442,943.14215925745],[1187,647,313,359,1341.9313850063531]
+  ],sx=image.naturalWidth/1536,sy=image.naturalHeight/1024;
+  return frames.map(([x,y,w,h,anchorX])=>({x:x*sx,y:y*sy,w:w*sx,h:h*sy,anchorX:anchorX*sx}));
 }
 function meadowZombiePose(e){
   if(!e.alive)return{from:6,next:7,t:Math.min(1,e.deathAge/.3)};

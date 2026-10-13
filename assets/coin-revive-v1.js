@@ -1,6 +1,9 @@
 // Shared earned-coin wallet and local-only five-second reward simulation.
 // Embedded verbatim in index.html; no advertising SDK is loaded.
 const COIN_WALLET_KEY='bouncing-bunnies-coin-wallet-v1',REVIVE_PRICE=20,REVIVE_AD_SECONDS=5;
+let walletRunStart=0,runCoinsSpent=0;
+function resetRunWallet(){walletRunStart=coinWallet;runCoinsSpent=0;}
+function walletRunSummary(){return `Start ${walletRunStart} + ${score} − ${runCoinsSpent} spent = ${coinWallet}`;}
 let coinWallet=0,revivePending=false,reviveLevel=null,reviveAdEndsAt=0,reviveAdToken=0,reviveAdTimer=null;
 function refreshWallet(){document.querySelector('#walletBalance').textContent=`Wallet: ${coinWallet} coins`;}
 function restoreCoinWallet(){
@@ -71,7 +74,7 @@ function resumeWithHearts(hearts){
 }
 function buyReviveHeart(){
   if(state!=='lost'||!revivePending||reviveLevel!==level||coinWallet<REVIVE_PRICE)return false;
-  coinWallet-=REVIVE_PRICE;saveCoinWallet();return resumeWithHearts(1);
+  coinWallet-=REVIVE_PRICE;runCoinsSpent+=REVIVE_PRICE;saveCoinWallet();return resumeWithHearts(1);
 }
 function finishReviveAd(token){
   if(state!=='reviveAd'||token!==reviveAdToken||performance.now()<reviveAdEndsAt)return false;

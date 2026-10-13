@@ -51,6 +51,13 @@ for(const fps of [30,60,120]){
  run(`update(1/${fps})`);assert.equal(run('state'),'playing');assert.equal(run('player.x'),5880);assert(!run('player.inWater'),'revival must not teleport the bunny back into the pond');
  run('player.x=6410;player.y=720;player.inWater=true;player.air=.001;lives=1');run(`update(1/${fps})`);assert(run('beginReviveAd()'));run('walletTestNow=reviveAdEndsAt;walletTestTimers.at(-1).fn()');assert.equal(run('lives'),3);assert(!run('player.inWater'));assert.equal(run('player.air'),15);
 }
+// Visible accounting matches the user's 30 collected / 10 available example.
+reset('meadow');run('coinWallet=0;resetGame();coins.slice(0,30).forEach(collectCoin);lives=1;player.invincible=0;hurt();buyReviveHeart()');
+assert.equal(run('score'),30);assert.equal(run('coinWallet'),10);assert.equal(run('runCoinsSpent'),20);assert.equal(run('walletRunSummary()'),'Start 0 + 30 − 20 spent = 10');
+run('buyReviveHeart()');assert.equal(run('runCoinsSpent'),20,'a repeated click cannot record a second spend');
+run('openWorldMap()');assert(run("document.querySelector('#mapSummary').textContent.includes('20 spent = 10')"));
+run('start()');assert.equal(run('walletRunStart'),10);assert.equal(run('score'),0);assert.equal(run('runCoinsSpent'),0);assert.equal(run('walletRunSummary()'),'Start 10 + 0 − 0 spent = 10');
+run('collectCoin(coins[0]);lives=1;player.invincible=0;hurt();beginReviveAd();walletTestNow=reviveAdEndsAt;walletTestTimers.at(-1).fn()');assert.equal(run('walletRunSummary()'),'Start 10 + 1 − 0 spent = 11','the test ad does not spend coins');
 // Cancelled/restarted offers reject stale rewards; saves are independent of world completion.
 reset('meadow');run('coinWallet=23;saveCoinWallet();showEnd(false);beginReviveAd();const cancelledReward=walletTestTimers.at(-1).fn;resetGame();walletTestNow+=6000;cancelledReward()');assert.equal(run('lives'),3);assert.equal(run('coinWallet'),23);
 run('coinWallet=0;restoreCoinWallet()');assert.equal(run('coinWallet'),23,'wallet reload');

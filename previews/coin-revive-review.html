@@ -3,6 +3,6 @@
 <main><h1>Coin wallet · continue your adventure</h1><p>Practice the revival choices with temporary coins. This preview does not change your saved wallet or achievements.</p><nav><button data-wallet="25">25 coins · buy or test ad</button><button data-wallet="19">19 coins · test ad</button></nav><iframe src="../index.html" title="Coin revival in the actual game"></iframe></main>
 <script>
 const frame=document.querySelector('iframe');
-function show(amount){frame.contentWindow.eval(`saveCoinWallet=()=>refreshWallet();saveWorldProgress=()=>{};level='meadow';start();soundOn=false;fallbackFullscreen=true;syncFullscreen();coinWallet=${amount};refreshWallet();coins.slice(0,5).forEach(c=>c.taken=true);score=5;player.x=150;player.y=checkpoint.y;player.invincible=0;lives=1;hurt();render(0);`);}
+function show(amount){frame.contentWindow.eval(`beginDeveloperSession();coinWallet=${amount-5};level='meadow';start();soundOn=false;fallbackFullscreen=true;syncFullscreen();coins.slice(0,5).forEach(collectCoin);player.x=150;player.y=checkpoint.y;player.invincible=0;lives=1;hurt();render(0);`);}
 frame.onload=()=>show(25);document.querySelectorAll('[data-wallet]').forEach(b=>b.onclick=()=>show(Number(b.dataset.wallet)));
 </script></html>
