@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.6',build:2026101313,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Painted swimming turtles'});
+const BUILD_INFO=Object.freeze({version:'0.21.7',build:2026101314,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Continuous beach and underwater sand'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -4017,35 +4017,81 @@ const waterShipSheet=new Image();waterShipSheet.src='assets/sunken-pirate-ship-v
 const waterCabinSheet=new Image();waterCabinSheet.src='assets/pirate-air-cabin-v1.png';
 const waterKeySheet=new Image();waterKeySheet.src='assets/pirate-portal-key-v1.png';
 const waterGateSheet=new Image();waterGateSheet.src='assets/tide-cave-gate-v1.png';
-function drawWaterSeabed(){
-  const left=Math.max(WATER_FLOOR[0][0],cameraX-160),right=Math.min(WATER_W,cameraX+W+160);
-  if(left>=right)return;
-  ctx.save();ctx.beginPath();ctx.moveTo(left-cameraX,waterFloorY(left));
-  for(let x=left;x<=right+35;x+=35)ctx.lineTo(x-cameraX,waterFloorY(x));
-  ctx.lineTo(right-cameraX,cameraY+H+500);ctx.lineTo(left-cameraX,cameraY+H+500);ctx.closePath();ctx.clip();
-  ctx.fillStyle='#a69676';ctx.fillRect(left-cameraX,cameraY,right-left,H+500);
-  if(sandyPitSheet.complete&&sandyPitSheet.naturalWidth){
-    const width=136,height=440;
-    for(let x=Math.floor(left/width)*width;x<right;x+=width){
-      const floor=waterFloorY(x),rise=waterFloorY(x+width)-floor;
-      ctx.save();ctx.translate(x-cameraX,floor);
-      // The texture follows the sand contour continuously rather than stepping
-      // down in upright rectangular columns.
-      ctx.transform(1,rise/width,0,1,0,0);
-      const mirrored=Math.floor(x/width)%2===0;
-      if(mirrored){ctx.translate(width,0);ctx.scale(-1,1);}
-      ctx.drawImage(sandyPitSheet,0,445,400,1090,0,-12,width,height);
-      ctx.restore();
-    }
+// WATER_SAND_BEGIN
+// One painted sand bed joins the dry beach to the sea; embedded verbatim in index.html.
+let waterSandPainting=null;
+function waterSandFloorY(x){return x<=WATER_FLOOR[0][0]?waterPlatforms[0].y:waterFloorY(x);}
+function waterSandTexture(){
+  if(waterSandPainting)return waterSandPainting;
+  if(!sandyPitSheet.complete||!sandyPitSheet.naturalWidth)return null;
+  const image=sandyPitSheet,patchW=96,patchH=167,stepX=68,stepY=116;
+  const tile=document.createElement('canvas');tile.width=stepX*6;tile.height=stepY*6;
+  const paint=tile.getContext('2d');paint.fillStyle='#bd9c75';paint.fillRect(0,0,tile.width,tile.height);
+  function feather(c,side=true,foot=true){
+    const p=c.getContext('2d');p.globalCompositeOperation='destination-in';
+    if(side){const g=p.createLinearGradient(0,0,c.width,0);g.addColorStop(0,'transparent');g.addColorStop(.15,'#fff');g.addColorStop(.85,'#fff');g.addColorStop(1,'transparent');p.fillStyle=g;p.fillRect(0,0,c.width,c.height);}
+    if(foot){const g=p.createLinearGradient(0,0,0,c.height);g.addColorStop(0,'transparent');g.addColorStop(.15,'#fff');g.addColorStop(.85,'#fff');g.addColorStop(1,'transparent');p.fillStyle=g;p.fillRect(0,0,c.width,c.height);}
   }
-  ctx.fillStyle='rgba(21,105,126,.3)';ctx.fillRect(left-cameraX,WATER_SURFACE,right-left,H+cameraY+500);
-  ctx.restore();
-  ctx.strokeStyle='#e5cf9e';ctx.lineWidth=9;ctx.lineJoin='round';ctx.beginPath();
-  for(let x=left;x<=right+20;x+=20){const y=waterFloorY(x)+2;x===left?ctx.moveTo(x-cameraX,y):ctx.lineTo(x-cameraX,y);}ctx.stroke();
-  // Foam washes onto the shallow sand where the horizontal sea meets the slope.
-  const tideX=1525-cameraX;
-  ctx.strokeStyle='rgba(250,255,234,.75)';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(tideX+Math.sin(waterTime)*12,392,35,6,-.1,0,Math.PI*2);ctx.stroke();
+  const patches=[],caps=[];
+  for(let i=0;i<4;i++){
+    const patch=document.createElement('canvas');patch.width=patchW;patch.height=patchH;
+    // These interior crops contain opaque soil all the way to their bottom.
+    patch.getContext('2d').drawImage(image,i*6,540+i*145,300,520,0,0,patchW,patchH);feather(patch);patches.push(patch);
+    const cap=document.createElement('canvas');cap.width=patchW;cap.height=patchH;
+    const cp=cap.getContext('2d');cp.drawImage(image,i%2*10,230,300,520,0,0,patchW,patchH);feather(cap,true,false);
+    const fade=cp.createLinearGradient(0,100,0,patchH);fade.addColorStop(0,'#fff');fade.addColorStop(1,'transparent');cp.fillStyle=fade;cp.fillRect(0,0,patchW,patchH);caps.push(cap);
+  }
+  // Wrap the staggered patches to make a repeating tile without sharp seams.
+  for(let row=-2;row<8;row++)for(let col=-2;col<8;col++){
+    const r=(row%6+6)%6,k=(col%6+6)%6,variant=(k*7+r*11)%4;
+    const x=col*stepX-(r%3)*stepX/3,y=row*stepY;
+    paint.save();paint.translate(x+(k%2?patchW:0),y+(r%2?patchH:0));paint.scale(k%2?-1:1,r%2?-1:1);paint.drawImage(patches[variant],0,0);paint.restore();
+  }
+  waterSandPainting={tile,caps,patchW,patchH,stepX};return waterSandPainting;
 }
+function traceWaterSand(left,right,bottom){
+  ctx.beginPath();ctx.moveTo(left,waterSandFloorY(left));
+  for(const [x,y] of WATER_FLOOR)if(x>left&&x<right)ctx.lineTo(x,y);
+  ctx.lineTo(right,waterSandFloorY(right));ctx.lineTo(right,bottom);ctx.lineTo(left,bottom);ctx.closePath();
+}
+function drawWaterWetSand(left,right,bottom){
+  const top=WATER_SURFACE+Math.max(0,Math.floor((cameraY-WATER_SURFACE)/4))*4,end=Math.min(bottom,cameraY+H+4);
+  if(right<1220||end<=top)return;
+  ctx.save();
+  for(let y=top;y<end;y+=4){
+    const depth=Math.max(0,y-WATER_SURFACE),t=Math.min(1,depth/180);
+    ctx.globalAlpha=.29*t*t*(3-2*t);
+    const edge=1460-Math.min(depth,1000)*.12+Math.sin(y*.013)*12+Math.sin(y*.037)*5;
+    if(right<=edge-100)continue;
+    if(left>=edge+120)ctx.fillStyle='#15697e';
+    else{const wet=ctx.createLinearGradient(edge-100,0,edge+120,0);wet.addColorStop(0,'transparent');wet.addColorStop(1,'#15697e');ctx.fillStyle=wet;}
+    ctx.fillRect(left,y,right-left,4);
+  }
+  ctx.restore();
+}
+function drawWaterSeabed(){
+  const left=Math.max(waterPlatforms[0].x,cameraX-160),right=Math.min(WATER_W,cameraX+W+160);
+  if(left>=right)return;
+  const bottom=Math.max(waterPlatforms[0].y+waterPlatforms[0].h,cameraY+H+500,waterSandFloorY(right)+500);
+  const terrain=waterSandTexture();
+  ctx.save();ctx.translate(-cameraX,0);
+  ctx.save();traceWaterSand(left,right,bottom);ctx.clip();
+  ctx.fillStyle=terrain?ctx.createPattern(terrain.tile,'repeat'):'#bd9c75';ctx.fillRect(left,Math.min(cameraY,waterSandFloorY(left)),right-left,bottom-Math.min(cameraY,waterSandFloorY(left)));ctx.restore();
+  if(terrain){
+    ctx.save();ctx.beginPath();ctx.rect(left,Math.min(cameraY,waterSandFloorY(left))-100,right-left,bottom+100-Math.min(cameraY,waterSandFloorY(left)));ctx.clip();
+    for(let col=Math.floor(left/terrain.stepX)-2;col*terrain.stepX<right;col++){
+      const x=col*terrain.stepX,floor=waterSandFloorY(x),rise=waterSandFloorY(x+terrain.patchW)-floor,flip=(col%2+2)%2===1;
+      ctx.save();ctx.translate(x,floor);ctx.transform(1,rise/terrain.patchW,0,1,0,0);if(flip){ctx.translate(terrain.patchW,0);ctx.scale(-1,1);}
+      ctx.drawImage(terrain.caps[(col%4+4)%4],0,-200/520*terrain.patchH);ctx.restore();
+    }
+    ctx.restore();
+  }
+  ctx.save();traceWaterSand(left,right,bottom);ctx.clip();drawWaterWetSand(left,right,bottom);ctx.restore();
+  // Keep the existing animated wash where the sea meets the sloping shore.
+  ctx.strokeStyle='rgba(250,255,234,.75)';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(1525+Math.sin(waterTime)*12,392,35,6,-.1,0,Math.PI*2);ctx.stroke();ctx.restore();
+}
+
+// WATER_SAND_END
 function traceWaterCaveRoof(left,right,move=true){
   // Sample fixed world positions. Camera movement must never reshape the rock.
   const start=Math.floor(left/2)*2,end=Math.ceil(right/2)*2;
@@ -4749,17 +4795,8 @@ function drawPlatform(p) {
   if(level==='earth'){drawEarthPlatform(p);return;}
   if(level==='meadow'&&touchDockHeight&&p.h>=90)p={...p,h:Math.max(p.h,cameraY+H-p.y+1)};
   const x=p.x-cameraX;if(x>W||x+p.w<0)return;
-  if(level==='water'){
-    const joinedRight=p.x+p.w===WATER_FLOOR[0][0]&&p.y===WATER_FLOOR[0][1];
-    ctx.save();clipGroundBoundary(p,joinedRight);
-    ctx.fillStyle='#bd9c75';roundRect(x,p.y,p.w,p.h,13);ctx.fillStyle='#e4cf9d';roundRect(x,p.y-6,p.w,21,9);
-    ctx.fillStyle='#8ac6a1';for(let px=x+20;px<x+p.w-5;px+=44){ctx.beginPath();ctx.ellipse(px,p.y-8,8,5,0,0,7);ctx.fill();}
-    if(sandyPitSheet.complete&&sandyPitSheet.naturalWidth){
-      const scale=.22,tileWidth=400*scale;
-      for(let offset=0;offset<p.w;offset+=tileWidth){const width=Math.min(tileWidth,p.w-offset);ctx.drawImage(sandyPitSheet,0,0,width/scale,1536,x+offset,p.y-430*scale,width,1536*scale);}
-    }
-    ctx.restore();drawGroundCorners(p,sandyPitSheet,810,430,.22,joinedRight);return;
-  }
+  // Water's beach and sloping seabed share one continuous sand painting.
+  if(level==='water')return;
   if(level==='fire'){
     if(fireGroundSheet.complete&&fireGroundSheet.naturalWidth){
       ctx.save();clipGroundBoundary(p);drawFireGround(p);ctx.restore();
