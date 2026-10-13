@@ -43,7 +43,7 @@ for(const width of [960,480])for(const fps of [30,60,120]){
 for(const fps of [30,60,120]){
  reset();run("coinWallet=20;collectCoin(coins.at(-1));player.x=9200;player.y=FINAL_TOWER.lavaY-65;player.vy=850;player.onGround=false;player.invincible=99;fireArrow.ammo=['normal',null,'fire','rainbow',null];cameraY=-900");
  run(`update(1/${fps})`);assert.equal(run('lives'),2);assert.equal(run('player.x'),run('FINAL_TOWER.entryX'));assert.equal(run('cameraY'),0);assert.equal(run('coinWallet'),21);assert(run('coins.at(-1).taken'));assert.equal(run('JSON.stringify(fireArrow.ammo)'),JSON.stringify(['normal',null,'fire','rainbow',null]));
- run('lives=1;player.x=9200;player.y=FINAL_TOWER.lavaY-50;player.vy=850;player.onGround=false');run(`update(1/${fps})`);assert.equal(run('state'),'lost');assert(run('buyReviveHeart()'));assert.equal(run('player.x'),run('FINAL_TOWER.entryX'));assert.equal(run('coinWallet'),1);assert(run('player.onGround'));
+ run('lives=1;player.x=9200;player.y=FINAL_TOWER.lavaY-50;player.vy=850;player.onGround=false');run(`update(1/${fps})`);assert.equal(run('state'),'lost');assert(run('buyReviveHeart()'));assert.equal(run('player.x'),90);assert.equal(run('coinWallet'),1);assert(!run('finalTowerEntered'));assert(run('fireArrow.owned'));
 }
 reset();run('finalTowerDoorLift=.5;finalTowerEntered=true;start()');assert(!run('finalTowerEntered'));assert.equal(run('finalTowerDoorLift'),0,'restart resets the tower door and run');
 console.log('PASS Castle tower: actual three-screen climb with limited boosted jumps and 12 coins at 30/60/120 FPS on desktop/phone; summit-only chapter end, vertical camera, lava and checkpoint/revive preserving wallet/gear, restart reset.');

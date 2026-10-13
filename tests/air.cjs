@@ -65,7 +65,7 @@ assert.equal(run('tempest.hp'),10);
 reset();assert.equal(run('tempest.hp'),10);
 // Death uses a known solid checkpoint, game over stops, restart resets.
 reset();place(850,137);step(3);assert.equal(run('checkpoint.x'),845);place(1000,700);step();assert.equal(run('lives'),2);assert.equal(run('player.x'),845);
-run('lives=1');place(1000,700);step();assert.equal(run('state'),'lost');run('start()');assert.equal(run('lives'),3);assert.equal(run('level'),'air');
+run('lives=1');place(1000,700);step();assert.equal(run('state'),'lost');run('start()');assert.equal(run('lives'),3);assert.equal(run('level'),'meadow');assert(!run('meadowFinished||airFinished||waterFinished||earthFinished||fireFinished'));
 reset();place(4800,-1748);run('tempest.hp=0');
 for(let i=0;i<4000&&run("state==='playing'&&!descentStarted");i++){
   run("keys.clear();keys.add('ArrowRight')");

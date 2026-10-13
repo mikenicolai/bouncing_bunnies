@@ -46,7 +46,7 @@ for(const paused of ['map','developer','lost','reviveAd']){
  run(`state='${paused}';revivePending=true;reviveLevel=level;reviveAdEndsAt=5000`);const x=run('earthTurtle.x');run('update(.1);jump();toggleEarthTurtle()');assert.equal(run('earthTurtle.x'),x);assert(run('player.ridingTurtle'));
 }
 run("state='playing';player.invincible=0;hurt()");assert(!run('player.ridingTurtle'),'damage releases the rider');
-reset();run('player.x=earthTurtle.x;player.y=earthGroundAt(earthTurtle.x)-player.h;toggleEarthTurtle();showEnd(false);resumeWithHearts(3)');assert(!run('player.ridingTurtle'));assert.equal(run('player.h'),58);assert.equal(run('player.x'),run('checkpoint.x'));
+reset();run('player.x=earthTurtle.x;player.y=earthGroundAt(earthTurtle.x)-player.h;toggleEarthTurtle();showEnd(false);restartWithHearts(3)');assert(!run('player.ridingTurtle'));assert.equal(run('player.h'),58);assert.equal(run('player.x'),90);
 run("level='air';resetGame();toggleEarthTurtle()");const x=run('earthTurtle.x');tick(60,1);assert.equal(run('earthTurtle.x'),x);assert(!run('player.ridingTurtle'));
 reset();run('earthTurtle.x=900;earthTurtle.facing=-1;resetGame()');assert.equal(run('earthTurtle.x'),650);assert.equal(run('earthTurtle.facing'),1);assert(!run('player.ridingTurtle'));
 console.log('PASS painted wildlife assets; shell landings, stable left/right carrying, walking/jumping off, triple jump limits, duck, coins, camera, pause/revive/reset and one-way collision at 30/60/120 FPS.');

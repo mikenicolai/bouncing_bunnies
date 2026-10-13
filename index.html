@@ -238,8 +238,8 @@ kbd { padding: 2px 6px; border: 1px solid #43505b; border-radius: 4px; color: #b
             <p>Gather sun-coins, dodge the mossy undead, and reach the elemental shrine.</p>
             <div id="reviveOptions" hidden>
               <p id="reviveWallet"></p>
-              <button id="reviveCoinButton" type="button">20 coins · Continue with 1 heart</button>
-              <button id="reviveAdButton" type="button">Test ad (5 seconds) · Continue with 3 hearts</button>
+              <button id="reviveCoinButton" type="button">20 coins · Restart level with 1 heart</button>
+              <button id="reviveAdButton" type="button">Test ad (5 seconds) · Restart level with 3 hearts</button>
               <p id="reviveAdStatus" role="status" aria-live="polite">Test ad only—no real advertisement.</p>
             </div>
             <button id="startButton" type="button">Begin adventure</button>
@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.12',build:2026101319,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Two-way labyrinth exit and solid stone'});
+const BUILD_INFO=Object.freeze({version:'0.21.13',build:2026101320,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Game over and rewarded level restarts'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -2810,44 +2810,20 @@ function refreshReviveOffer(){
     'Test ad only—no real advertisement.';
   if(status.textContent!==message)status.textContent=message;
 }
-function resumeWithHearts(hearts){
+function restartWithHearts(hearts){
   if(!revivePending||reviveLevel!==level||!['lost','reviveAd'].includes(state))return false;
-  clearInputs();
-  Object.assign(player,{x:checkpoint.x,y:checkpoint.y,h:58,vx:0,vy:0,duck:false,duckVisual:0,
-    ridingTurtle:false,blueContact:null,airCloud:null,breaching:false,attack:0,attackCooldown:0,jumpAge:9,boosts:0,landingPaint:0,mazeTarget:null});
-  player.onGround=platforms.some(p=>p.kind!=='blue'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x+player.w<=p.x+p.w);
-  bunnyArrows=[];fireArrow.cooldown=0;fireArrow.release=0;
-  if(level==='fire')restoreFireCheckpoint();
-  else if(level==='water'){
-    stopWaterDash();waterTrident.shot=null;waterTrident.cooldown=0;
-    player.inWater=!!checkpoint.water;player.air=WATER_AIR;neptunusShots=[];
-    if(neptunus.hp>0){neptunus.mode='idle';neptunus.age=0;neptunus.dizzy=1.2;neptunus.cooldown=1.5;}
-  }else if(level==='meadow'){
-    player.inWater=false;player.air=WATER_AIR;player.stroke=0;
-  }else if(level==='air'){
-    tempestWinds=[];tempest.dizzy=1.5;tempest.shotCooldown=Math.max(1.2,tempest.shotCooldown);
-    player.airCloud=airPlatforms.find(p=>!p.removed&&p.kind==='white'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x<p.x+p.w)||null;
-    if(descentStarted)descentBlueReached=false;
-  }else if(level==='earth'){
-    clearEarthBossHazards();
-    if(['small','giant'].includes(earthBoss.stage)){earthBoss.phase='idle';earthBoss.phaseAge=0;earthBoss.cooldown=1.5;earthBoss.dizzy=1;earthBoss.shot=false;}
-  }
-  player.invincible=3;lives=hearts;
-  if(level!=='fire'){
-    const view=level==='water'?waterViewSize():{width:W,height:playfieldHeight()};
-    cameraX=Math.max(0,Math.min(WORLD_W-view.width,player.x-view.width*.38));
-    cameraY=level==='water'&&player.inWater?Math.max(0,player.y-view.height*.5):
-      level==='air'||level==='earth'?Math.min(level==='air'?0:72,player.y-view.height*.5):touchDockHeight?phoneGroundCameraY():0;
-  }
-  cancelRevive();overlay.classList.add('hidden');overlay.inert=true;state='playing';tone(650,.15,'sine',.035);return true;
+  // Restart this world from its beginning, keeping the wallet and earlier worlds.
+  resetGame(true);lives=hearts;player.invincible=3;saveWorldProgress();
+  document.querySelector('#worldMap').hidden=true;document.querySelector('#developerMenu').hidden=true;
+  overlay.classList.add('hidden');overlay.inert=true;tone(650,.15,'sine',.035);return true;
 }
 function buyReviveHeart(){
   if(state!=='lost'||!revivePending||reviveLevel!==level||coinWallet<REVIVE_PRICE)return false;
-  coinWallet-=REVIVE_PRICE;runCoinsSpent+=REVIVE_PRICE;saveCoinWallet();return resumeWithHearts(1);
+  coinWallet-=REVIVE_PRICE;runCoinsSpent+=REVIVE_PRICE;saveCoinWallet();return restartWithHearts(1);
 }
 function finishReviveAd(token){
   if(state!=='reviveAd'||token!==reviveAdToken||performance.now()<reviveAdEndsAt)return false;
-  return resumeWithHearts(3);
+  return restartWithHearts(3);
 }
 function beginReviveAd(){
   if(state!=='lost'||!revivePending||reviveLevel!==level)return false;
@@ -2901,6 +2877,7 @@ function tone(freq, duration=.08, type="sine", volume=.035) {
 
 function start() {
   if(state==='reviveAd')return;
+  if(state==='lost'&&revivePending)abandonFailedRun();
   if(!developerRun&&!canPlayWorld(level)){level=nextWorld();resetGame(false);openWorldMap();return;}
   overlay.inert=true;
   document.querySelector('#worldMap').hidden=true;
@@ -2913,14 +2890,17 @@ function showEnd(won) {
   state = won ? "won" : "lost";
   if(won){completeWorld(level);openWorldMap();tone(880,.3,'sine',.05);return;}
   lives=0;revivePending=true;reviveLevel=level;
+  // A reload after game over also starts a new journey in Meadow. A paid/ad
+  // restart restores the current run's earlier-world progress when it succeeds.
+  saveWorldProgress(true);
   overlay.classList.add('revive-mode');document.querySelector('#reviveOptions').hidden=false;
   overlay.querySelector('.controls-copy').hidden=true;refreshReviveOffer();
   overlay.querySelector(".kicker").textContent = level==='final'?'The castle is waiting':level==='air'?'The clouds are waiting':level==='earth'?'The wildwood is waiting':level==='fire'?'The embers are waiting':level==='water'?'The tide is waiting':'The meadow rests';
-  overlay.querySelector("h2").textContent = won ? "A bright little victory!" : "Keep your adventure going";
+  overlay.querySelector("h2").textContent = won ? "A bright little victory!" : "Out of hearts";
   overlay.querySelector(".card > p:not(.kicker):not(.controls-copy)").textContent = won
     ? `You rescued ${score} of ${coins.length} sun-coins. ${score===coins.length ? "A perfect run!" : "The rest are waiting."}`
-    : `Your run is paused. Continue from your checkpoint with your collected coins, equipment and boss progress, or restart this level.`;
-  startButton.textContent = won ? "Play again" : "Restart level";
+    : `Coins or the test ad restart this level. Otherwise, your journey starts again in Meadow. Your wallet is kept.`;
+  startButton.textContent = won ? "Play again" : "Start again in Meadow";
   overlay.classList.remove("hidden");
   tone(won?880:130,.3,won?"sine":"sawtooth",.05);
 }
@@ -2941,8 +2921,15 @@ function restoreWorldProgress(){
     meadowFinished=done.meadow===true;airFinished=done.air===true;waterFinished=done.water===true;earthFinished=done.earth===true;fireFinished=done.fire===true;
   } catch { /* Private browsing or an invalid save must not stop the game. */ }
 }
-function saveWorldProgress(){
-  try {window.localStorage?.setItem(WORLD_PROGRESS_KEY,JSON.stringify({version:1,completed:Object.fromEntries(['meadow',...WORLD_ORDER].map(world=>[world,worldCompleted(world)]))}));}catch { /* Completion stays available for this session when storage is unavailable. */ }
+function saveWorldProgress(failed=false){
+  if(developerRun)return;
+  try {window.localStorage?.setItem(WORLD_PROGRESS_KEY,JSON.stringify({version:1,completed:Object.fromEntries(['meadow',...WORLD_ORDER].map(world=>[world,!failed&&worldCompleted(world)]))}));}catch { /* Completion stays available for this session when storage is unavailable. */ }
+}
+function abandonFailedRun(){
+  if(!revivePending||state!=='lost')return false;
+  cancelRevive();
+  if(!developerRun){meadowFinished=airFinished=waterFinished=earthFinished=fireFinished=false;saveWorldProgress();}
+  level='meadow';resetGame(false);return true;
 }
 function completeWorld(world){
   if(developerRun)return;
@@ -2973,6 +2960,7 @@ function selectWorld(world){
 function openWorldMap(){
   if(state==='reviveAd')return;
   if(state==='developer'){exitDeveloperMode();return;}
+  if(state==='lost'&&revivePending)abandonFailedRun();
   if(state!=='map')mapReturnState=state;
   state='map';clearInputs();
   document.querySelector('#developerMenu').hidden=true;

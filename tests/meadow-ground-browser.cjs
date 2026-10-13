@@ -33,7 +33,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
    coinWallet=0;start();coins.slice(0,30).forEach(collectCoin);lives=1;player.invincible=0;hurt();buyReviveHeart();state='review';
    const labels=[],original=ctx.fillText;ctx.fillText=function(text,...args){labels.push(text);return original.call(this,text,...args);};render(0);ctx.fillText=original;return labels;
   });
-  assert(text.includes('10 available'));assert(text.includes('Level: 30 / 34 collected'));assert(text.includes('Start 0 + 30 − 20 spent = 10'));
+  assert(text.includes('10 available'));assert(text.includes('Level: 0 / 34 collected'));assert(text.includes('Start 10 + 0 − 0 spent = 10'));
   fs.writeFileSync('previews/coin-wallet-accounting-review.png',Buffer.from(await game.evaluate(()=>canvas.toDataURL().split(',')[1]),'base64'));
   // The user's direct file view must render too; avoid pixel readback on file-origin artwork.
   const local=await browser.newPage({viewport:{width:844,height:390}});local.on('pageerror',e=>errors.push(e.message));
@@ -45,6 +45,6 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await local.evaluate(()=>{player.x=7250;player.y=412;cameraX=6540;cameraY=250;render(0);});
   await local.locator('#game').screenshot({path:'previews/meadow-ground-file-review.png'});
   assert.deepEqual(errors,[]);
-  console.log('PASS Meadow ground/browser accounting: full-depth opaque texture at both banks, desktop/portrait/landscape renders, 30 collected minus 20 spent equals 10 available, and direct-file rendering without errors.');
+  console.log('PASS Meadow ground/browser accounting: full-depth opaque texture at both banks, desktop/portrait/landscape renders, paid restart with zero level coins and 10 available, and direct-file rendering without errors.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

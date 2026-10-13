@@ -41,44 +41,20 @@ function refreshReviveOffer(){
     'Test ad only—no real advertisement.';
   if(status.textContent!==message)status.textContent=message;
 }
-function resumeWithHearts(hearts){
+function restartWithHearts(hearts){
   if(!revivePending||reviveLevel!==level||!['lost','reviveAd'].includes(state))return false;
-  clearInputs();
-  Object.assign(player,{x:checkpoint.x,y:checkpoint.y,h:58,vx:0,vy:0,duck:false,duckVisual:0,
-    ridingTurtle:false,blueContact:null,airCloud:null,breaching:false,attack:0,attackCooldown:0,jumpAge:9,boosts:0,landingPaint:0,mazeTarget:null});
-  player.onGround=platforms.some(p=>p.kind!=='blue'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x+player.w<=p.x+p.w);
-  bunnyArrows=[];fireArrow.cooldown=0;fireArrow.release=0;
-  if(level==='fire')restoreFireCheckpoint();
-  else if(level==='water'){
-    stopWaterDash();waterTrident.shot=null;waterTrident.cooldown=0;
-    player.inWater=!!checkpoint.water;player.air=WATER_AIR;neptunusShots=[];
-    if(neptunus.hp>0){neptunus.mode='idle';neptunus.age=0;neptunus.dizzy=1.2;neptunus.cooldown=1.5;}
-  }else if(level==='meadow'){
-    player.inWater=false;player.air=WATER_AIR;player.stroke=0;
-  }else if(level==='air'){
-    tempestWinds=[];tempest.dizzy=1.5;tempest.shotCooldown=Math.max(1.2,tempest.shotCooldown);
-    player.airCloud=airPlatforms.find(p=>!p.removed&&p.kind==='white'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x<p.x+p.w)||null;
-    if(descentStarted)descentBlueReached=false;
-  }else if(level==='earth'){
-    clearEarthBossHazards();
-    if(['small','giant'].includes(earthBoss.stage)){earthBoss.phase='idle';earthBoss.phaseAge=0;earthBoss.cooldown=1.5;earthBoss.dizzy=1;earthBoss.shot=false;}
-  }
-  player.invincible=3;lives=hearts;
-  if(level!=='fire'){
-    const view=level==='water'?waterViewSize():{width:W,height:playfieldHeight()};
-    cameraX=Math.max(0,Math.min(WORLD_W-view.width,player.x-view.width*.38));
-    cameraY=level==='water'&&player.inWater?Math.max(0,player.y-view.height*.5):
-      level==='air'||level==='earth'?Math.min(level==='air'?0:72,player.y-view.height*.5):touchDockHeight?phoneGroundCameraY():0;
-  }
-  cancelRevive();overlay.classList.add('hidden');overlay.inert=true;state='playing';tone(650,.15,'sine',.035);return true;
+  // Restart this world from its beginning, keeping the wallet and earlier worlds.
+  resetGame(true);lives=hearts;player.invincible=3;saveWorldProgress();
+  document.querySelector('#worldMap').hidden=true;document.querySelector('#developerMenu').hidden=true;
+  overlay.classList.add('hidden');overlay.inert=true;tone(650,.15,'sine',.035);return true;
 }
 function buyReviveHeart(){
   if(state!=='lost'||!revivePending||reviveLevel!==level||coinWallet<REVIVE_PRICE)return false;
-  coinWallet-=REVIVE_PRICE;runCoinsSpent+=REVIVE_PRICE;saveCoinWallet();return resumeWithHearts(1);
+  coinWallet-=REVIVE_PRICE;runCoinsSpent+=REVIVE_PRICE;saveCoinWallet();return restartWithHearts(1);
 }
 function finishReviveAd(token){
   if(state!=='reviveAd'||token!==reviveAdToken||performance.now()<reviveAdEndsAt)return false;
-  return resumeWithHearts(3);
+  return restartWithHearts(3);
 }
 function beginReviveAd(){
   if(state!=='lost'||!revivePending||reviveLevel!==level)return false;
