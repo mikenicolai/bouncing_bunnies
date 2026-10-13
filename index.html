@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.9',build:2026101316,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Return to the beach'});
+const BUILD_INFO=Object.freeze({version:'0.21.10',build:2026101317,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Stable labyrinth ground texture'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -5414,7 +5414,9 @@ function drawFireVolcano(){
   for(const rock of fireDropRocks){
     drawFireShaftCrystal(rock);
   }
-  const landingLeft=Math.min(4400,cameraX-100);
+  // The landing floor shares the volcano's world origin; camera-relative
+  // bounds would slide its painted rocks and roots while approaching the maze.
+  const landingLeft=FIRE_VOLCANO[0][0];
   drawFireSoilBlock({x:landingLeft,y:FIRE_DROPPER.bottom,w:FIRE_MAZE.x-landingLeft,h:1500});
   drawFireGround({x:landingLeft,y:FIRE_DROPPER.bottom,w:FIRE_MAZE.x-landingLeft,h:150});
   for(const p of [{x:4620,y:1900,w:260,h:55},{x:4960,y:1900,w:260,h:55}])drawPlatform({...p,kind:'cavern'});
