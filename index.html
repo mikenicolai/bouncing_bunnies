@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.1',build:2026101308,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Five elemental portals and Air return fix'});
+const BUILD_INFO=Object.freeze({version:'0.21.2',build:2026101309,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Painted Wildwood wildlife and turtle rides'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -1234,59 +1234,79 @@ const earthGround=[
   [4450,-900,1120],[5570,-1220,1090],[6660,-1480,1440]
 ].map(([x,y,w],id)=>({x,y,w,h:3500,kind:'ground',id}));
 function earthGroundAt(x){return (earthGround.find(p=>x>=p.x&&x<p.x+p.w)||earthGround.at(-1)).y;}
-// Friendly ground wildlife; separate from enemies and platform collision.
+// EARTH_ANIMALS_BEGIN
+// Painted friendly wildlife and a rideable turtle. Embedded verbatim in index.html.
 const earthPandas=[240,1540,3670];
 const earthGroundBirds=[460,810,1750,2630,4740];
-const earthTurtle={x:650,w:94};
+const earthTurtle={x:650,w:144,min:500,max:970,speed:48,facing:1,shellHeight:63};
+const EARTH_ANIMAL_ART={
+  turtle:{asset:'assets/wildwood-turtle-v1.png',sx:86,sy:201,sw:1402,sh:636},
+  bird:{asset:'assets/wildwood-bird-v1.png',sx:201,sy:72,sw:1045,sh:895},
+  panda:{asset:'assets/wildwood-panda-v1.png',sx:183,sy:80,sw:900,sh:1139}
+};
+for(const art of Object.values(EARTH_ANIMAL_ART)){art.image=new Image();art.image.src=art.asset;}
+function resetEarthTurtle(){earthTurtle.x=650;earthTurtle.facing=1;}
+function earthTurtlePlatform(){
+  const t=earthTurtle;
+  return {x:t.x+43,y:earthGroundAt(t.x+t.w/2)-t.shellHeight,w:58,h:8,kind:'turtle',oneWay:true};
+}
+function updateEarthTurtle(dt){
+  const t=earthTurtle,oldShell=earthTurtlePlatform(),oldX=t.x;
+  // Reflect at the clearing edges, retaining overshoot so speed is frame-independent.
+  t.x+=t.facing*t.speed*dt;
+  while(t.x>t.max||t.x<t.min){
+    if(t.x>t.max){t.x=2*t.max-t.x;t.facing=-1;}
+    if(t.x<t.min){t.x=2*t.min-t.x;t.facing=1;}
+  }
+  if(player.ridingTurtle){
+    const center=player.x+player.w/2;
+    if(!player.onGround||player.vy!==0||Math.abs(player.y+player.h-oldShell.y)>2||center<oldShell.x||center>oldShell.x+oldShell.w){player.ridingTurtle=false;return;}
+    player.x+=t.x-oldX;player.y=earthTurtlePlatform().y-player.h;
+  }
+}
 function leaveEarthTurtle(){
-  if(!player.ridingTurtle)return;
-  player.ridingTurtle=false;player.duck=false;player.duckVisual=0;player.h=58;
-  player.x=earthTurtle.x+earthTurtle.w+10;player.y=earthGroundAt(player.x+21)-player.h;
-  player.vx=0;player.vy=0;player.onGround=true;
+  // Release at the current shell position: jumping must never teleport to a side.
+  player.ridingTurtle=false;
 }
 function toggleEarthTurtle(){
   if(level!=='earth'||state!=='playing')return;
-  if(player.ridingTurtle){leaveEarthTurtle();return;}
+  if(player.ridingTurtle){
+    leaveEarthTurtle();player.vy=-280;player.onGround=false;player.jumpAge=0;player.boosts=0;return;
+  }
   const t=earthTurtle,ground=earthGroundAt(t.x+t.w/2);
-  if(Math.abs(player.x+player.w/2-(t.x+t.w/2))>100||Math.abs(player.y+player.h-ground)>45)return;
-  player.ridingTurtle=true;player.attack=0;player.attackCooldown=0;player.duck=true;player.duckVisual=.18;player.h=18;
-  player.x=t.x+23;player.y=ground-32-player.h;player.vx=0;player.vy=0;player.onGround=true;
+  if(Math.abs(player.x+player.w/2-(t.x+t.w/2))>115||Math.abs(player.y+player.h-ground)>45)return;
+  player.duck=false;player.duckVisual=0;player.h=58;
+  const shell=earthTurtlePlatform();player.x=shell.x+shell.w/2-player.w/2;
+  player.y=shell.y-player.h;player.vx=0;player.vy=0;player.onGround=true;
+  player.ridingTurtle=true;player.jumpAge=9;player.boosts=0;
+}
+function drawEarthAnimal(name,x,floor,width,facing=1,stretch=1){
+  const a=EARTH_ANIMAL_ART[name];if(!a.image.complete||!a.image.naturalWidth)return;
+  const height=width*a.sh/a.sw;
+  ctx.save();ctx.translate(x-cameraX,floor);ctx.scale(facing,stretch);
+  ctx.drawImage(a.image,a.sx,a.sy,a.sw,a.sh,-width/2,-height,width,height);ctx.restore();
 }
 function drawEarthAnimals(){
-  const oval=(x,y,rx,ry,color)=>{ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.stroke();};
-  ctx.save();ctx.lineWidth=2;ctx.strokeStyle='#334338';
   for(const [i,x] of earthPandas.entries()){
     if(x<cameraX-100||x>cameraX+W+100)continue;
-    ctx.save();ctx.translate(x-cameraX,earthGroundAt(x));
-    const breathe=Math.sin(earthTime*1.8+i)*1.2;
-    oval(0,-28,27,29,'#eee9d8');oval(-21,-9,13,9,'#34413e');oval(21,-9,13,9,'#34413e');
-    oval(-24,-34,9,17,'#34413e');oval(24,-34,9,17,'#34413e');
-    ctx.translate(0,breathe);oval(-18,-66,10,10,'#34413e');oval(18,-66,10,10,'#34413e');oval(0,-55,27,23,'#f5f0df');
-    oval(-10,-57,8,10,'#34413e');oval(10,-57,8,10,'#34413e');
-    oval(-9,-59,2,((earthTime+i)%4<.14)?.6:3,'#fff8e5');oval(11,-59,2,((earthTime+i)%4<.14)?.6:3,'#fff8e5');
-    oval(0,-47,4,3,'#34413e');ctx.beginPath();ctx.moveTo(-5,-40);ctx.quadraticCurveTo(0,-36,5,-40);ctx.stroke();ctx.restore();
+    drawEarthAnimal('panda',x,earthGroundAt(x)+2,80,i%2?-1:1,1+Math.sin(earthTime*1.8+i)*.009);
   }
   for(const [i,x] of earthGroundBirds.entries()){
     if(x<cameraX-50||x>cameraX+W+50)continue;
-    ctx.save();ctx.translate(x-cameraX,earthGroundAt(x));ctx.scale(i%2?-1:1,1);
-    const peck=Math.max(0,Math.sin(earthTime*2.4+i*2));
-    ctx.beginPath();ctx.moveTo(-5,-8);ctx.lineTo(-5,0);ctx.lineTo(-9,0);ctx.moveTo(5,-8);ctx.lineTo(5,0);ctx.lineTo(9,0);ctx.stroke();
-    oval(0,-16,15,11,'#77999c');oval(-4,-16,9,6,'#526f80');oval(13,-24+peck*14,7,7,'#a9c2b0');
-    ctx.fillStyle='#d5a652';ctx.beginPath();ctx.moveTo(19,-25+peck*14);ctx.lineTo(26,-21+peck*14);ctx.lineTo(19,-19+peck*14);ctx.fill();
-    oval(15,-26+peck*14,1.2,1.2,'#253b35');ctx.restore();
+    drawEarthAnimal('bird',x,earthGroundAt(x)+1,40,i%2?-1:1,1+Math.sin(earthTime*2.4+i*2)*.015);
   }
   const t=earthTurtle,x=t.x-cameraX,y=earthGroundAt(t.x+t.w/2);
-  if(x<W+100&&x+t.w>-100){
-    ctx.save();ctx.translate(x,y);oval(15,-6,12,6,'#809e59');oval(65,-6,12,6,'#809e59');oval(84,-16,16,11,'#a1b768');
-    oval(40,-20,37,21,'#738a45');oval(40,-25,19,13,'#a4ad59');
-    ctx.beginPath();ctx.moveTo(23,-34);ctx.lineTo(10,-36);ctx.moveTo(59,-34);ctx.lineTo(69,-35);ctx.moveTo(22,-18);ctx.lineTo(9,-12);ctx.moveTo(59,-18);ctx.lineTo(71,-11);ctx.stroke();
-    oval(91,-19,2,2,'#263d32');ctx.restore();
-    if(Math.abs(player.x+21-(t.x+t.w/2))<140&&Math.abs(player.y+player.h-y)<100){
-      ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff6d4';ctx.fillText(player.ridingTurtle?'O · get off   /   Jump':'O · sit on turtle',x+45,y-85);
+  if(x<W+180&&x+t.w>-180){
+    drawEarthAnimal('turtle',t.x+t.w/2,y+1,t.w,t.facing);
+    if(Math.abs(player.x+player.w/2-(t.x+t.w/2))<155&&Math.abs(player.y+player.h-y)<100){
+      ctx.save();ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff6d4';
+      ctx.shadowColor='#284332';ctx.shadowBlur=4;
+      ctx.fillText(player.ridingTurtle?'Jump to hop off':'Jump onto the shell',x+t.w/2,y-132);ctx.restore();
     }
   }
-  ctx.restore();
 }
+
+// EARTH_ANIMALS_END
 
 const EARTH_MUSHROOM_SCALE=.88;
 const earthPlatforms=[
@@ -2819,7 +2839,7 @@ document.querySelector('#reviveAdButton').addEventListener('click',beginReviveAd
 // COIN_REVIVE_END
 function resetGame(autoPlay = true) {
   cancelRevive();
-  resetEarthBoss();resetEarthKnives();resetBackgroundBirds();
+  resetEarthBoss();resetEarthKnives();resetBackgroundBirds();resetEarthTurtle();
   fireCraterViewBlend=0;fireDropCamera=null;
   WORLD_W=level==='final'?FINAL_W:level==='air'?6900:level==='earth'?EARTH_W:level==='fire'?FIRE_W:level==='water'?WATER_W:MEADOW_W;
   platforms=level==='final'?finalPlatforms:level==='air'?airPlatforms.filter(p=>!p.removed):level==='earth'?[...earthGround,...earthPlatforms,...earthMushroomBoughs,earthKnifeLedge]:level==='fire'?firePlatforms:level==='water'?waterPlatforms:[...meadowPlatforms,...meadowTutorialGround];
@@ -3036,7 +3056,7 @@ function updateDuck(){
 function hurt(direction=1){
   if(state!=='playing'||player.invincible>0)return false;
   if(level==='water')stopWaterDash();
-  lives--;player.blueContact=null;player.invincible=1.7;player.vx=direction*210;player.vy=-260;
+  lives--;player.blueContact=null;player.ridingTurtle=false;player.invincible=1.7;player.vx=direction*210;player.vy=-260;
   burst(player.x+21,player.y+player.h/2,THEME.coral,12);tone(110,.2,'sawtooth',.025);
   if(lives<=0)showEnd(false);return true;
 }
@@ -3322,11 +3342,7 @@ function update(dt) {
   updateReviveAd();
   if(state!=="playing")return;
   updateBackgroundBirds(dt);
-  if(level==='earth'&&player.ridingTurtle){
-    player.invincible=Math.max(0,player.invincible-dt);updateEarth(dt);
-    if(Math.abs(player.y+player.h-(earthGroundAt(earthTurtle.x)-32))>3)player.ridingTurtle=false;
-    return;
-  }
+  if(level==='earth')updateEarthTurtle(dt);
   const before=player,wasGrounded=player.onGround,wasFalling=player.vy>120;
   player.landingPaint=Math.max(0,(player.landingPaint||0)-dt);
   updateWorld(dt);
@@ -3355,7 +3371,7 @@ function updateWorld(dt) {
   player.vx=Math.max(-max,Math.min(max,player.vx));
   player.vy+=1450*dt; player.vy=Math.min(player.vy,level==='air'&&descentStarted&&player.y>airPlatforms[19].y+60?300:850);
   player.x+=player.vx*dt;
-  const movementPlatforms=level==='meadow'?[...platforms,...meadowLessonSolids()]:platforms;
+  const movementPlatforms=level==='meadow'?[...platforms,...meadowLessonSolids()]:level==='earth'?[earthTurtlePlatform(),...platforms]:platforms;
   for(const p of movementPlatforms) if(p.kind!=='blue'&&!p.oneWay&&overlap(player,p)) {
     // The pond banks use their sloping floor rather than a vertical cliff face.
     if(level==='meadow'&&(p===meadowTutorialGround[0]&&player.x+player.w>=MEADOW_POOL.left||p===meadowTutorialGround[1]&&player.x<MEADOW_POOL.right+24))continue;
@@ -3377,12 +3393,15 @@ function updateWorld(dt) {
       if(depth>=p.h){player.blueContact=null;}
     }
   }
+  if(level==='earth')player.ridingTurtle=false;
   for(const p of movementPlatforms) if(overlap(player,p)) {
+    if(p.kind==='turtle'&&(player.x+player.w/2<p.x||player.x+player.w/2>p.x+p.w))continue;
     if(p.kind==='blue'&&(sinking||player.blueContact))continue;
     if(p.kind==='blue'&&(player.vy<0||previousFeet>p.y+1))continue;
     if(player.vy>=0&&previousFeet<=p.y+1){
       player.y=p.y-player.h;player.vy=0;player.onGround=true;player.jumpAge=9;player.boosts=0;
        if(level==='air')player.airCloud=p;
+      if(p.kind==='turtle')player.ridingTurtle=true;
       if(p.kind==='blue')player.blueContact={platform:p,age:0};
       if(level==='air'&&!descentStarted&&!p.secret&&p.kind==='white'&&p.x>checkpoint.x){checkpoint={x:p.x+25,y:p.y-58};}
        if(level==='fire'&&p.stage>=0&&p.stage>(checkpoint.stage??0)){checkpoint={x:p.x+25,y:p.y-58,stage:p.stage,mode:'surface'};}
@@ -3461,7 +3480,6 @@ function updateWorld(dt) {
 }
 
 function jump() {
-  if(level==='earth'&&player.ridingTurtle)leaveEarthTurtle();
   if(state==='map'||state==='developer'||state==='reviveAd'||state==='lost'&&revivePending)return;
   if(state==="title"||state==="won"||state==="lost"){start();return;}
   if(fireArcheryMode()||level==='fire'&&fireMode!=='surface'&&!fireJumpingMode())return;
@@ -3475,6 +3493,7 @@ function jump() {
     player.vy=Math.max(-270,player.vy-165);player.vx=Math.max(-230,Math.min(230,player.vx+player.facing*65));player.stroke=.48;player.swimClock+=.28;tone(340,.07,'sine',.02);return;
   }
   if(player.duck||keys.has('ArrowDown')||keys.has('KeyS')||duckPointer!==null)return;
+  if(level==='earth'&&player.ridingTurtle)leaveEarthTurtle();
   if(player.onGround||player.blueContact){
     if(level==='earth'&&earthBossVine?.grabbed)releaseEarthVine();
     player.blueContact=null;player.landingPaint=0;
