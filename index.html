@@ -238,7 +238,7 @@ kbd { padding: 2px 6px; border: 1px solid #43505b; border-radius: 4px; color: #b
             <p>Gather sun-coins, dodge the mossy undead, and reach the elemental shrine.</p>
             <div id="reviveOptions" hidden>
               <p id="reviveWallet"></p>
-              <button id="reviveCoinButton" type="button">20 coins · Restart level with 1 heart</button>
+              <button id="reviveCoinButton" type="button">20 coins · Continue from checkpoint with 1 heart</button>
               <button id="reviveAdButton" type="button">Test ad (5 seconds) · Restart level with 3 hearts</button>
               <p id="reviveAdStatus" role="status" aria-live="polite">Test ad only—no real advertisement.</p>
             </div>
@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.14',build:2026101321,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Two-way labyrinth entrance ladder'});
+const BUILD_INFO=Object.freeze({version:'0.21.15',build:2026101322,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Fallen Lava King and checkpoint continuation'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -2090,8 +2090,21 @@ function updateFireArchery(dt){
 }
 
 let lavaKing,lavaKingFireballs=[];
+const LAVA_KING_BODY={w:190,h:42};
+function lavaKingBody(){
+  const k=lavaKing;if(!k.defeated)return null;
+  return {x:(k.deathX??k.x+k.w/2)-LAVA_KING_BODY.w/2,y:k.deathY??FIRE_KING_ARENA.y-LAVA_KING_BODY.h,...LAVA_KING_BODY};
+}
+function lavaKingBodySolid(){return lavaKing.defeated&&(lavaKing.deathLanded||lavaKing.deathY===null)?lavaKingBody():null;}
+function defeatLavaKing(){
+  const k=lavaKing;k.hp=0;k.defeated=true;k.phase='defeated';k.flash=0;fireArrow.aiming=false;lavaKingFireballs=[];
+  k.deathX=Math.max(FIRE_KING_ARENA.left+LAVA_KING_BODY.w/2+64,Math.min(FIRE_KING_ARENA.right-LAVA_KING_BODY.w/2-64,k.x+k.w/2));
+  k.deathY=Math.min(FIRE_KING_ARENA.y-LAVA_KING_BODY.h,k.y+k.h/2-LAVA_KING_BODY.h/2);
+  k.deathVy=0;k.deathLanded=false;
+  burst(k.deathX,k.y+k.h/2,'#ffb24d',40);
+}
 function resetLavaKing(){
-  lavaKing={x:10800,y:FIRE_KING_ARENA.y-145,w:90,h:145,hp:10,active:false,defeated:false,phase:'patrol',age:0,turn:0,facing:-1,dizzy:0,flash:0,recoveryHit:false,flightFrom:10800,flightTo:10800,flightShot:0,flightClock:0};
+  lavaKing={x:10800,y:FIRE_KING_ARENA.y-145,w:90,h:145,hp:10,active:false,defeated:false,phase:'patrol',age:0,turn:0,facing:-1,dizzy:0,flash:0,recoveryHit:false,flightFrom:10800,flightTo:10800,flightShot:0,flightClock:0,deathX:null,deathY:null,deathVy:0,deathLanded:false};
   lavaKingFireballs=[];
 }
 function beginSecondVolcano(){
@@ -2101,7 +2114,7 @@ function beginSecondVolcano(){
   checkpoint={x:player.x,y:player.y,mode:'secondVolcano',stage:8};
 }
 function beginLavaKing(){
-  fireMode='king';lavaKing.active=true;resetFireStones();fireArrow.aiming=fireArrow.owned;fireArrow.angle=.1;
+  fireMode='king';lavaKing.active=true;resetFireStones();fireArrow.aiming=fireArrow.owned&&!lavaKing.defeated;fireArrow.angle=.1;
   checkpoint={x:10320,y:FIRE_KING_ARENA.y-58,mode:'king',stage:17};
 }
 function hitLavaKing(source=player,ranged=false,damage=1){
@@ -2111,7 +2124,7 @@ function hitLavaKing(source=player,ranged=false,damage=1){
   const flying=k.phase==='flight';k.hp=Math.max(0,k.hp-damage);k.dizzy=flying?.3:.9;k.flash=.18;
   if(!flying){k.phase='recover';k.age=0;k.recoveryHit=true;}
   burst(k.x+k.w/2,k.y+80,'#ffd077',16);tone(180,.14,'sawtooth',.02);
-  if(k.hp===0){fireArrow.aiming=false;k.defeated=true;k.phase='defeated';lavaKingFireballs=[];burst(k.x+k.w/2,k.y+60,'#ffb24d',40);}
+  if(k.hp===0)defeatLavaKing();
   return true;
 }
 const LAVA_KING_FIREBALL_SPEED=330;
@@ -2135,7 +2148,15 @@ function lavaKingPhase(phase){
   }
 }
 function updateLavaKing(dt){
-  const k=lavaKing;if(!k.active||k.defeated)return;
+  const k=lavaKing;if(!k.active)return;
+  if(k.defeated){
+    if(k.deathY!==null&&!k.deathLanded){
+      k.deathVy+=1600*dt;k.deathY+=k.deathVy*dt;
+      const floor=FIRE_KING_ARENA.y-LAVA_KING_BODY.h;
+      if(k.deathY>=floor){k.deathY=floor;k.deathVy=0;k.deathLanded=true;burst(k.deathX,FIRE_KING_ARENA.y,'#bb7950',12);tone(110,.1,'triangle',.018);}
+    }
+    return;
+  }
   dt*=LAVA_KING_PACE;
   k.flash=Math.max(0,k.flash-dt);k.dizzy=Math.max(0,k.dizzy-dt);k.flightClock+=dt;
   if(k.phase!=='flight'&&k.flightClock>=5.5&&k.dizzy<=0)lavaKingPhase('flight');
@@ -2197,11 +2218,12 @@ function restoreFireCheckpoint(){
   fireCraterViewBlend=0;fireDropCamera=null;
   Object.assign(player,{x:checkpoint.x,y:checkpoint.y,h:58,vx:0,vy:0,onGround:true,duck:false,invincible:2,mazeTarget:null});
   if(fireMode==='maze'){player.mazeC=checkpoint.mazeC??1;player.mazeR=checkpoint.mazeR??1;player.mazeProgress=0;}
-  resetFireStones();bunnyArrows=[];fireArrow.cooldown=0;fireArrow.release=0;fireArrow.aiming=fireArrow.aiming&&fireArrowToggleAvailable();lavaKingFireballs=[];if(fireMode==='king'){lavaKing.phase='patrol';lavaKing.age=0;lavaKing.flightClock=0;lavaKing.dizzy=1;}
+  resetFireStones();bunnyArrows=[];fireArrow.cooldown=0;fireArrow.release=0;fireArrow.aiming=fireArrow.aiming&&fireArrowToggleAvailable();lavaKingFireballs=[];if(fireMode==='king'){lavaKing.phase=lavaKing.defeated?'defeated':'patrol';lavaKing.age=0;lavaKing.flightClock=0;lavaKing.dizzy=1;}
   cameraX=Math.max(0,Math.min(WORLD_W-W,player.x-W*.38));cameraY=fireCameraTargetY();
 }
 function updateFireJourney(dt){
   fireTime+=dt;player.attack=Math.max(0,player.attack-dt);player.attackCooldown=Math.max(0,player.attackCooldown-dt);
+  if(lavaKing.defeated)updateLavaKing(dt);
   player.invincible=Math.max(0,player.invincible-dt);
   if(fireMode==='king'&&lavaKing.defeated)updateDuck();
   else if(player.duck){const feet=player.y+player.h;player.duck=false;player.h=58;player.y=feet-58;}
@@ -2215,7 +2237,7 @@ function updateFireJourney(dt){
   }else player.vx=move*bunnyMoveSpeed();
   if(move&&!fireArcheryMode())player.facing=Math.sign(move);
   if(fireArcheryMode()&&fireMode==='king')player.facing=player.x+player.w/2<lavaKing.x+lavaKing.w/2?1:-1;
-  const previousX=player.x;
+  const previousX=player.x,previousFeet=player.y+player.h;
   player.x+=player.vx*dt;player.run+=Math.abs(player.vx)*dt*.04;
   if(fireJumpingMode()){
     if(fireMode==='secondVolcano'){
@@ -2227,14 +2249,25 @@ function updateFireJourney(dt){
       }
       player.x=Math.max(edge,player.x);if(player.x===edge&&player.vx<0)player.vx=0;
     }
-    if(fireMode==='king')player.x=Math.max(FIRE_KING_ARENA.left+8,Math.min(FIRE_KING_ARENA.right-player.w-8,player.x));
-    const ground=fireSlopeY(player.x+player.w/2);
+    if(fireMode==='king'&&!lavaKing.defeated)player.x=Math.max(FIRE_KING_ARENA.left+8,Math.min(FIRE_KING_ARENA.right-player.w-8,player.x));
+    const body=lavaKingBodySolid(),overBody=body&&player.x+player.w>body.x&&player.x<body.x+body.w;
+    if(body&&player.onGround&&Math.abs(previousFeet-body.y)<1&&!overBody)player.onGround=false;
+    const floor=fireSlopeY(player.x+player.w/2),ground=overBody&&previousFeet<=body.y+1?Math.min(floor,body.y):floor;
     if(player.onGround){player.y=ground-player.h;player.vy=0;}
     else{
       player.vy=Math.min(850,player.vy+1450*dt);player.y+=player.vy*dt;player.jumpAge+=dt;
       if(player.y+player.h>=ground){player.y=ground-player.h;player.onGround=true;player.vy=0;player.jumpAge=9;player.boosts=0;}
     }
-    updateFireArchery(dt);if(fireMode!=='king')updateFireStones(dt);else{updateLavaKing(dt);if(state==='playing')updateLavaKingBarriers(previousX);}if(state!=='playing')return;
+    if(body&&overlap(player,body)){
+      // A fallen king is harmless, but solid: walk into his side or jump onto/over him.
+      const fromLeft=previousX+player.w<=body.x+1||previousX+player.w/2<body.x+body.w/2;
+      player.x=fromLeft?body.x-player.w:body.x+body.w;player.vx=0;
+    }
+    updateFireArchery(dt);if(fireMode!=='king')updateFireStones(dt);else{if(!lavaKing.defeated)updateLavaKing(dt);if(state==='playing')updateLavaKingBarriers(previousX);}if(state!=='playing')return;
+    if(fireMode==='king'&&lavaKing.defeated&&player.x+player.w/2<FIRE_KING_ARENA.left){
+      fireMode='secondVolcano';fireArrow.aiming=false;
+      if(player.onGround)checkpoint={x:player.x,y:player.y,mode:'secondVolcano',stage:8+FIRE_SECOND_VOLCANO.findLastIndex(([x])=>player.x+player.w/2>=x)};
+    }
     if(fireMode==='volcano'&&player.x+player.w/2<=2700){fireMode='surface';}
     else if(fireMode==='volcano'&&player.x+player.w/2>=4750){
       checkpoint={x:4650,y:-1108,mode:'volcano',stage:6};
@@ -2822,6 +2855,37 @@ function refreshReviveOffer(){
     'Test ad only—no real advertisement.';
   if(status.textContent!==message)status.textContent=message;
 }
+function resumeWithHearts(hearts){
+  if(!revivePending||reviveLevel!==level||!['lost','reviveAd'].includes(state))return false;
+  clearInputs();
+  Object.assign(player,{x:checkpoint.x,y:checkpoint.y,h:58,vx:0,vy:0,duck:false,duckVisual:0,
+    ridingTurtle:false,blueContact:null,airCloud:null,breaching:false,attack:0,attackCooldown:0,jumpAge:9,boosts:0,landingPaint:0,mazeTarget:null});
+  player.onGround=platforms.some(p=>p.kind!=='blue'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x+player.w<=p.x+p.w);
+  bunnyArrows=[];fireArrow.cooldown=0;fireArrow.release=0;
+  if(level==='fire')restoreFireCheckpoint();
+  else if(level==='water'){
+    stopWaterDash();waterTrident.shot=null;waterTrident.cooldown=0;
+    player.inWater=!!checkpoint.water;player.air=WATER_AIR;neptunusShots=[];
+    if(neptunus.hp>0){neptunus.mode='idle';neptunus.age=0;neptunus.dizzy=1.2;neptunus.cooldown=1.5;}
+  }else if(level==='meadow'){
+    player.inWater=false;player.air=WATER_AIR;player.stroke=0;
+  }else if(level==='air'){
+    tempestWinds=[];tempest.dizzy=1.5;tempest.shotCooldown=Math.max(1.2,tempest.shotCooldown);
+    player.airCloud=airPlatforms.find(p=>!p.removed&&p.kind==='white'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x<p.x+p.w)||null;
+    if(descentStarted)descentBlueReached=false;
+  }else if(level==='earth'){
+    clearEarthBossHazards();
+    if(['small','giant'].includes(earthBoss.stage)){earthBoss.phase='idle';earthBoss.phaseAge=0;earthBoss.cooldown=1.5;earthBoss.dizzy=1;earthBoss.shot=false;}
+  }
+  player.invincible=3;lives=hearts;
+  if(level!=='fire'){
+    const view=level==='water'?waterViewSize():{width:W,height:playfieldHeight()};
+    cameraX=Math.max(0,Math.min(WORLD_W-view.width,player.x-view.width*.38));
+    cameraY=level==='water'&&player.inWater?Math.max(0,player.y-view.height*.5):
+      level==='air'||level==='earth'?Math.min(level==='air'?0:72,player.y-view.height*.5):touchDockHeight?phoneGroundCameraY():0;
+  }
+  cancelRevive();saveWorldProgress();overlay.classList.add('hidden');overlay.inert=true;state='playing';tone(650,.15,'sine',.035);return true;
+}
 function restartWithHearts(hearts){
   if(!revivePending||reviveLevel!==level||!['lost','reviveAd'].includes(state))return false;
   // Restart this world from its beginning, keeping the wallet and earlier worlds.
@@ -2831,7 +2895,7 @@ function restartWithHearts(hearts){
 }
 function buyReviveHeart(){
   if(state!=='lost'||!revivePending||reviveLevel!==level||coinWallet<REVIVE_PRICE)return false;
-  coinWallet-=REVIVE_PRICE;runCoinsSpent+=REVIVE_PRICE;saveCoinWallet();return restartWithHearts(1);
+  coinWallet-=REVIVE_PRICE;runCoinsSpent+=REVIVE_PRICE;saveCoinWallet();return resumeWithHearts(1);
 }
 function finishReviveAd(token){
   if(state!=='reviveAd'||token!==reviveAdToken||performance.now()<reviveAdEndsAt)return false;
@@ -2911,7 +2975,7 @@ function showEnd(won) {
   overlay.querySelector("h2").textContent = won ? "A bright little victory!" : "Out of hearts";
   overlay.querySelector(".card > p:not(.kicker):not(.controls-copy)").textContent = won
     ? `You rescued ${score} of ${coins.length} sun-coins. ${score===coins.length ? "A perfect run!" : "The rest are waiting."}`
-    : `Coins or the test ad restart this level. Otherwise, your journey starts again in Meadow. Your wallet is kept.`;
+    : `Coins continue from your checkpoint. The test ad restarts this level. Otherwise, start again in Meadow. Your wallet is kept.`;
   startButton.textContent = won ? "Play again" : "Start again in Meadow";
   overlay.classList.remove("hidden");
   tone(won?880:130,.3,won?"sine":"sawtooth",.05);
@@ -5488,6 +5552,8 @@ function drawLavaKingBarriers(){
   }
 }
 const lavaKingSheet=new Image();lavaKingSheet.src='assets/lava-king-v2.png';
+const lavaKingFallenSheet=new Image();lavaKingFallenSheet.src='assets/lava-king-fallen-v1.png';
+const LAVA_KING_FALLEN_ART={sx:136,sy:269,sw:1680,sh:362};
 // Helmet centers register the new poses without changing the boss's hitbox.
 const LAVA_KING_ART={width:1774,height:887,scale:.56,anchors:[[268,376.5],[255.5,378],[258.5,375.5],[246,376.5],[231,375],[263.5,373.5],[283.5,369.5],[268,373]]};
 function lavaKingFrame(){
@@ -5501,14 +5567,23 @@ function drawFireball(x,y,r){
   ctx.fillStyle='#ffd779';ctx.beginPath();ctx.arc(x-2,y-2,r*.55,0,Math.PI*2);ctx.fill();ctx.restore();
 }
 function drawLavaKing(){
-  const k=lavaKing;if(k.x-cameraX<-350||k.x-cameraX>W+350)return;
+  const k=lavaKing;
+  if(k.defeated){
+    const body=lavaKingBody();if(body.x+body.w<cameraX||body.x>cameraX+W)return;
+    ctx.save();ctx.translate(body.x+body.w/2-cameraX,body.y+body.h);ctx.scale(k.facing>0?-1:1,1);
+    if(lavaKingFallenSheet.complete&&lavaKingFallenSheet.naturalWidth){
+      const f=LAVA_KING_FALLEN_ART,scale=Math.min(body.w/f.sw,body.h/f.sh);
+      ctx.drawImage(lavaKingFallenSheet,f.sx,f.sy,f.sw,f.sh,-f.sw*scale/2,-f.sh*scale,f.sw*scale,f.sh*scale);
+    }else{ctx.fillStyle='#8d4532';roundRect(-body.w/2,-body.h,body.w,body.h,10);}
+    ctx.restore();return;
+  }
+  if(k.x-cameraX<-350||k.x-cameraX>W+350)return;
   if(k.phase==='flight'){
     const lift=FIRE_KING_ARENA.y-(k.y+k.h);
     ctx.save();ctx.globalAlpha=.22;ctx.fillStyle='#120e1c';ctx.beginPath();ctx.ellipse(k.x+k.w/2-cameraX,FIRE_KING_ARENA.y-2,Math.max(18,50-lift*.1),9,0,0,7);ctx.fill();ctx.restore();
     if(lift>20)drawFireball(k.x+k.w/2-cameraX,k.y+k.h-2,9+Math.sin(fireTime*14)*2);
   }
   ctx.save();ctx.translate(k.x+k.w/2-cameraX,k.y+k.h-6+Math.sin(fireTime*3*LAVA_KING_PACE)*3);
-  if(k.defeated)ctx.globalAlpha=.3;
   if(k.flash>0)ctx.globalAlpha=.55;
   ctx.scale(-k.facing,1);
   if(lavaKingSheet.complete&&lavaKingSheet.naturalWidth){

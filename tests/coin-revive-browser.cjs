@@ -9,8 +9,8 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   const buy=game.locator('#reviveCoinButton'),ad=game.locator('#reviveAdButton'),restart=game.locator('#startButton');
   await game.waitForFunction(()=>getComputedStyle(document.querySelector('#startOverlay')).opacity==='1');await game.locator('#startOverlay').screenshot({path:'previews/coin-revive-desktop-review.png'});
   assert((await ad.innerText()).includes('Restart level with 3 hearts'));assert((await restart.innerText()).includes('Meadow'));
-  await buy.click();assert.equal(await game.evaluate(()=>coinWallet),5);assert.equal(await game.evaluate(()=>lives),1);assert.equal(await game.evaluate(()=>score),0);
-  assert(await game.evaluate(()=>level==='fire'&&fireMode==='surface'&&player.x===90&&coins.every(c=>!c.taken)&&lavaKing.hp===10));assert.equal(await game.evaluate(()=>state),'playing');
+  await buy.click();assert.equal(await game.evaluate(()=>coinWallet),5);assert.equal(await game.evaluate(()=>lives),1);assert.equal(await game.evaluate(()=>score),5);
+  assert(await game.evaluate(()=>level==='fire'&&fireMode==='king'&&player.x===checkpoint.x&&coins.slice(0,5).every(c=>c.taken)&&lavaKing.hp===4));assert.equal(await game.evaluate(()=>state),'playing');
   await page.locator('[data-wallet="19"]').click();assert(!(await buy.isEnabled()));assert(await ad.isEnabled());
   await ad.click();assert.equal(await game.evaluate(()=>state),'reviveAd');assert(!(await buy.isEnabled()));assert(!(await restart.isEnabled()));
   const frozen=await game.evaluate(()=>JSON.stringify({score,coins,player,enemies}));
@@ -38,6 +38,6 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await saved.reload();assert(await saved.evaluate(()=>level==='meadow'&&coinWallet===22&&!finalUnlocked()));
   await saved.evaluate(()=>{meadowFinished=airFinished=waterFinished=earthFinished=true;level='fire';saveWorldProgress();start();soundOn=false;lives=1;player.invincible=0;hurt();});await saved.reload();assert(await saved.evaluate(()=>level==='meadow'&&coinWallet===22&&!canPlayWorld('fire')),'reloading game-over cannot bypass Meadow');
   const local=await browser.newPage();local.on('pageerror',e=>errors.push(e.message));await local.goto('file://'+process.cwd()+'/index.html');await local.evaluate(()=>{meadowFinished=airFinished=waterFinished=earthFinished=true;level='fire';start();soundOn=false;coinWallet=20;showEnd(false);buyReviveHeart();});assert(await local.evaluate(()=>level==='fire'&&player.x===90&&lives===1));
-  assert.deepEqual(errors,[]);console.log('PASS game-over browser: actual coin/ad level restarts, real five-second frozen reward, fresh Fire opening/boss, Meadow fallback and reload, wallet/progress persistence, phone buttons, direct-file play and no runtime errors.');
+  assert.deepEqual(errors,[]);console.log('PASS game-over browser: actual coin checkpoint continuation/ad level restart, real five-second frozen reward, preserved paid progress and fresh ad Fire opening/boss, Meadow fallback and reload, wallet/progress persistence, phone buttons, direct-file play and no runtime errors.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

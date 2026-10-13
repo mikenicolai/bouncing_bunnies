@@ -6,7 +6,7 @@ assert.equal(run('player.h'),18,'bunny crouches under the first branch');
 run('keys.clear();updateDuck()');
 assert.equal(run('player.h'),58,'one-way branch does not trap the bunny crouched');
 
-run("level='fire';resetGame();beginLavaKing();lavaKing.defeated=true;fireArrow.aiming=false;keys.add('ArrowDown');update(1/60)");
+run("level='fire';resetGame();player.x=10340;player.y=-558;player.onGround=true;beginLavaKing();lavaKing.defeated=true;fireArrow.aiming=false;keys.add('ArrowDown');update(1/60)");
 assert.equal(run('player.h'),18,'Down crouches after the Lava King falls');
 run('keys.clear();update(1/60)');
 assert.equal(run('player.h'),58,'releasing Down stands up after the fight');
