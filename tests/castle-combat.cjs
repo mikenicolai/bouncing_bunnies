@@ -6,13 +6,24 @@ for(const fps of [30,60,120]){
  // A falling head contact must preserve Fire's damaging lava-zombie rule.
  reset();run("{const m=finalMonsters.find(m=>m.kind==='lava');player.x=m.x+5;player.y=m.y-player.h+3;player.previousFeet=m.y-1;player.vy=220;player.onGround=false;updateFinalMonsters(0)}");
  assert.equal(run('lives'),2);assert.equal(run("finalMonsters.find(m=>m.kind==='lava').hp"),2);assert.equal(run('player.vy'),-260);
- // Ground jumps cannot be refreshed by keyboard, touch or a guardian bounce.
- reset();run('jump()');const vy=run('player.vy');run('jump();jump();jump()');assert.equal(run('player.vy'),vy);assert.equal(run('player.boosts'),0);
- run("window.listeners.keydown[1]({code:'Space',repeat:false,preventDefault(){}})");assert.equal(run('player.vy'),vy);
- run("fitTouchControls();document.querySelector('#game').listeners.pointerdown[0]({clientX:ACTIONS.jump.x,clientY:ACTIONS.jump.y,pointerId:81,preventDefault(){}})");assert.equal(run('player.vy'),vy);
+ // A ground jump has exactly two quick extra taps, through each input path.
+ const press=(repeat=false)=>run(`window.listeners.keydown[1]({code:'Space',repeat:${repeat},preventDefault(){}})`);
+ const touch=()=>run("fitTouchControls();document.querySelector('#game').listeners.pointerdown[0]({clientX:ACTIONS.jump.x,clientY:ACTIONS.jump.y,pointerId:81,preventDefault(){}});document.querySelector('#game').listeners.pointerup[0]({pointerId:81})");
+ const stick=()=>run('updateJoystick({x:JOY.x,y:JOY.y});updateJoystick({x:JOY.x,y:JOY.y-JOY.radius})');
+ for(const input of [()=>run('jump()'),()=>press(),touch,stick]){
+  reset();input();assert.equal(run('player.vy'),-570);assert.equal(run('player.boosts'),0);
+  tick(1/fps);input();assert.equal(run('player.boosts'),1);assert(run('player.vy<-570'));
+  tick(1/fps);input();assert.equal(run('player.boosts'),2);assert.equal(run('player.vy'),-720);
+  for(let i=0;i<12;i++)input();assert.equal(run('player.vy'),-720);assert.equal(run('player.boosts'),2,'extra inputs cannot exceed three jumps');
+  run('clearInputs()');tick(1.8);assert(run('player.onGround'));input();assert.equal(run('player.vy'),-570);assert.equal(run('player.boosts'),0,'landing restores a fresh jump sequence');
+ }
+ reset();press();press(true);assert.equal(run('player.boosts'),0,'holding the key cannot consume the extra taps');
+ reset();run('jump()');tick(.55);const late=run('player.vy');run('jump()');assert.equal(run('player.vy'),late,'late taps cannot restart the jump in midair');
+ reset();run('player.onGround=false;player.jumpAge=9;player.vy=100;jump()');assert.equal(run('player.vy'),100,'walking off a ledge cannot start a midair jump');
+ reset();run('jump();player.vy=200;jump()');assert.equal(run('player.boosts'),0,'falling too fast cannot be turned into flight');
+ // A monster bounce cannot refill the boost budget or restart its timer.
  reset();run("{const m=finalMonsters.find(m=>m.kind==='air');player.x=m.x+5;player.y=m.y-player.h+3;player.previousFeet=m.y-1;player.vy=220;player.onGround=false;updateFinalMonsters(0)}");
- assert.equal(run("finalMonsters.find(m=>m.kind==='air').hp"),2);assert.equal(run('player.vy'),-460);run('jump();jump();jump()');assert.equal(run('player.vy'),-460);
- reset();run('jump()');tick(1);assert(run('player.onGround'));run('jump()');assert.equal(run('player.vy'),-570,'landing restores the next normal jump');
+ assert.equal(run("finalMonsters.find(m=>m.kind==='air').hp"),2);assert.equal(run('player.vy'),-460);run('jump();jump();jump()');assert.equal(run('player.vy'),-460);assert.equal(run('player.boosts'),2);
  // The bow is restored from Fire completion after visiting another world/reloading.
  run("level='meadow';resetGame();level='final';start()");assert(run('fireArrow.owned&&!fireArrow.aiming'));assert.equal(run('fireArrow.ammo.filter(Boolean).length'),5);
  // Entering directly from Fire retains spent slots, variants and partial recharge.
@@ -38,4 +49,4 @@ for(const fps of [30,60,120]){
  run("state='playing';player.y=800;checkpoint={x:100,y:FINAL_FLOOR-58}");tick(1/fps);assert(run('fireArrow.owned'));assert.equal(run('bunnyArrows.length'),0);assert.equal(run('lives'),2);
 }
 run("level='air';resetGame();player.onGround=true;jump();jump();jump();jump()");assert.equal(run('player.boosts'),2,'Air retains its two limited extra taps');
-console.log('PASS castle combat: damaging lava heads; single ground/bounce jumps; bow restoration and carried ammunition; real typed arrows against all five monster kinds, terrain/gate collisions, aiming/stowing, recharge, pause and respawn at 30/60/120 FPS.');
+console.log('PASS castle combat: damaging lava heads; limited triple jumps across keyboard/touch/joystick and safe monster bounces; bow restoration and carried ammunition; real typed arrows against all five monster kinds, terrain/gate collisions, aiming/stowing, recharge, pause and respawn at 30/60/120 FPS.');

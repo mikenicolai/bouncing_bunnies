@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.20.7',build:2026101304,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Blended pond banks and clear coin accounting'});
+const BUILD_INFO=Object.freeze({version:'0.20.8',build:2026101305,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Limited Castle triple jump'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -1368,7 +1368,7 @@ function updateFinalMonsters(dt){
     if(pirateReach&&overlap(player,pirateReach))hurt(player.x<m.x?-1:1);
     if(!overlap(player,m))continue;
     const stomp=m.kind!=='lava'&&player.vy>100&&(player.previousFeet??player.y+player.h)<=m.y+12;
-    if(stomp){if(hitFinalMonster(m)){player.y=m.y-player.h;player.vy=-460;player.onGround=false;player.jumpAge=0;player.boosts=0;}}
+    if(stomp){if(hitFinalMonster(m)){player.y=m.y-player.h;player.vy=-460;player.onGround=false;player.jumpAge=9;player.boosts=2;}}
     else if(!wasDizzy&&m.dizzy<=0)hurt(player.x+player.w/2<m.x+m.w/2?-1:1);
   }
 }
@@ -3433,7 +3433,7 @@ function jump() {
     if(level==='earth'&&earthBossVine?.grabbed)releaseEarthVine();
     player.blueContact=null;player.landingPaint=0;
     player.vy=level==='fire'&&fireJumpingMode()?-620+fireSlopeGrade(player.x+player.w/2)*player.vx:-570;player.onGround=false;player.jumpAge=0;player.boosts=0;tone(330,.09,"square",.025);
-  } else if(level!=='final'&&player.jumpAge<.52 && player.boosts<2 && player.vy<180) {
+  } else if(player.jumpAge<.52 && player.boosts<2 && player.vy<180) {
     // Two quick taps turn a normal hop into a high jump. The short window,
     // hard velocity cap, and limited charges keep it useful without flight.
     player.vy=Math.min(player.vy,Math.max(-720,player.vy-145));player.boosts++;tone(390+player.boosts*70,.07,"square",.022);

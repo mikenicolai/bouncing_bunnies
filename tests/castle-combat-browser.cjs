@@ -18,6 +18,14 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await game.evaluate(()=>{state='playing';player.x=4990;player.onGround=true;player.y=FINAL_FLOOR-58;player.invincible=99;});
   await page.keyboard.press('z');await page.keyboard.press('x');
   assert.equal(await game.evaluate(()=>fireArrow.ammo.filter(Boolean).length),4);
+  // Real keyboard triple jump while the bow is stowed.
+  async function prepareJump(){await game.evaluate(()=>{clearInputs();fireArrow.aiming=false;finalMonsters=[];player.x=100;player.y=FINAL_FLOOR-58;player.onGround=true;player.vx=player.vy=0;player.boosts=0;player.jumpAge=9;player.invincible=99;state='playing';fitTouchControls();});}
+  await prepareJump();await game.locator('#game').focus();
+  for(let i=0;i<3;i++)await page.keyboard.press('Space');
+  assert.equal(await game.evaluate(()=>player.boosts),2,'keyboard triple jump');
+  for(let i=0;i<4;i++)await page.keyboard.press('Space');assert.equal(await game.evaluate(()=>player.boosts),2,'extra key taps do not refill boosts');
+  await game.waitForFunction(()=>player.onGround,{},{timeout:3000});
+  await page.keyboard.press('Space');assert.equal(await game.evaluate(()=>player.boosts),0,'landing restores the next jump');
   for(const viewport of [{width:390,height:844},{width:844,height:390}]){
    await page.setViewportSize(viewport);await page.locator('[data-scene="bow"]').click();
    await game.evaluate(()=>{state='review';player.invincible=0;render(0);});
@@ -32,7 +40,9 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
    await game.evaluate(()=>{state='playing';});await touch('ability2');assert.equal(await game.evaluate(()=>fireArrow.aiming),false,JSON.stringify(viewport));
    await touch('ability2');assert.equal(await game.evaluate(()=>fireArrow.aiming),true);
    await touch('hit');assert.equal(await game.evaluate(()=>fireArrow.ammo.filter(Boolean).length),4);
+   await prepareJump();for(let i=0;i<3;i++)await touch('jump');assert.equal(await game.evaluate(()=>player.boosts),2,'touch triple jump in '+JSON.stringify(viewport));
+   await touch('jump');assert.equal(await game.evaluate(()=>player.boosts),2,'a fourth touch cannot add another boost');
   }
-  assert.deepEqual(errors,[]);console.log('PASS castle browser: bow/quiver and aimed artwork, inventory, real keyboard firing, portrait/landscape touch equip/stow/fire and no runtime errors.');
+  assert.deepEqual(errors,[]);console.log('PASS castle browser: bow/quiver and aimed artwork, inventory, real keyboard firing, limited keyboard and portrait/landscape touch triple jumps, landing reset, equip/stow/fire and no runtime errors.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
