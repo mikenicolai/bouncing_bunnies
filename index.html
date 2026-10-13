@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.8',build:2026101315,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Reef motion and swimming direction'});
+const BUILD_INFO=Object.freeze({version:'0.21.9',build:2026101316,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Return to the beach'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -3261,10 +3261,12 @@ function updateWater(dt){
     player.vx=Math.max(-260,Math.min(260,player.vx));
     player.vy=Math.min(850,player.vy+1450*dt);
     if(down&&player.vy<170)player.vy=170;
-    player.x=Math.max(WATER_START,Math.min(WORLD_W-player.w,player.x+player.vx*dt));
+    player.x=Math.max(0,Math.min(WORLD_W-player.w,player.x+player.vx*dt));
     if(player.y<waterCeilingY(player.x+player.w/2,player.y)&&player.x+player.w/2>=WATER_CAVE_START){player.x=oldX;player.vx=0;}
     player.y+=player.vy*dt;
-    if(player.vy>0&&player.y+player.h>=WATER_SURFACE+6){
+    // A leap can cross the beach edge, but cannot pass through the sand below it.
+    if(player.x<oldX&&player.y+player.h>waterFloorY(player.x+player.w/2)+12){player.x=oldX;player.vx=0;}
+    if(player.vy>0&&player.y+player.h>=WATER_SURFACE+6&&waterFloorY(player.x+player.w/2)>WATER_SURFACE){
       player.breaching=false;player.y=WATER_SURFACE+6-player.h;player.vy=Math.min(170,player.vy*.3);player.stroke=.4;
       for(const reef of waterSolids)if(overlap(player,reef)){
         player.x=oldX<reef.x?reef.x-player.w:reef.x+reef.w;player.vx=0;
@@ -3278,16 +3280,24 @@ function updateWater(dt){
     if(!left&&!right)player.vx*=Math.pow(.055,dt);
     if(!up&&!down)player.vy=player.vy*Math.pow(.11,dt)-20*dt;
     player.vx=Math.max(-215,Math.min(215,player.vx));player.vy=Math.max(-215,Math.min(215,player.vy));
-    player.x=Math.max(WATER_START,Math.min(WORLD_W-player.w,player.x+player.vx*dt));
+    player.x=Math.max(0,Math.min(WORLD_W-player.w,player.x+player.vx*dt));
     const center=player.x+player.w/2;
-    if(center>=WATER_CAVE_START&&player.y<waterCeilingY(center,player.y)-1||player.y+player.h>waterFloorY(center)+1){player.x=oldX;player.vx=0;}
+    const shallowBank=center<WATER_CAVE_START&&player.y<=WATER_SURFACE-WATER_FLOAT_HEAD+2&&player.y+player.h<=waterFloorY(center)+12;
+    if(center>=WATER_CAVE_START&&player.y<waterCeilingY(center,player.y)-1||!shallowBank&&player.y+player.h>waterFloorY(center)+1){player.x=oldX;player.vx=0;}
     for(const reef of waterSolids)if(overlap(player,reef)){player.x=oldX;player.vx=0;}
     const minY=waterSwimTopY(player.x+player.w/2,player.y),maxY=waterFloorY(player.x+player.w/2)-player.h;
     player.y=Math.max(minY,Math.min(maxY,player.y+player.vy*dt));
     if(player.y===minY&&player.vy<0||player.y===maxY&&player.vy>0)player.vy=0;
     for(const reef of waterSolids)if(overlap(player,reef)){player.y=oldY;player.vy=0;}
   }
-  player.onGround=false;player.invincible=Math.max(0,player.invincible-dt);
+  player.onGround=false;
+  const shoreFloor=waterFloorY(player.x+player.w/2),feet=player.y+player.h;
+  if(shoreFloor<=WATER_SURFACE&&feet<=shoreFloor+12&&(player.breaching||feet>=shoreFloor-1)){
+    // Return to ordinary movement as soon as the bunny reaches exposed sand.
+    player.inWater=false;player.breaching=false;player.stroke=0;player.air=WATER_AIR;
+    if(player.vy>=0&&feet>=shoreFloor-1){player.y=shoreFloor-player.h;player.vy=0;player.onGround=true;player.jumpAge=9;player.boosts=0;}
+  }
+  player.invincible=Math.max(0,player.invincible-dt);
   player.attack=Math.max(0,player.attack-dt);player.attackCooldown=Math.max(0,player.attackCooldown-dt);
   collectWaterAdventure();updateWaterTrident(dt,waterSolids);updateNeptunus(dt);if(state!=='playing')return;
   if(waterBreathing()){player.air=WATER_AIR;waterCheckpoint();}
@@ -3375,11 +3385,13 @@ function updateWorld(dt) {
   player.x+=player.vx*dt;
   const movementPlatforms=level==='meadow'?[...platforms,...meadowLessonSolids()]:level==='earth'?[earthTurtlePlatform(),...platforms]:platforms;
   for(const p of movementPlatforms) if(p.kind!=='blue'&&!p.oneWay&&overlap(player,p)) {
+    // Beach collision follows the continuous floor, including its sloping lip.
+    if(level==='water'&&p===waterPlatforms[0])continue;
     // The pond banks use their sloping floor rather than a vertical cliff face.
     if(level==='meadow'&&(p===meadowTutorialGround[0]&&player.x+player.w>=MEADOW_POOL.left||p===meadowTutorialGround[1]&&player.x<MEADOW_POOL.right+24))continue;
     if(player.vx>0) player.x=p.x-player.w; else if(player.vx<0) player.x=p.x+p.w; player.vx=0;
   }
-  const previousFeet=player.y+player.h;player.previousFeet=previousFeet;
+  const groundedBeforeMove=player.onGround,previousFeet=player.y+player.h;player.previousFeet=previousFeet;
   player.y+=player.vy*dt; player.onGround=false;
   // Contact owns depth until release: never re-snap a sinking bunny to the top.
   let sinking=false;
@@ -3397,6 +3409,7 @@ function updateWorld(dt) {
   }
   if(level==='earth')player.ridingTurtle=false;
   for(const p of movementPlatforms) if(overlap(player,p)) {
+    if(level==='water'&&p===waterPlatforms[0])continue;
     if(p.kind==='turtle'&&(player.x+player.w/2<p.x||player.x+player.w/2>p.x+p.w))continue;
     if(p.kind==='blue'&&(sinking||player.blueContact))continue;
     if(p.kind==='blue'&&(player.vy<0||previousFeet>p.y+1))continue;
@@ -3417,9 +3430,14 @@ function updateWorld(dt) {
        }
      } else if(p.kind!=='blue'&&!p.oneWay&&player.vy<0){player.y=p.y+p.h;player.vy=20;}
   }
-  if(level==='water'&&player.x>=WATER_FLOOR[0][0]||level==='meadow'&&player.x+player.w/2>=MEADOW_POOL.left&&player.x+player.w/2<=MEADOW_POOL.right+player.w){
-    const shoreY=level==='meadow'?meadowPoolFloorY(player.x+player.w/2):waterFloorY(player.x+player.w/2);
-    if(player.vy>=0&&previousFeet<=shoreY+(level==='meadow'?30:12)&&player.y+player.h>=shoreY-12){player.y=shoreY-player.h;player.vy=0;player.onGround=true;}
+  if(level==='water'){
+    const shoreY=waterFloorY(player.x+player.w/2);
+    if(player.vy>=0&&previousFeet<=shoreY+12&&(player.y+player.h>=shoreY||groundedBeforeMove)){
+      player.y=shoreY-player.h;player.vy=0;player.onGround=true;player.jumpAge=9;player.boosts=0;
+    }
+  }else if(level==='meadow'&&player.x+player.w/2>=MEADOW_POOL.left&&player.x+player.w/2<=MEADOW_POOL.right+player.w){
+    const shoreY=meadowPoolFloorY(player.x+player.w/2);
+    if(player.vy>=0&&previousFeet<=shoreY+30&&player.y+player.h>=shoreY-12){player.y=shoreY-player.h;player.vy=0;player.onGround=true;}
   }
   player.x=Math.max(0,Math.min(WORLD_W-player.w,player.x)); player.run+=Math.abs(player.vx)*dt*.04;
   player.invincible=Math.max(0,player.invincible-dt);
