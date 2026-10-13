@@ -5,8 +5,9 @@ assert.equal(html.split('// COIN_REVIVE_BEGIN\n')[1].split('\n// COIN_REVIVE_END
 run("const walletTestStore=new Map();window.localStorage={getItem:k=>walletTestStore.get(k)||null,setItem:(k,v)=>walletTestStore.set(k,v)};let walletTestNow=0;performance.now=()=>walletTestNow;let walletTestTimers=[];setTimeout=(fn,delay)=>{walletTestTimers.push({fn,delay});return walletTestTimers.length};clearTimeout=()=>{};soundOn=false");
 const reset=world=>run(`level='${world}';meadowFinished=airFinished=waterFinished=earthFinished=fireFinished=true;resetGame();coinWallet=0;player.invincible=999;keys.clear()`);
 // Exercise every real collection path, not just the shared helper.
-for(const world of ['meadow','air','earth','water','final','fire','fireMaze','fireJourney']){
- reset(world.startsWith('fire')?'fire':world);
+for(const world of ['meadow','air','earth','water','final','fire','fireMaze','fireJourney','meadowDive']){
+ reset(world.startsWith('fire')?'fire':world==='meadowDive'?'meadow':world);
+ if(world==='meadowDive')run('meadowLesson.bowTaken=true;meadowLesson.bowStored=true;player.x=6410;player.y=720;player.inWater=true');
  if(world==='water')run('player.x=2200;player.y=600;player.inWater=true;waterAquaSuit=true;waterSharks=[];waterPirates=[]');
  if(world==='fireMaze')run('beginFireMaze()');
  if(world==='fireJourney')run('beginSecondVolcano();player.x=7100;player.y=fireSlopeY(7121)-58;player.onGround=true');
@@ -40,6 +41,15 @@ for(const fps of [30,60,120])for(const world of ['meadow','air','earth','water',
 for(const [world,death] of [['air','player.y=800;update(1/60)'],['water','player.inWater=true;player.x=3200;player.y=700;player.air=.001;waterAquaSuit=false;update(1/60)'],['earth','endEarthHazard()'],['fire','respawnFire()'],['final','player.y=800;update(1/60)']]){
  reset(world);run('coinWallet=20;lives=1;player.invincible=0;'+death);assert.equal(run('state'),'lost',world+' death');assert(run('buyReviveHeart()'));assert.equal(run('player.x'),run('checkpoint.x'));
  run('update(1/60)');assert.equal(run('state'),'playing',world+' resumes safely');
+}
+// Meadow's added dive uses the wallet/revival without losing opened-door progress.
+for(const fps of [30,60,120]){
+ reset('meadow');run('coinWallet=20;lives=1;meadowLesson.bowTaken=true;meadowLesson.bowStored=true;meadowLesson.balloons.forEach(b=>b.popped=true);meadowLesson.lift=1;meadowLesson.diveStarted=true;checkpoint={x:5880,y:412,meadow:true};player.x=6410;player.y=720;player.inWater=true;player.air=.001;fireArrow.owned=false');
+ run(`update(1/${fps})`);assert.equal(run('state'),'lost');assert(run('buyReviveHeart()'));
+ assert.equal(run('player.x'),5880);assert.equal(run('player.y'),412);assert(!run('player.inWater'));assert.equal(run('player.air'),15);
+ assert(run('meadowBalloonsPopped()===3&&meadowLesson.lift===1&&meadowLesson.bowStored&&meadowLesson.diveStarted&&!fireArrow.owned'));
+ run(`update(1/${fps})`);assert.equal(run('state'),'playing');assert.equal(run('player.x'),5880);assert(!run('player.inWater'),'revival must not teleport the bunny back into the pond');
+ run('player.x=6410;player.y=720;player.inWater=true;player.air=.001;lives=1');run(`update(1/${fps})`);assert(run('beginReviveAd()'));run('walletTestNow=reviveAdEndsAt;walletTestTimers.at(-1).fn()');assert.equal(run('lives'),3);assert(!run('player.inWater'));assert.equal(run('player.air'),15);
 }
 // Cancelled/restarted offers reject stale rewards; saves are independent of world completion.
 reset('meadow');run('coinWallet=23;saveCoinWallet();showEnd(false);beginReviveAd();const cancelledReward=walletTestTimers.at(-1).fn;resetGame();walletTestNow+=6000;cancelledReward()');assert.equal(run('lives'),3);assert.equal(run('coinWallet'),23);

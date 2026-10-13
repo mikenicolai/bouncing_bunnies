@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.20.5',build:2026101302,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Ordered world progression'});
+const BUILD_INFO=Object.freeze({version:'0.20.6',build:2026101303,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Meadow lessons and stable water pockets'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -815,6 +815,160 @@ const meadowPlatforms = [
   [1970,265,150,28], [2390,340,170,28], [2670,260,150,28], [3070,235,160,28],
   [3490,330,160,28], [4020,275,145,28], [4440,330,160,28]
 ].map(([x,y,w,h]) => ({x,y,w,h}));
+// MEADOW_TUTORIAL_BEGIN
+const MEADOW_W=7500,MEADOW_SHRINE_X=7360;
+const MEADOW_PRACTICE_BOW={x:4870,y:428},MEADOW_BOW_RACK_X=5850;
+const MEADOW_GATE={x:5660,y:40,w:90,h:430};
+const MEADOW_POOL={left:5980,right:6920,surface:470};
+const MEADOW_POOL_FLOOR=[[5980,470],[6100,760],[6200,810],[6700,810],[6920,470]];
+const MEADOW_DIVE_ROCK={x:6200,y:-400,w:470,h:1030};
+const meadowTutorialGround=[{x:4800,y:470,w:1180,h:400},{x:6920,y:470,w:580,h:400}];
+const meadowTutorialCoins=[[4840,405],[5780,405],[6120,600],[6280,737],[6460,747],[6630,737],[6800,605],[7130,405]];
+let meadowLesson;
+function resetMeadowLesson(){
+  meadowLesson={time:0,bowTaken:false,bowStored:false,lift:0,diveStarted:false,swamThrough:false,
+    balloons:[{x:5190,y:325,r:28,color:'#ef8c8e',popped:false},{x:5360,y:255,r:28,color:'#e4bb53',popped:false},{x:5520,y:365,r:28,color:'#88bcd9',popped:false}]};
+}
+function meadowBalloonsPopped(){return meadowLesson.balloons.filter(b=>b.popped).length;}
+function meadowGateSolid(){return meadowLesson.lift>=1?[]:[{...MEADOW_GATE,y:MEADOW_GATE.y-MEADOW_GATE.h*meadowLesson.lift}];}
+function meadowLessonSolids(){return [...meadowGateSolid(),MEADOW_DIVE_ROCK];}
+function meadowPoolFloorY(x){return waterProfileY(MEADOW_POOL_FLOOR,x);}
+function bunnySwimming(){return player.inWater&&(level==='water'||level==='meadow');}
+function meadowShouldSwim(){
+  const x=player.x+player.w/2;
+  return player.inWater||x>MEADOW_POOL.left&&x<MEADOW_POOL.right&&meadowPoolFloorY(x)>MEADOW_POOL.surface+50&&player.y+player.h>=MEADOW_POOL.surface+6;
+}
+function storeMeadowBow(){
+  if(!meadowLesson.bowTaken||meadowLesson.bowStored)return;
+  meadowLesson.bowStored=true;fireArrow.owned=false;fireArrow.aiming=false;bunnyArrows=[];player.attack=0;
+  checkpoint={x:5880,y:412,meadow:true};burst(MEADOW_BOW_RACK_X,430,'#ffdd91',12);tone(520,.1,'triangle',.025);
+}
+function updateMeadowLesson(dt){
+  meadowLesson.time+=dt;
+  if(!meadowLesson.bowTaken&&Math.hypot(player.x+player.w/2-MEADOW_PRACTICE_BOW.x,player.y+player.h/2-MEADOW_PRACTICE_BOW.y)<50){
+    meadowLesson.bowTaken=true;fireArrow.owned=true;fireArrow.aiming=player.onGround;fireArrow.angle=.2;
+    fireArrow.ammo=Array(FIRE_ARROW_CAPACITY).fill('normal');checkpoint={x:4840,y:412,meadow:true};
+    burst(MEADOW_PRACTICE_BOW.x,MEADOW_PRACTICE_BOW.y,'#ffdd83',18);tone(660,.15,'triangle',.03);
+  }
+  if(meadowBalloonsPopped()===3){
+    meadowLesson.lift=Math.min(1,meadowLesson.lift+dt*1.3);
+    if(meadowLesson.lift===1&&checkpoint.x<5760)checkpoint={x:5760,y:412,meadow:true};
+  }
+  if(player.x+player.w/2>=MEADOW_BOW_RACK_X)storeMeadowBow();
+  updateFireArchery(dt);
+}
+function popMeadowBalloon(balloon){
+  if(balloon.popped)return;
+  balloon.popped=true;burst(balloon.x,balloon.y,balloon.color,18);tone(720+meadowBalloonsPopped()*100,.1,'sine',.025);
+  if(meadowBalloonsPopped()===3){fireArrow.aiming=false;player.attack=0;}
+}
+function respawnMeadowLesson(){
+  lives--;burst(player.x+21,player.y+29,'#d7f6f3',14);
+  if(lives<=0){showEnd(false);return;}
+  clearInputs();Object.assign(player,{x:checkpoint.x,y:checkpoint.y,h:58,vx:0,vy:0,inWater:false,onGround:true,duck:false,air:WATER_AIR,invincible:2});
+  bunnyArrows=[];fireArrow.cooldown=0;fireArrow.release=0;
+  cameraX=Math.max(0,Math.min(MEADOW_W-W,player.x-W*.38));cameraY=touchDockHeight?phoneGroundCameraY():0;
+}
+function updateMeadowSwimming(dt){
+  const p=MEADOW_POOL;storeMeadowBow();
+  player.duck=false;player.duckVisual=0;player.h=58;player.onGround=false;player.inWater=true;player.swimClock+=dt;player.stroke=Math.max(0,player.stroke-dt);
+  const left=keys.has('ArrowLeft')||keys.has('KeyA')||joystick.dx<-.22,right=keys.has('ArrowRight')||keys.has('KeyD')||joystick.dx>.22;
+  const up=keys.has('ArrowUp')||keys.has('KeyW')||joystick.dy<-.28,down=keys.has('ArrowDown')||keys.has('KeyS')||duckPointer!==null||joystick.dy>.28;
+  if(left)player.facing=-1;if(right)player.facing=1;
+  player.vx+=((right?1:0)-(left?1:0))*690*dt;
+  player.vy+=((down?1:0)-(up?1:0))*650*dt;
+  if(!left&&!right)player.vx*=Math.pow(.055,dt);
+  if(!up&&!down)player.vy=player.vy*Math.pow(.11,dt)-20*dt;
+  player.vx=Math.max(-215,Math.min(215,player.vx));player.vy=Math.max(-215,Math.min(215,player.vy));
+  const oldX=player.x,oldY=player.y;
+  player.x=Math.max(p.left-player.w,Math.min(p.right,player.x+player.vx*dt));
+  if(overlap(player,MEADOW_DIVE_ROCK)){player.x=oldX;player.vx=0;}
+  const center=player.x+player.w/2,floor=meadowPoolFloorY(center),underRock=center>MEADOW_DIVE_ROCK.x-player.w/2&&center<MEADOW_DIVE_ROCK.x+MEADOW_DIVE_ROCK.w+player.w/2;
+  const top=underRock?MEADOW_DIVE_ROCK.y+MEADOW_DIVE_ROCK.h:p.surface-WATER_FLOAT_HEAD;
+  player.y=Math.max(top,Math.min(floor-player.h,player.y+player.vy*dt));
+  if(overlap(player,MEADOW_DIVE_ROCK)){player.y=oldY;player.vy=0;}
+  if(player.y===top&&player.vy<0||player.y===floor-player.h&&player.vy>0)player.vy=0;
+  if(down&&player.y>p.surface+90)meadowLesson.diveStarted=true;
+  if(meadowLesson.diveStarted&&center>MEADOW_DIVE_ROCK.x+MEADOW_DIVE_ROCK.w+12)meadowLesson.swamThrough=true;
+  if(player.y<=p.surface-WATER_BREATH_HEAD)player.air=WATER_AIR;else player.air=Math.max(0,player.air-dt);
+  player.invincible=Math.max(0,player.invincible-dt);player.attack=Math.max(0,player.attack-dt);player.attackCooldown=Math.max(0,player.attackCooldown-dt);
+  if(player.air<=0){respawnMeadowLesson();return;}
+  for(const c of coins)if(!c.taken&&Math.hypot(player.x+21-c.x,player.y+29-c.y)<38){collectCoin(c);burst(c.x,c.y,THEME.gold,8);}
+  if(floor-player.h<=p.surface-WATER_FLOAT_HEAD+2){player.inWater=false;player.y=floor-player.h;player.onGround=true;player.vy=0;player.jumpAge=9;player.boosts=0;if(center>p.right-40)checkpoint={x:6970,y:412,meadow:true};}
+  cameraX+=(Math.max(0,Math.min(MEADOW_W-W,player.x-W*.38))-cameraX)*Math.min(1,dt*5);
+  const field=playfieldHeight(),target=player.y-field*.48;
+  cameraY+=(Math.max(touchDockHeight?phoneGroundCameraY():0,target)-cameraY)*Math.min(1,dt*7);
+  particles.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.life-=dt;});particles=particles.filter(q=>q.life>0);
+}
+function drawMeadowSign(x,y,title,detail){
+  x-=cameraX;if(x<-250||x>W+100)return;
+  ctx.save();ctx.fillStyle='#785532';roundRect(x+15,y+38,10,Math.max(48,470-y-38),3);roundRect(x+175,y+38,10,Math.max(48,470-y-38),3);
+  ctx.fillStyle='#eedbb0';ctx.strokeStyle='#705537';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(x,y,205,48,7);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#344e49';ctx.font='800 12px system-ui';ctx.textAlign='center';ctx.fillText(title,x+102,y+19);ctx.font='600 10px system-ui';ctx.fillText(detail,x+102,y+36);ctx.restore();
+}
+function drawMeadowLessons(){
+  const m=meadowLesson,p=MEADOW_POOL,t=m.time;
+  ctx.save();
+  // A painted timber doorway; arrows and the bunny collide with its moving leaf.
+  const gate={...MEADOW_GATE,y:MEADOW_GATE.y-MEADOW_GATE.h*m.lift},gx=MEADOW_GATE.x-cameraX;
+  if(gx>-160&&gx<W+160){
+    for(const beam of [{x:MEADOW_GATE.x-20,y:30,w:20,h:440},{x:MEADOW_GATE.x+90,y:30,w:20,h:440},{x:MEADOW_GATE.x-32,y:20,w:154,h:28}]){
+      if(waterCabinSheet.naturalWidth)drawShipTimber(beam);else{ctx.fillStyle='#81603b';ctx.fillRect(beam.x-cameraX,beam.y,beam.w,beam.h);}
+    }
+    ctx.save();ctx.beginPath();ctx.rect(gx,MEADOW_GATE.y,MEADOW_GATE.w,MEADOW_GATE.h);ctx.clip();
+    ctx.fillStyle='#715436';ctx.fillRect(gx,gate.y,gate.w,gate.h);
+    for(let i=0;i<6;i++){
+      const beam={x:MEADOW_GATE.x+i*15,y:gate.y,w:15,h:gate.h};
+      if(waterCabinSheet.naturalWidth)drawShipTimber(beam);
+      ctx.strokeStyle='#3f4139';ctx.lineWidth=1;ctx.strokeRect(beam.x-cameraX,beam.y,beam.w,beam.h);
+    }
+    for(const y of [gate.y+90,gate.y+320]){ctx.fillStyle='#344e51';ctx.fillRect(gx,y,90,13);for(let i=0;i<3;i++){ctx.fillStyle='#b5b699';ctx.beginPath();ctx.arc(gx+12+i*32,y+6,3,0,7);ctx.fill();}}
+    ctx.restore();ctx.fillStyle='#304d45';roundRect(gx-5,95,100,45,8);ctx.font='800 13px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff1be';ctx.fillText(m.lift===1?'OPEN':`${meadowBalloonsPopped()} / 3`,gx+45,114);
+    for(let i=0;i<3;i++){ctx.fillStyle=m.balloons[i].popped?'#a6e5a0':'#c3a36b';ctx.beginPath();ctx.arc(gx+22+i*23,129,5,0,7);ctx.fill();}
+  }
+  for(const b of m.balloons){if(b.popped)continue;const x=b.x-cameraX;if(x<-70||x>W+70)continue;
+    ctx.strokeStyle='#6e735b';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,b.y+34);ctx.bezierCurveTo(x-9,b.y+55,x+8,b.y+80,x,466);ctx.stroke();
+    const color=ctx.createRadialGradient(x-9,b.y-11,2,x,b.y,38);color.addColorStop(0,'#fff3d7');color.addColorStop(.3,b.color);color.addColorStop(1,'#785668');
+    ctx.fillStyle=color;ctx.strokeStyle='#5b5360';ctx.lineWidth=2.5;ctx.beginPath();ctx.ellipse(x,b.y,27,34,-.07,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle=b.color;ctx.beginPath();ctx.moveTo(x,b.y+32);ctx.lineTo(x-5,b.y+39);ctx.lineTo(x+5,b.y+39);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,243,.65)';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(x-10,b.y-12,4,10,.4,0,Math.PI*2);ctx.stroke();
+  }
+  if(!m.bowTaken){
+    const x=MEADOW_PRACTICE_BOW.x-cameraX,y=MEADOW_PRACTICE_BOW.y;
+    ctx.strokeStyle='#7c5838';ctx.lineWidth=5;ctx.beginPath();ctx.arc(x-3,y,27,-1.2,1.2);ctx.stroke();ctx.strokeStyle='#f0dba8';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x+7,y-25);ctx.lineTo(x+7,y+25);ctx.stroke();drawArrowIcon(x,y,62,0,'normal');
+  }
+  drawMeadowSign(4850,300,'SHOOT ALL THREE BALLOONS','Z EQUIP · ↑ ↓ AIM · X / F FIRE');
+  drawMeadowSign(5770,330,'LEAVE THE BOW HERE','Next: swim and dive under the rock');
+  const rack=MEADOW_BOW_RACK_X-cameraX;
+  ctx.fillStyle='#795b3d';ctx.fillRect(rack-25,430,50,7);ctx.fillRect(rack-20,435,7,35);ctx.fillRect(rack+13,435,7,35);
+  if(m.bowStored){ctx.strokeStyle='#ccab67';ctx.lineWidth=4;ctx.beginPath();ctx.arc(rack,420,20,-1.3,1.3);ctx.stroke();drawArrowIcon(rack,420,40,0,'normal');}
+  if(p.right>cameraX&&p.left<cameraX+W){
+    ctx.save();ctx.beginPath();ctx.moveTo(p.left-120-cameraX,p.surface);ctx.lineTo(p.left-cameraX,p.surface);
+    for(let x=p.left;x<=p.right;x+=10)ctx.lineTo(x-cameraX,meadowPoolFloorY(x));
+    ctx.lineTo(p.right+120-cameraX,p.surface);ctx.lineTo(p.right+120-cameraX,cameraY+H+300);ctx.lineTo(p.left-120-cameraX,cameraY+H+300);ctx.closePath();ctx.clip();
+    ctx.fillStyle='#927959';ctx.fillRect(p.left-120-cameraX,p.surface,p.right-p.left+240,cameraY+H+300-p.surface);
+    if(sandyPitSheet.naturalWidth)for(let x=Math.floor((p.left-120)/160)*160;x<p.right+120;x+=160)for(let y=320;y<cameraY+H+300;y+=400)ctx.drawImage(sandyPitSheet,0,445,400,1090,x-cameraX,y,160,400);
+    ctx.restore();
+    ctx.save();ctx.beginPath();ctx.moveTo(p.left-cameraX,p.surface);
+    for(let x=p.left;x<=p.right;x+=10)ctx.lineTo(x-cameraX,meadowPoolFloorY(x));
+    ctx.lineTo(p.right-cameraX,p.surface);ctx.closePath();ctx.clip();
+    const water=ctx.createLinearGradient(0,p.surface,0,810);water.addColorStop(0,'#5bc9ce');water.addColorStop(1,'#246d86');ctx.fillStyle=water;ctx.fillRect(p.left-cameraX,p.surface,p.right-p.left,360);
+    for(let i=0;i<20;i++){const x=p.left+45+i*43;ctx.strokeStyle='rgba(211,255,239,.28)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x-cameraX,p.surface+40+(i*47-t*16+600)%300,2+i%3,0,7);ctx.stroke();}
+    ctx.restore();
+    ctx.strokeStyle='#d8c48b';ctx.lineWidth=12;ctx.lineJoin='round';ctx.beginPath();for(let x=p.left;x<=p.right;x+=10){const y=meadowPoolFloorY(x);x===p.left?ctx.moveTo(x-cameraX,y):ctx.lineTo(x-cameraX,y);}ctx.stroke();
+    ctx.strokeStyle='#d6fff0';ctx.lineWidth=4;ctx.beginPath();for(let x=p.left;x<=p.right;x+=8){const y=p.surface+Math.sin(x*.035+t*2)*2;x===p.left?ctx.moveTo(x-cameraX,y):ctx.lineTo(x-cameraX,y);}ctx.stroke();
+    const r=MEADOW_DIVE_ROCK,rx=r.x-cameraX,bottom=r.y+r.h;
+    function rockOutline(){ctx.beginPath();ctx.moveTo(rx,r.y);ctx.lineTo(rx+r.w,r.y);ctx.lineTo(rx+r.w,bottom-22);ctx.lineTo(rx+r.w-22,bottom);ctx.lineTo(rx+23,bottom);ctx.lineTo(rx,bottom-34);ctx.closePath();}
+    ctx.save();rockOutline();ctx.clip();ctx.fillStyle='#425d57';ctx.fillRect(rx,r.y,r.w,r.h);
+    if(waterCaveSheet.naturalWidth)for(let x=r.x;x<r.x+r.w;x+=160)for(let y=Math.floor((cameraY-180)/160)*160;y<r.y+r.h;y+=160)ctx.drawImage(waterCaveSheet,x-cameraX,y,160,160);
+    ctx.restore();ctx.strokeStyle='#769785';ctx.lineWidth=5;rockOutline();ctx.stroke();
+    drawMeadowSign(5980,345,'↓ DIVE UNDER THE ROCK','↓ / S or DIVE · ↑ / W to swim up');
+    if(player.inWater){ctx.fillStyle='#d5fff0';ctx.font='800 16px system-ui';ctx.textAlign='center';ctx.fillText('SWIM THROUGH →',r.x+r.w*.5-cameraX,r.y+r.h+50);}
+  }
+  ctx.restore();drawFireAimPath();drawBunnyArrows();drawShrine(t);
+}
+// MEADOW_TUTORIAL_END
+
 const FIRE_W=11500,FIRE_EXIT_X=11120;
 const FIRE_SECOND_VOLCANO=[[6800,2060],[7060,2060],[7540,1740],[8000,1340],[8460,920],[8900,520],[9360,140],[9820,-220],[10250,-500],[11280,-500]];
 const FIRE_KING_ARENA={left:10250,right:11280,y:-500};
@@ -911,11 +1065,22 @@ const waterAirPockets=[
   {x:5420,y:860,w:460,surface:960,ship:true}, {x:6300,y:860,w:460,surface:990,ship:true},
   {x:7820,w:260}, {x:9830,w:260}
 ];
+const WATER_CAVE_POCKET_FACES=[
+  [[0,0],[.06,.08],[.12,.34],[.20,.63],[.27,.84],[.39,1],[.60,.97],[.71,.85],[.76,.65],[.85,.50],[.94,.14],[1,0]],
+  [[0,0],[.06,.12],[.14,.42],[.18,.67],[.30,.93],[.43,1],[.65,.96],[.76,.78],[.84,.56],[.88,.32],[.95,.10],[1,0]],
+  [[0,0],[.04,.05],[.13,.28],[.22,.62],[.29,.80],[.41,.97],[.54,1],[.69,.92],[.80,.67],[.87,.52],[.96,.08],[1,0]]
+];
 // Each cave waterline is inside the rock recess, above both sides of its mouth.
 // Ship cabins retain their separate waterlines under the timber roof.
 for(const pocket of waterAirPockets)if(!pocket.ship){
   pocket.surface=Math.floor(Math.min(waterProfileY(WATER_ROOF,pocket.x+12),waterProfileY(WATER_ROOF,pocket.x+pocket.w-12))-30);
   pocket.y=pocket.surface-150;
+  // Uneven stone faces have fixed corners, shared by the art and collision.
+  const faces=WATER_CAVE_POCKET_FACES[waterAirPockets.indexOf(pocket)%WATER_CAVE_POCKET_FACES.length];
+  pocket.rockRoof=faces.map(([across,depth])=>{
+    const x=Math.round((pocket.x+12+across*(pocket.w-24))/2)*2,roof=waterProfileY(WATER_ROOF,x);
+    return [x,roof-(roof-pocket.y)*depth];
+  });
 }
 // The cactus roots overlap the front of the sand lip, in the player’s plane.
 const waterCacti=[{x:310,y:260,w:144,h:128},{x:705,y:268,w:136,h:120},{x:1120,y:260,w:148,h:128}];
@@ -927,11 +1092,13 @@ function waterCactusBoxes(c){return[
 function waterProfileY(profile,x){for(let i=1;i<profile.length;i++){const [ax,ay]=profile[i-1],[bx,by]=profile[i];if(x<=bx)return ay+(by-ay)*Math.max(0,(x-ax)/(bx-ax));}return profile.at(-1)[1];}
 function waterFloorY(x){return waterProfileY(WATER_FLOOR,x);}
 function waterPocketAtX(x){return waterAirPockets.find(p=>x>p.x+12&&x<p.x+p.w-12);}
+function waterCavePocketCeilingY(pocket,x){
+  return waterProfileY(pocket.rockRoof,x);
+}
 function waterCeilingY(x,y=Infinity){if(x<WATER_CAVE_START)return Math.min(WATER_SURFACE-WATER_FLOAT_HEAD,waterFloorY(x)-player.h);const pocket=waterPocketAtX(x);
   if(!pocket)return waterProfileY(WATER_ROOF,x);
   if(pocket.ship)return y<pocket.y?waterProfileY(WATER_ROOF,x):pocket.y;
-  const across=(x-pocket.x-pocket.w/2)/(pocket.w/2-12);
-  return pocket.y+30*(1-Math.sqrt(Math.max(0,1-across*across)));}
+  return waterCavePocketCeilingY(pocket,x);}
 // Swimming stops at the local waterline; only the head rises into a recess.
 function waterSwimTopY(x,y=Infinity){const pocket=waterPocketAtX(x);const ceiling=waterCeilingY(x,y);return pocket&&(!pocket.ship||y>=pocket.y)?Math.max(ceiling,pocket.surface-WATER_FLOAT_HEAD):ceiling;}
 function waterAirPocket(){const p=waterPocketAtX(player.x+player.w/2);return p&&(!p.ship||player.x>=p.x+32&&player.x+player.w<=p.x+p.w-32)&&player.y>=p.y-1&&player.y<=p.surface-WATER_BREATH_HEAD?p:null;}
@@ -1683,12 +1850,12 @@ function updateFireArrowRecharge(dt){
   if(!fireArrow.owned||fireArrow.ammo.every(Boolean))return;
   fireArrow.recharge+=dt;
   while(fireArrow.recharge+1e-9>=FIRE_ARROW_RECHARGE&&fireArrow.ammo.includes(null)){
-    fireArrow.ammo[fireArrow.ammo.indexOf(null)]=rollFireArrowType();fireArrow.recharge=Math.max(0,fireArrow.recharge-FIRE_ARROW_RECHARGE);
+    fireArrow.ammo[fireArrow.ammo.indexOf(null)]=level==='meadow'?'normal':rollFireArrowType();fireArrow.recharge=Math.max(0,fireArrow.recharge-FIRE_ARROW_RECHARGE);
   }
   if(fireArrow.ammo.every(Boolean))fireArrow.recharge=0;
 }
-function fireArrowToggleAvailable(){return fireArrow.owned&&(level==='final'||level==='fire'&&['maze','secondVolcano','king'].includes(fireMode)&&!(fireMode==='king'&&lavaKing.defeated));}
-function fireWeaponEquipped(){return (level==='fire'||level==='final')&&fireArrow.owned&&fireArrow.aiming;}
+function fireArrowToggleAvailable(){return fireArrow.owned&&(level==='meadow'&&!meadowLesson.bowStored||level==='final'||level==='fire'&&['maze','secondVolcano','king'].includes(fireMode)&&!(fireMode==='king'&&lavaKing.defeated));}
+function fireWeaponEquipped(){return (level==='fire'||level==='final'||level==='meadow')&&fireArrow.owned&&fireArrow.aiming&&!player.inWater;}
 function fireSlopeTravelMode(){return level==='fire'&&['volcano','secondVolcano'].includes(fireMode);}
 function fireHillCrawlMode(){return fireSlopeTravelMode()&&player.onGround&&Math.abs(fireSlopeGrade(player.x+player.w/2))>.05;}
 function fireArcheryMode(){return fireWeaponEquipped()&&fireArrowToggleAvailable();}
@@ -1737,6 +1904,12 @@ function arrowSegmentCircle(a,b,c){return arrowCircleEntry(a,b,c)!==null;}
 function arrowFirstCollision(a,b,inMaze=false){
   let hit=null;
   const consider=(t,kind,target)=>{if(t!==null&&(!hit||t<hit.t))hit={t,kind,target};};
+  if(level==='meadow'){
+    for(const p of [...platforms,...meadowLessonSolids()])consider(arrowSegmentEntry(a,b,p),'wall');
+    for(const monster of enemies)if(monster.alive)consider(arrowSegmentEntry(a,b,monster),'meadowZombie',monster);
+    for(const balloon of meadowLesson.balloons)if(!balloon.popped)consider(arrowCircleEntry(a,b,balloon),'balloon',balloon);
+    return hit;
+  }
   if(level==='final'){
     for(const p of finalPlatforms)consider(arrowSegmentEntry(a,b,p),'wall');
     consider(arrowSegmentEntry(a,b,{...FINAL_GATE,y:FINAL_GATE.y-FINAL_GATE.h*finalGateLift}),'wall');
@@ -1770,14 +1943,16 @@ function updateFireArchery(dt){
     const hit=arrowFirstCollision(old,point,a.maze);
     if(hit){
       a.x=old.x+(point.x-old.x)*hit.t;a.y=old.y+(point.y-old.y)*hit.t;a.alive=false;
-      if(hit.kind==='castleMonster')hitFinalMonster(hit.target,a.damage);
+      if(hit.kind==='balloon')popMeadowBalloon(hit.target);
+      else if(hit.kind==='meadowZombie')hitMeadowZombie(hit.target);
+      else if(hit.kind==='castleMonster')hitFinalMonster(hit.target,a.damage);
       else if(hit.kind==='zombie')hitFireZombie(hit.target,a.damage);
       else if(hit.kind==='fireball')hit.target.alive=false;
       else if(hit.kind==='king')hitLavaKing({x:a.ox,w:0},true,a.damage);
       burst(a.x,a.y,hit.kind==='wall'||hit.kind==='ground'?'#c88752':FIRE_ARROW_TYPES[a.type].color,7);
     }else{a.x=point.x;a.y=point.y;}
   }
-  bunnyArrows=bunnyArrows.filter(a=>a.alive&&a.age<3&&a.x>0&&a.x<(level==='final'?FINAL_W:FIRE_W));
+  bunnyArrows=bunnyArrows.filter(a=>a.alive&&a.age<3&&a.x>0&&a.x<(level==='meadow'?MEADOW_W:level==='final'?FINAL_W:FIRE_W));
   lavaKingFireballs=lavaKingFireballs.filter(b=>b.alive);
 }
 
@@ -2508,6 +2683,8 @@ function resumeWithHearts(hearts){
     stopWaterDash();waterTrident.shot=null;waterTrident.cooldown=0;
     player.inWater=!!checkpoint.water;player.air=WATER_AIR;neptunusShots=[];
     if(neptunus.hp>0){neptunus.mode='idle';neptunus.age=0;neptunus.dizzy=1.2;neptunus.cooldown=1.5;}
+  }else if(level==='meadow'){
+    player.inWater=false;player.air=WATER_AIR;player.stroke=0;
   }else if(level==='air'){
     tempestWinds=[];tempest.dizzy=1.5;tempest.shotCooldown=Math.max(1.2,tempest.shotCooldown);
     player.airCloud=airPlatforms.find(p=>!p.removed&&p.kind==='white'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x<p.x+p.w)||null;
@@ -2548,16 +2725,16 @@ function resetGame(autoPlay = true) {
   cancelRevive();
   resetEarthBoss();resetEarthKnives();resetBackgroundBirds();
   fireCraterViewBlend=0;fireDropCamera=null;
-  WORLD_W=level==='final'?FINAL_W:level==='air'?6900:level==='earth'?EARTH_W:level==='fire'?FIRE_W:level==='water'?WATER_W:4800;
-  platforms=level==='final'?finalPlatforms:level==='air'?airPlatforms.filter(p=>!p.removed):level==='earth'?[...earthGround,...earthPlatforms,...earthMushroomBoughs,earthKnifeLedge]:level==='fire'?firePlatforms:level==='water'?waterPlatforms:meadowPlatforms;
-  finalTime=0;finalGateLift=0;airTime=0;fireTime=0;waterTime=0;earthTime=0;fireUnderground=false;fireMode='surface';resetFireStones();resetLavaKing();resetFireArrow();bossTime=0;bossAwake=false;descentStarted=false;descentBlueReached=false;resetAirMonsters();clearInputs();
+  WORLD_W=level==='final'?FINAL_W:level==='air'?6900:level==='earth'?EARTH_W:level==='fire'?FIRE_W:level==='water'?WATER_W:MEADOW_W;
+  platforms=level==='final'?finalPlatforms:level==='air'?airPlatforms.filter(p=>!p.removed):level==='earth'?[...earthGround,...earthPlatforms,...earthMushroomBoughs,earthKnifeLedge]:level==='fire'?firePlatforms:level==='water'?waterPlatforms:[...meadowPlatforms,...meadowTutorialGround];
+  finalTime=0;finalGateLift=0;airTime=0;fireTime=0;waterTime=0;earthTime=0;fireUnderground=false;fireMode='surface';resetFireStones();resetLavaKing();resetFireArrow();resetMeadowLesson();bossTime=0;bossAwake=false;descentStarted=false;descentBlueReached=false;resetAirMonsters();clearInputs();
   tempest=freshTempest();tempestWinds=[];resetWindStars();
   airPlatforms.forEach(p=>p.spring=0);storms.forEach(s=>s.lastPhase='off');allDescentClouds.forEach(o=>o.lastPhase='off');
   player = {x:90,y:390,w:42,h:58,vx:0,vy:0,onGround:false,facing:1,invincible:0,run:0,attack:0,attackCooldown:0,jumpAge:9,boosts:0,landingPaint:0,fireCameraFloor:450};
   checkpoint={x:90,y:level==='final'?FINAL_FLOOR-58:level==='air'?382:level==='earth'?earthGround[0].y-58:level==='fire'?firePlatforms[0].y-58:level==='water'?waterPlatforms[0].y-58:390};player.y=checkpoint.y;
   waterPortalKeyTaken=false;resetWaterGate();resetWaterAdventure();
   player.inWater=false;player.breaching=false;player.air=WATER_AIR;player.stroke=0;player.swimClock=0;
-  const spots=level==='final'?finalCoinSpots:level==='air'?airPlatforms.filter(p=>p.w<500&&p!==windStarLedge).flatMap(p=>[[p.x+p.w*.35,p.y-(p===airPlatforms[0]?90:45)],[p.x+p.w*.7,p.y-(p===airPlatforms[0]?90:45)]]):level==='earth'?earthPlatforms.flatMap(p=>[[p.x+p.w*.35,p.y-65],[p.x+p.w*.68,p.y-65]]):level==='fire'?[...firePlatforms.flatMap(p=>[[p.x+p.w*.35,p.y-85],[p.x+p.w*.7,p.y-85]]),...[[3000,fireSlopeY(3000)-90],[3550,fireSlopeY(3550)-90],[4150,fireSlopeY(4150)-90],[4650,-1140],[5100,-550],[4740,100],[5100,750],[4740,1400]],...[ [1,5],[3,9],[5,3],[9,1],[11,7],[15,9],[17,13],[19,7] ].map(([c,r])=>{const p=mazeCenter(c,r);return[p.x,p.y];})]:level==='water'?waterCoinSpots():coinSpots;
+  const spots=level==='final'?finalCoinSpots:level==='air'?airPlatforms.filter(p=>!p.removed&&p.w<500&&p!==windStarLedge).flatMap(p=>[[p.x+p.w*.35,p.y-(p===airPlatforms[0]?90:45)],[p.x+p.w*.7,p.y-(p===airPlatforms[0]?90:45)]]):level==='earth'?earthPlatforms.flatMap(p=>[[p.x+p.w*.35,p.y-65],[p.x+p.w*.68,p.y-65]]):level==='fire'?[...firePlatforms.flatMap(p=>[[p.x+p.w*.35,p.y-85],[p.x+p.w*.7,p.y-85]]),...[[3000,fireSlopeY(3000)-90],[3550,fireSlopeY(3550)-90],[4150,fireSlopeY(4150)-90],[4650,-1140],[5100,-550],[4740,100],[5100,750],[4740,1400]],...[ [1,5],[3,9],[5,3],[9,1],[11,7],[15,9],[17,13],[19,7] ].map(([c,r])=>{const p=mazeCenter(c,r);return[p.x,p.y];})]:level==='water'?waterCoinSpots():[...coinSpots,...meadowTutorialCoins];
   if(level==='fire')spots.push(...[7100,7570,8060,8520,8980,9440,9880].map(x=>[x,fireSlopeY(x)-90]));
   if(level==='air')spots.push([6470,-1120],[6470,-780],[6150,-520],[6150,-180],[6470,80],[6470,430],[6150,1040],[6150,1380],[6450,1700]);
   coins = spots.map(([x,y]) => ({x,y,r:12,taken:false,bob:Math.random()*6}));
@@ -2635,7 +2812,7 @@ function completeWorld(world){
 }
 function canPlayWorld(world){const index=PROGRESSION_ORDER.indexOf(world);return index>=0&&PROGRESSION_ORDER.slice(0,index).every(worldCompleted);}
 const worldDetails={
-  meadow:['First Meadow','Collect sun-coins and reach the shrine.','Playable now'],
+  meadow:['First Meadow','Pop three balloons, learn to dive and reach the shrine.','Playable now'],
   water:['Water · Tide Pools','Find the ship key and open the tide gate. Beyond it, discover a two-mode trident and the aqua suit in ancient ruins, then defeat Neptunus.','Play Water level'],
   fire:['Fire · Ember Pass','Hop past ember trees and zombies, walk up the volcano, drop through its crater, then escape the labyrinth.','Play Fire level'],
   earth:['Plants / Earth · Wildwood','Run across grassy ground, climb tree branches past the cliffs, bounce on golden mushrooms, and meet the dancing goblins.','Play Earth level'],
@@ -2747,7 +2924,7 @@ function burst(x,y,color,count=8) {
 }
 
 function updateDuck(){
-  if(level==='water'&&player.inWater){if(player.duck){player.y-=58-player.h;player.h=58;player.duck=false;}return;}
+  if(bunnySwimming()){if(player.duck){player.y-=58-player.h;player.h=58;player.duck=false;}return;}
   if(fireArcheryMode()||level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated)){
     if(player.duck){player.y-=58-player.h;player.h=58;player.duck=false;}
     return;
@@ -3061,6 +3238,10 @@ function update(dt) {
 }
 function updateWorld(dt) {
   if (state!=="playing") return;
+  if(level==='meadow'){
+    updateMeadowLesson(dt);
+    if(meadowShouldSwim()){updateMeadowSwimming(dt);return;}
+  }
   if(level==='fire'&&fireMode!=='surface'){if(fireMode==='maze'||fireMode==='entering')updateFireMaze(dt);else updateFireJourney(dt);return;}
   if(level==='water'&&(player.inWater||player.x+player.w/2>=WATER_START&&player.y+player.h>=WATER_SURFACE+6)){
     if(!player.inWater){
@@ -3078,7 +3259,10 @@ function updateWorld(dt) {
   player.vx=Math.max(-max,Math.min(max,player.vx));
   player.vy+=1450*dt; player.vy=Math.min(player.vy,level==='air'&&descentStarted&&player.y>airPlatforms[19].y+60?300:850);
   player.x+=player.vx*dt;
-  for(const p of platforms) if(p.kind!=='blue'&&!p.oneWay&&overlap(player,p)) {
+  const movementPlatforms=level==='meadow'?[...platforms,...meadowLessonSolids()]:platforms;
+  for(const p of movementPlatforms) if(p.kind!=='blue'&&!p.oneWay&&overlap(player,p)) {
+    // The pond banks use their sloping floor rather than a vertical cliff face.
+    if(level==='meadow'&&(p===meadowTutorialGround[0]&&player.x+player.w>=MEADOW_POOL.left||p===meadowTutorialGround[1]&&player.x<MEADOW_POOL.right+24))continue;
     if(player.vx>0) player.x=p.x-player.w; else if(player.vx<0) player.x=p.x+p.w; player.vx=0;
   }
   const previousFeet=player.y+player.h;player.previousFeet=previousFeet;
@@ -3097,7 +3281,7 @@ function updateWorld(dt) {
       if(depth>=p.h){player.blueContact=null;}
     }
   }
-  for(const p of platforms) if(overlap(player,p)) {
+  for(const p of movementPlatforms) if(overlap(player,p)) {
     if(p.kind==='blue'&&(sinking||player.blueContact))continue;
     if(p.kind==='blue'&&(player.vy<0||previousFeet>p.y+1))continue;
     if(player.vy>=0&&previousFeet<=p.y+1){
@@ -3116,9 +3300,9 @@ function updateWorld(dt) {
        }
      } else if(p.kind!=='blue'&&!p.oneWay&&player.vy<0){player.y=p.y+p.h;player.vy=20;}
   }
-  if(level==='water'&&player.x>=WATER_FLOOR[0][0]){
-    const shoreY=waterFloorY(player.x+player.w/2);
-    if(player.vy>=0&&previousFeet<=shoreY+12&&player.y+player.h>=shoreY-12){player.y=shoreY-player.h;player.vy=0;player.onGround=true;}
+  if(level==='water'&&player.x>=WATER_FLOOR[0][0]||level==='meadow'&&player.x+player.w/2>=MEADOW_POOL.left&&player.x+player.w/2<=MEADOW_POOL.right+player.w){
+    const shoreY=level==='meadow'?meadowPoolFloorY(player.x+player.w/2):waterFloorY(player.x+player.w/2);
+    if(player.vy>=0&&previousFeet<=shoreY+(level==='meadow'?30:12)&&player.y+player.h>=shoreY-12){player.y=shoreY-player.h;player.vy=0;player.onGround=true;}
   }
   player.x=Math.max(0,Math.min(WORLD_W-player.w,player.x)); player.run+=Math.abs(player.vx)*dt*.04;
   player.invincible=Math.max(0,player.invincible-dt);
@@ -3143,7 +3327,7 @@ function updateWorld(dt) {
    const fellIntoFire=level==='fire'&&player.y+player.h>550;
    if(missedDescentBlue||fellIntoFire||player.y>(level==='air'?(descentStarted?airPlatforms[DESCENT.finish].y+320:Math.min(650,checkpoint.y+650)):level==='earth'?Infinity:level==='fire'?650:650)){lives--;if(lives<=0){showEnd(false);return;}else{
     clearInputs();player.blueContact=null;player.duck=false;player.h=58;duckPointer=null;
-     player.x=level==='air'||level==='earth'||level==='fire'||level==='final'?checkpoint.x:Math.max(40,cameraX+80);player.y=level==='air'||level==='earth'||level==='fire'||level==='final'?checkpoint.y:100;
+     player.x=level==='air'||level==='earth'||level==='fire'||level==='final'||level==='meadow'&&checkpoint.meadow?checkpoint.x:Math.max(40,cameraX+80);player.y=level==='air'||level==='earth'||level==='fire'||level==='final'||level==='meadow'&&checkpoint.meadow?checkpoint.y:100;
     player.vx=0;player.vy=0;player.invincible=2;
     if(level==='final'){bunnyArrows=[];fireArrow.cooldown=0;fireArrow.release=0;player.jumpAge=9;player.boosts=0;}
     if(level==='air'){player.airCloud=airPlatforms.find(p=>!p.removed&&p.kind==='white'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x<p.x+p.w);if(descentStarted)descentBlueReached=false;}
@@ -3157,7 +3341,7 @@ function updateWorld(dt) {
    }else if(level==='earth'){
       if(earthBoss.stage!=='done')player.x=Math.min(player.x,EARTH_GATE_X-62);
       else if(player.onGround&&player.x>EARTH_GATE_X-35)showEnd(true);
-   }else if(level==='meadow'&&player.x>4650)showEnd(true);
+   }else if(level==='meadow'&&meadowBalloonsPopped()===3&&meadowLesson.swamThrough&&player.onGround&&player.x>MEADOW_SHRINE_X-30)showEnd(true);
   cameraX+=(Math.max(0,Math.min(WORLD_W-W,player.x-W*.38))-cameraX)*Math.min(1,dt*5);
   if(level==='air'||level==='earth'){
     // A vertical dead zone leaves small hops steady and follows long ascents/falls.
@@ -3170,7 +3354,8 @@ function updateWorld(dt) {
   }else if(level==='fire'){
     if(player.onGround)player.fireCameraFloor=player.y+player.h;
     cameraY+=(fireCameraTargetY()-cameraY)*Math.min(1,dt*8);
-  }else cameraY=touchDockHeight?phoneGroundCameraY():0;
+  }else if(level==='meadow')cameraY+=((touchDockHeight?phoneGroundCameraY():0)-cameraY)*Math.min(1,dt*7);
+  else cameraY=touchDockHeight?phoneGroundCameraY():0;
   particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;}); particles=particles.filter(p=>p.life>0);
 }
 
@@ -3179,6 +3364,7 @@ function jump() {
   if(state==='map'||state==='developer'||state==='reviveAd'||state==='lost'&&revivePending)return;
   if(state==="title"||state==="won"||state==="lost"){start();return;}
   if(fireArcheryMode()||level==='fire'&&fireMode!=='surface'&&!fireJumpingMode())return;
+  if(level==='meadow'&&player.inWater){player.vy=Math.max(-270,player.vy-165);player.stroke=.48;player.swimClock+=.28;tone(340,.07,'sine',.02);return;}
   if(level==='water'&&player.inWater){
     if(player.breaching)return;
     if(waterCanBreach()){
@@ -3627,12 +3813,19 @@ function drawWaterSeabed(){
   const tideX=1525-cameraX;
   ctx.strokeStyle='rgba(250,255,234,.75)';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(tideX+Math.sin(waterTime)*12,392,35,6,-.1,0,Math.PI*2);ctx.stroke();
 }
+function traceWaterCaveRoof(left,right,move=true){
+  // Sample fixed world positions. Camera movement must never reshape the rock.
+  const start=Math.floor(left/2)*2,end=Math.ceil(right/2)*2;
+  for(let x=start;x<=end;x+=2){
+    const pocket=waterPocketAtX(x),y=pocket&&!pocket.ship?waterCavePocketCeilingY(pocket,x):waterProfileY(WATER_ROOF,x);
+    if(x===start&&move)ctx.moveTo(x-cameraX,y);else ctx.lineTo(x-cameraX,y);
+  }
+}
 function drawWaterCaveRoof(){
   const left=Math.max(WATER_CAVE_START,cameraX-200),right=Math.min(WATER_W,cameraX+W+200);
   if(left>=right)return;
-  const roofY=x=>{const pocket=waterPocketAtX(x);return pocket&&!pocket.ship?waterCeilingY(x):waterProfileY(WATER_ROOF,x);};
-  ctx.save();ctx.beginPath();ctx.moveTo(left-cameraX,cameraY-300);ctx.lineTo(left-cameraX,roofY(left));
-  for(let x=left;x<=right+12;x+=12)ctx.lineTo(x-cameraX,roofY(x));
+  ctx.save();ctx.beginPath();ctx.moveTo(left-cameraX,cameraY-300);
+  traceWaterCaveRoof(left,right,false);
   ctx.lineTo(right-cameraX,cameraY-300);ctx.closePath();ctx.clip();
   const shade=ctx.createLinearGradient(0,cameraY,0,cameraY+H);shade.addColorStop(0,'#233c4f');shade.addColorStop(1,'#42625d');ctx.fillStyle=shade;ctx.fillRect(left-cameraX,cameraY-300,right-left,H+600);
   if(waterCaveSheet.complete&&waterCaveSheet.naturalWidth){
@@ -3641,7 +3834,7 @@ function drawWaterCaveRoof(){
     ctx.fillStyle='rgba(11,43,60,.18)';ctx.fillRect(left-cameraX,cameraY-300,right-left,H+600);
   }
   ctx.restore();ctx.strokeStyle='#799b8b';ctx.lineWidth=4;ctx.lineJoin='round';ctx.beginPath();
-  for(let x=left;x<=right+12;x+=12){const y=roofY(x);x===left?ctx.moveTo(x-cameraX,y):ctx.lineTo(x-cameraX,y);}ctx.stroke();
+  traceWaterCaveRoof(left,right);ctx.stroke();
 }
 function drawWaterShip(){
   const s=WATER_SHIP,x=s.x-cameraX;if(x>W+100||x+s.w<-100)return;
@@ -3705,17 +3898,18 @@ function drawWaterCabinAir(p){
 function drawWaterAirPockets(){
   for(const p of waterAirPockets){
     const x=p.x-cameraX;if(x>W||x+p.w<0)continue;
+    ctx.save();
     if(p.ship)drawWaterCabinAir(p);else{
-      ctx.save();ctx.beginPath();ctx.moveTo(x+12,p.surface);
-      for(let offset=12;offset<=p.w-12;offset+=4)ctx.lineTo(x+offset,waterCeilingY(Math.min(p.x+p.w-12-.01,p.x+offset+.01)));
-      ctx.lineTo(x+p.w-12,p.surface);ctx.closePath();ctx.clip();
+      ctx.beginPath();traceWaterCaveRoof(p.x+12,p.x+p.w-12);
+      ctx.lineTo(x+p.w-12,p.surface+5);ctx.lineTo(x+12,p.surface+5);ctx.closePath();ctx.clip();
       // Opaque dry air hides underwater light shafts and bubbles in the chamber.
       const air=ctx.createLinearGradient(0,p.y,0,p.surface);air.addColorStop(0,'#294754');air.addColorStop(1,'#648e91');
       ctx.fillStyle=air;ctx.fillRect(x+12,p.y,p.w-24,p.surface-p.y);
-      ctx.fillStyle='rgba(242,255,234,.2)';ctx.fillRect(x+12,p.surface-7,p.w-24,7);ctx.restore();
+      ctx.fillStyle='rgba(242,255,234,.2)';ctx.fillRect(x+12,p.surface-7,p.w-24,7);
     }
     ctx.strokeStyle='#b9f3e1';ctx.lineWidth=3;ctx.beginPath();const margin=p.ship?36:15;for(let offset=margin;offset<p.w-(p.ship?36:12);offset+=8){const y=p.surface+Math.sin(offset*.07+waterTime*2)*2;offset===margin?ctx.moveTo(x+offset,y):ctx.lineTo(x+offset,y);}ctx.stroke();
     if(!p.ship){ctx.fillStyle='#f2ffe9';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText('AIR ↑',x+p.w/2,p.surface-90);}
+    ctx.restore();
   }
 }
 // Bend decorative swimming paths around physical rocks, with room for tails.
@@ -4572,7 +4766,8 @@ function drawFireArrowPickup(){
   ctx.fillStyle='#ffe3a1';ctx.beginPath();ctx.arc(x-21,p.y-13,2+Math.sin(fireTime*3),0,Math.PI*2);ctx.fill();
 }
 function drawFireArrowInventory(){
-  if(level!=='final'&&(level!=='fire'||!['maze','secondVolcano','king'].includes(fireMode)))return;
+  if(level==='meadow'&&!fireArrow.owned)return;
+  if(level!=='meadow'&&level!=='final'&&(level!=='fire'||!['maze','secondVolcano','king'].includes(fireMode)))return;
   const compact=W<650,x=compact?12:75,y=compact?152:18,width=compact?220:235;
   const count=fireArrow.owned?fireArrow.ammo.filter(Boolean).length:0;
   ctx.save();ctx.fillStyle='rgba(28,24,35,.88)';roundRect(x,y,width,63,13);
@@ -4635,7 +4830,7 @@ const UPRIGHT_RUN_POSES=[
 ];
 const UPRIGHT_RUN_SCALE=76/390;
 function uprightRunFrame(){return Math.floor(player.run*1.6)%8;}
-function uprightRunMode(){return player.onGround&&Math.abs(player.vx)>15&&!player.duck&&!player.attack&&!fireWeaponEquipped()&&!(level==='water'&&player.inWater&&!player.breaching);}
+function uprightRunMode(){return player.onGround&&Math.abs(player.vx)>15&&!player.duck&&!player.attack&&!fireWeaponEquipped()&&!(bunnySwimming()&&!player.breaching);}
 function uprightRunSupportOffset(){
   if(!uprightRunMode()||!fireHillCrawlMode())return 0;
   const pose=UPRIGHT_RUN_POSES[uprightRunFrame()],dx=(pose.foot-pose.anchor[0])*UPRIGHT_RUN_SCALE*player.facing;
@@ -4687,7 +4882,7 @@ function paintedBunnyPose(forceAction=false){
 }
 function drawPaintedBunny(forceAction=false){
   const pose=paintedBunnyPose(forceAction),sheet=PAINTED_BUNNY[pose.name],frame=pose.frame;
-  const gear=(level==='fire'||level==='final')&&fireArrow.owned?'quiver':'plain',image=sheet[gear];
+  const gear=(level==='fire'||level==='final'||level==='meadow')&&fireArrow.owned?'quiver':'plain',image=sheet[gear];
   const anchors=sheet.anchors?.[gear]||sheet;
   if(!image.complete||!image.naturalWidth)return false;
   const w=image.naturalWidth,h=image.naturalHeight,col=frame%4,row=Math.floor(frame/4);
@@ -4709,7 +4904,7 @@ function drawBunny(){
 function drawBunnyBody() {
   if(player.invincible>0&&Math.floor(player.invincible*12)%2===0)return;
   if(fireWeaponEquipped()&&fireArcherySheet.complete&&fireArcherySheet.naturalWidth){drawArmedBunny();return;}
-  if(level==='water'&&player.inWater&&(!player.breaching||waterAquaSuit)){drawSwimmingBunny();return;}
+  if(bunnySwimming()&&(!player.breaching||waterAquaSuit)){drawSwimmingBunny();return;}
   if(drawPaintedBunny())return;
   if(uprightRunMode()&&uprightRunSheet.complete&&uprightRunSheet.naturalWidth){drawUprightRun();return;}
   const motion=motionFrame();
@@ -4747,7 +4942,7 @@ function drawBunnyBody() {
 }
 
 function drawShrine(time) {
-  const x=4680-cameraX;ctx.fillStyle="#334f55";roundRect(x,300,72,170,12);ctx.fillStyle="#4f7370";roundRect(x+9,315,54,155,8);
+  const x=(level==='meadow'?MEADOW_SHRINE_X:4680)-cameraX;ctx.fillStyle="#334f55";roundRect(x,300,72,170,12);ctx.fillStyle="#4f7370";roundRect(x+9,315,54,155,8);
   ctx.shadowColor=THEME.shrine;ctx.shadowBlur=20+Math.sin(time*4)*5;ctx.fillStyle=THEME.shrine;ctx.beginPath();ctx.moveTo(x+36,335);ctx.lineTo(x+51,365);ctx.lineTo(x+36,395);ctx.lineTo(x+21,365);ctx.fill();ctx.shadowBlur=0;
   ctx.fillStyle=THEME.cream;ctx.font="700 13px system-ui";ctx.textAlign="center";ctx.fillText("SHRINE",x+36,425);
 }
@@ -5053,12 +5248,12 @@ function drawHUD() {
   ctx.fillStyle=THEME.coral;for(let i=0;i<lives;i++){ctx.beginPath();ctx.arc(157+i*22,44,8,0,7);ctx.fill();ctx.beginPath();ctx.ellipse(153+i*22,35,3,7,-.3,0,7);ctx.ellipse(161+i*22,35,3,7,.3,0,7);ctx.fill();}
   ctx.restore();
   const progress=Math.max(0,Math.min(1,(level==='air'?(descentStarted?.78+.22*Math.max(0,Math.min(1,(player.y+1690)/3460)):.78*player.x/5910):level==='earth'?player.x/EARTH_GATE_X:level==='fire'?(fireMode==='king'?.9+.1*(10-lavaKing.hp)/10:fireMode==='secondVolcano'?.65+.25*Math.max(0,(player.x-6680)/(10350-6680)):fireMode==='maze'?.45+.2*Math.max(0,(player.mazeC-1)/22):fireUnderground?.3+.15*Math.max(0,Math.min(1,(player.y+1050)/3070)):.3*player.x/4750):level==='water'?player.x/WATER_ARENA.exit:player.x/(WORLD_W-150)))),progressY=H>540?86:28;ctx.fillStyle="rgba(13,32,43,.4)";roundRect(W-210,progressY,180,10,5);ctx.fillStyle=THEME.shrine;roundRect(W-210,progressY,180*progress,10,5);
-  ctx.fillStyle=level==='final'?'#f5e5bf':"rgba(13,32,43,.75)";ctx.font="700 11px system-ui";ctx.textAlign="right";ctx.fillText(level==='final'?(player.x<3130?'FINAL · DEAD WOODS':'FINAL · OLD CASTLE'):level==='air'?(descentStarted?"AIR · DOWNDRAFT":"AIR · CLIMB"):level==='earth'?"EARTH · WILDWOOD":level==='fire'?(fireMode==='king'?"FIRE · LAVA KING":fireMode==='secondVolcano'?"FIRE · KING’S VOLCANO":fireMode==='maze'?"FIRE · LABYRINTH":fireMode==='dropper'?"FIRE · CRATER DROP":fireMode==='volcano'?"FIRE · VOLCANO":"FIRE · EMBER PASS"):level==='water'?(player.x<WATER_CAVE_START?"WATER · SANDY SHORE":player.x<5050?"WATER · KELP GROTTO":player.x<7000?"WATER · PIRATE WRECK":player.x<WATER_GATE.exitX?"WATER · DEEP CAVE":player.x<WATER_RUINS_START?"WATER · TRIDENT PASSAGE":neptunus.active?"WATER · NEPTUNUS":"WATER · ANCIENT RUINS"):"ELEMENTAL SHRINE",W-30,progressY+28);
+  ctx.fillStyle=level==='final'?'#f5e5bf':"rgba(13,32,43,.75)";ctx.font="700 11px system-ui";ctx.textAlign="right";ctx.fillText(level==='final'?(player.x<3130?'FINAL · DEAD WOODS':'FINAL · OLD CASTLE'):level==='air'?(descentStarted?"AIR · DOWNDRAFT":"AIR · CLIMB"):level==='earth'?"EARTH · WILDWOOD":level==='fire'?(fireMode==='king'?"FIRE · LAVA KING":fireMode==='secondVolcano'?"FIRE · KING’S VOLCANO":fireMode==='maze'?"FIRE · LABYRINTH":fireMode==='dropper'?"FIRE · CRATER DROP":fireMode==='volcano'?"FIRE · VOLCANO":"FIRE · EMBER PASS"):level==='water'?(player.x<WATER_CAVE_START?"WATER · SANDY SHORE":player.x<5050?"WATER · KELP GROTTO":player.x<7000?"WATER · PIRATE WRECK":player.x<WATER_GATE.exitX?"WATER · DEEP CAVE":player.x<WATER_RUINS_START?"WATER · TRIDENT PASSAGE":neptunus.active?"WATER · NEPTUNUS":"WATER · ANCIENT RUINS"):level==='meadow'?(player.inWater?'MEADOW · DIVE PASSAGE':player.x>=6920?'MEADOW · SHRINE':player.x>=MEADOW_BOW_RACK_X?'MEADOW · SWIMMING':player.x>=4800?'MEADOW · BALLOON RANGE':'FIRST MEADOW'):'ELEMENTAL SHRINE',W-30,progressY+28);
   if(level==='water'){
     const x=20,y=H>540?152:130;ctx.save();ctx.fillStyle='rgba(13,42,65,.8)';roundRect(x,y,176,32,10);
     ctx.globalAlpha=waterPortalKeyTaken?1:.55;drawWaterKeyIcon(x+19,y+16,25);ctx.globalAlpha=1;ctx.fillStyle=waterPortalKeyTaken?'#ffdf86':'#dcece7';ctx.font='bold 12px system-ui';ctx.textAlign='left';ctx.fillText(waterGate.phase==='open'?'GATE OPEN':waterPortalKeyTaken?'KEY · SWIM TO LOCK':'FIND THE SHIP KEY',x+36,y+20);ctx.restore();
   }
-  if(level==='water'&&player.inWater){
+  if(bunnySwimming()){
     const x=20,y=H>540?105:83;ctx.fillStyle='rgba(13,42,65,.75)';roundRect(x,y,205,40,12);
     ctx.fillStyle='#e9fbff';ctx.font='700 12px system-ui';ctx.textAlign='left';ctx.fillText(waterAquaSuit?'AQUA SUIT · AIR ∞':`AIR  ${Math.ceil(player.air)}s`,x+12,y+17);
     ctx.fillStyle='rgba(255,255,255,.22)';roundRect(x+12,y+24,180,7,3);
@@ -5082,7 +5277,7 @@ function drawTouchControls() {
   ctx.fillStyle="rgba(131,220,200,.9)";ctx.beginPath();ctx.arc(kx,ky,JOY.knob,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#fff8de';ctx.font=`bold ${JOY.radius>60?20:14}px system-ui`;ctx.textAlign='center';
   const inMaze=level==='fire'&&fireMode==='maze',fireWalking=level==='fire'&&fireMode!=='surface'&&!fireJumpingMode(),postKing=level==='fire'&&fireMode==='king'&&lavaKing.defeated;
-  ctx.fillText(inMaze?'↑ CLIMB':fireArcheryMode()?'↑ AIM':fireWalking&&!inMaze?'← MOVE →':inMaze?'↑ CLIMB':level==='water'&&player.inWater?'↑ SWIM':'↑ JUMP',JOY.x,JOY.y-JOY.radius+20);ctx.fillText(inMaze?'↓ CLIMB':fireArcheryMode()?'↓ AIM':(level==='fire'&&fireJumpingMode()&&!postKing)||fireWalking&&!inMaze?'':inMaze?'↓ CLIMB':level==='water'&&player.inWater?'↓ DIVE':'↓ DUCK',JOY.x,JOY.y+JOY.radius-10);
+  ctx.fillText(inMaze?'↑ CLIMB':fireArcheryMode()?'↑ AIM':fireWalking&&!inMaze?'← MOVE →':inMaze?'↑ CLIMB':bunnySwimming()?'↑ SWIM':'↑ JUMP',JOY.x,JOY.y-JOY.radius+20);ctx.fillText(inMaze?'↓ CLIMB':fireArcheryMode()?'↓ AIM':(level==='fire'&&fireJumpingMode()&&!postKing)||fireWalking&&!inMaze?'':inMaze?'↓ CLIMB':bunnySwimming()?'↓ DIVE':'↓ DUCK',JOY.x,JOY.y+JOY.radius-10);
   for(const [name,b] of Object.entries(ACTIONS)){
     if(fireArcheryMode()&&(name==='jump'||name==='duck'))continue;
     if(fireWalking&&(name==='jump'||name==='duck')||level==='fire'&&fireJumpingMode()&&!postKing&&name==='duck')continue;
@@ -5090,7 +5285,7 @@ function drawTouchControls() {
     ctx.globalAlpha=reserved?.3:.48;ctx.fillStyle=b.color;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
     ctx.globalAlpha=.7;ctx.strokeStyle='#fff';ctx.stroke();
     ctx.globalAlpha=reserved?.65:.9;ctx.fillStyle=reserved?'#d7dfdc':THEME.ink;
-    ctx.font=`900 ${aimButton?10:reserved?17:b.r>50?20:12}px system-ui`;ctx.textAlign='center';ctx.fillText(level==='water'&&waterTrident.owned&&(aimButton||name==='hit')?(aimButton?'MODE':waterTrident.mode.toUpperCase()):aimButton?((level==='air'?windStars.equipped:level==='earth'?earthKnives.equipped:fireArrow.aiming)?'STOW':'EQUIP'):(level==='air'&&windStars.owned&&windStars.equipped||level==='earth'&&earthKnivesOwned()&&earthKnives.equipped)&&name==='hit'?'THROW':fireArcheryMode()&&name==='hit'?'FIRE':level==='water'&&player.inWater&&name==='jump'?(waterCanBreach()?'LEAP':'STROKE'):level==='water'&&player.inWater&&name==='duck'?'DIVE':b.label,b.x,b.y+4);
+    ctx.font=`900 ${aimButton?10:reserved?17:b.r>50?20:12}px system-ui`;ctx.textAlign='center';ctx.fillText(level==='water'&&waterTrident.owned&&(aimButton||name==='hit')?(aimButton?'MODE':waterTrident.mode.toUpperCase()):aimButton?((level==='air'?windStars.equipped:level==='earth'?earthKnives.equipped:fireArrow.aiming)?'STOW':'EQUIP'):(level==='air'&&windStars.owned&&windStars.equipped||level==='earth'&&earthKnivesOwned()&&earthKnives.equipped)&&name==='hit'?'THROW':fireArcheryMode()&&name==='hit'?'FIRE':bunnySwimming()&&name==='jump'?(level==='water'&&waterCanBreach()?'LEAP':'STROKE'):bunnySwimming()&&name==='duck'?'DIVE':b.label,b.x,b.y+4);
     if(reserved){ctx.font='700 8px system-ui';ctx.fillText('SOON',b.x,b.y+15);}
   }
   ctx.restore();
@@ -5099,9 +5294,9 @@ function drawTouchControls() {
 function render(time) {
   const nativeW=W,nativeH=H,fieldH=playfieldHeight(),view=level==='fire'?fireViewSize():level==='water'?waterViewSize():{width:W,height:fieldH,scale:1};
   ctx.save();ctx.beginPath();ctx.rect(0,0,W,fieldH);ctx.clip();ctx.scale(view.scale,view.scale);W=view.width;H=view.height;
-  drawBackground();ctx.save();ctx.translate(0,-cameraY);if(level==='fire'){drawFireTrees();drawFireVolcano();drawFireMaze();drawSecondFireVolcano();drawFireMazeTransition();}if(level==='earth')drawEarthTrees();platforms.forEach(drawPlatform);if(level==='air')drawAirWorld();else if(level==='earth')drawEarthWorld();else if(level==='fire'){drawFireRollingStones();drawLavaKingBarriers();drawFireGate();drawLavaKing();drawFireArrowPickup();drawFireAimPath();drawBunnyArrows();}else if(level==='water')drawWaterWorld();else if(level==='final'){drawFinalWorld();drawFireAimPath();drawBunnyArrows();}else drawShrine(time);
+  drawBackground();ctx.save();ctx.translate(0,-cameraY);if(level==='fire'){drawFireTrees();drawFireVolcano();drawFireMaze();drawSecondFireVolcano();drawFireMazeTransition();}if(level==='earth')drawEarthTrees();platforms.forEach(drawPlatform);if(level==='air')drawAirWorld();else if(level==='earth')drawEarthWorld();else if(level==='fire'){drawFireRollingStones();drawLavaKingBarriers();drawFireGate();drawLavaKing();drawFireArrowPickup();drawFireAimPath();drawBunnyArrows();}else if(level==='water')drawWaterWorld();else if(level==='final'){drawFinalWorld();drawFireAimPath();drawBunnyArrows();}else if(level==='meadow')drawMeadowLessons();else drawShrine(time);
   coins.forEach(c=>drawCoin(c,time));enemies.forEach(drawEnemy);fireZombies.forEach(drawFireZombie);waterSharks.forEach(drawWaterShark);waterPirates.forEach(drawWaterPirate);if(level==='final')drawFinalMonsters();drawBunny();if(level==='air')drawHeldWindStar();if(level==='earth')drawHeldEarthKnife();if(level==='water'){drawHeldWaterEquipment();drawWaterGateForeground();drawWaterCacti();}if(level==='final')drawFinalGateForeground();drawBlueCloudForeground();
-  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;ctx.restore();ctx.restore();W=nativeW;H=nativeH;drawHUD();drawEarthBossHearts();if(level==='fire')drawLavaKingHearts();if(level==='fire'||level==='final')drawFireArrowInventory();if(level==='air')drawWindStarInventory();if(level==='earth')drawEarthKnifeInventory();drawWaterAdventureHUD();drawTouchControls();if(developerRun){ctx.save();ctx.font='bold 11px system-ui';ctx.textAlign='left';ctx.fillStyle='#fff4ae';ctx.fillText('DEVELOPER MODE · test progress',12,playfieldHeight()-12);ctx.restore();}
+  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;ctx.restore();ctx.restore();W=nativeW;H=nativeH;drawHUD();drawEarthBossHearts();if(level==='fire')drawLavaKingHearts();if(level==='fire'||level==='final'||level==='meadow')drawFireArrowInventory();if(level==='air')drawWindStarInventory();if(level==='earth')drawEarthKnifeInventory();drawWaterAdventureHUD();drawTouchControls();if(developerRun){ctx.save();ctx.font='bold 11px system-ui';ctx.textAlign='left';ctx.fillStyle='#fff4ae';ctx.fillText('DEVELOPER MODE · test progress',12,playfieldHeight()-12);ctx.restore();}
 }
 
 function loop(ms) { const t=ms/1000,dt=Math.min(.033,t-lastTime||0);lastTime=t;update(dt);render(t);requestAnimationFrame(loop); }
@@ -5136,7 +5331,7 @@ function updateJoystick(p){
   if(state!=='playing'){clearInputs();return;}
   const dx=p.x-JOY.x,dy=p.y-JOY.y,d=Math.hypot(dx,dy)||1,limit=Math.min(JOY.radius-12,d);
   joystick.dx=dx/d*limit/(JOY.radius-12);joystick.dy=dy/d*limit/(JOY.radius-12);
-  if(level==='final'&&fireArcheryMode()){joystick.duck=false;return;}
+  if((level==='final'||level==='meadow')&&fireArcheryMode()){joystick.duck=false;return;}
   if(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated)){
     joystick.duck=false;
     if(fireJumpingMode()&&!fireArcheryMode()){
@@ -5145,7 +5340,7 @@ function updateJoystick(p){
     }
     return;
   }
-  if(level==='water'&&player.inWater){joystick.duck=false;return;}
+  if(bunnySwimming()){joystick.duck=false;return;}
   if(joystick.dy>=.55)joystick.duck=true;
   else if(joystick.dy<=.25)joystick.duck=false;
   updateDuck();

@@ -55,7 +55,10 @@ run('draws=[];rotations=[];drawBunny()');assert(run('draws[0][0]===PAINTED_BUNNY
 run("fireMode='king';player.x=10360;player.y=-558;player.onGround=true;fireArrow.aiming=false;fireArcherySheet.complete=true;fireArcherySheet.naturalWidth=1774;fireArcherySheet.naturalHeight=887;var armed=0,originalArmed=drawArmedBunny;drawArmedBunny=()=>armed++;toggleFireAim();drawBunny()");assert.equal(run('armed'),1);run('jump()');assert(run('player.onGround'));
 run("window.listeners.keydown[1]({code:'KeyZ',repeat:false,preventDefault(){}});drawArmedBunny=originalArmed;draws=[];jump();drawBunny()");assert.equal(run('draws.length'),1);assert(run('draws[0][0]===PAINTED_BUNNY.uprightJump.quiver'));
 run('player.invincible=1;draws=[];drawBunny()');assert.equal(run('draws.length'),0,'damage blink includes the quiver');
-run("player.invincible=0;level='meadow';draws=[];drawBunny()");assert(run('draws[0][0]===PAINTED_BUNNY.uprightJump.plain'),'other elements never gain a quiver');
+// Meadow carries the practice quiver until the bow is stored; other elements stay plain.
+run("player.invincible=0;level='meadow';draws=[];drawBunny()");assert(run('draws[0][0]===PAINTED_BUNNY.uprightJump.quiver'),'Meadow practice bow carries its painted quiver');
+run("fireArrow.owned=false;draws=[];drawBunny()");assert(run('draws[0][0]===PAINTED_BUNNY.uprightJump.plain'),'leaving the practice bow removes the quiver');
+for(const world of ['air','water','earth']){run(`level='${world}';fireArrow.owned=true;draws=[];drawBunny()`);assert(run('draws[0][0]===PAINTED_BUNNY.uprightJump.plain'),'other elements never gain a quiver');}
 // Assets have matching dimensions and real alpha channels, and the practice page uses production code.
 for(const stance of ['upright','four'])for(const move of ['run','jump']){
  const dims=[];for(const gear of ['plain','quiver']){const p=`assets/bunny-painted-${stance}-${move}-${gear}-v1.png`,b=fs.readFileSync(p);assert.equal(b[25],6,'RGBA PNG');dims.push([b.readUInt32BE(16),b.readUInt32BE(20)]);}assert.deepEqual(dims[0],dims[1]);
