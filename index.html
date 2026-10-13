@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.20.8',build:2026101305,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Limited Castle triple jump'});
+const BUILD_INFO=Object.freeze({version:'0.20.9',build:2026101306,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Castle doors and mounted torch lighting'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -1319,7 +1319,16 @@ const finalPlatforms=[
   [5480,350,220,28,'gallery'],[6120,310,200,28,'gallery'],[7080,345,230,28,'gallery'],[7760,325,200,28,'gallery']
 ].map(([x,y,w,h,kind])=>({x,y,w,h,kind,oneWay:kind==='gallery'}));
 const finalCoinSpots=[[300,390],[650,310],[870,375],[990,340],[1300,395],[1500,300],[1840,390],[1980,255],[2210,335],[2430,390],[2750,390],[3210,385],[3525,345],[3850,390],[4025,310],[4320,390],[4500,340],[4850,390],[5150,390],[5540,300],[5840,385],[6200,255],[6510,390],[6850,385],[7170,295],[7500,390],[7840,265],[8110,385]];
-const finalTorches=[2830,3200,3550,3980,4430,4870,5280,5700,6150,6590,7040,7490,7950,8330].map((x,i)=>({x,y:310+(i%3)*11}));
+const FINAL_HALL={start:3130,top:FINAL_FLOOR-660*.725,height:660,scaleX:1050/1536,bodyX:210,bodyWidth:1100,doorX:1280};
+const FINAL_HALL_TILE_W=FINAL_HALL.bodyWidth*FINAL_HALL.scaleX;
+const FINAL_INNER_DOOR_HALF_W=(1536-FINAL_HALL.doorX)*FINAL_HALL.scaleX;
+const FINAL_INNER_DOOR_X=FINAL_END_X-FINAL_INNER_DOOR_HALF_W;
+// Flame centers come from the painted sconces, so every glow has a wall bracket.
+const finalTorches=[
+  ...[132,884].map(x=>({x:2820+x*440/1024,y:FINAL_FLOOR-660*1445/1536+760*660/1536,arch:true})),
+  ...Array.from({length:Math.ceil((FINAL_W-FINAL_HALL.start)/FINAL_HALL_TILE_W)},(_,i)=>
+    [[292,414],[605,521],[902,524],[1255,414]].map(([x,y])=>({x:FINAL_HALL.start+i*FINAL_HALL_TILE_W+(x-FINAL_HALL.bodyX)*FINAL_HALL.scaleX,y:FINAL_HALL.top+y*FINAL_HALL.height/1024}))).flat().filter(t=>t.x<FINAL_INNER_DOOR_X)
+];
 const finalMonsterSpawns=[
   ['zombie',3670],['goblin',4220],['pirate',4740],['air',5220],['lava',5810],
   ['goblin',6330],['zombie',6840],['air',7350],['pirate',7860]
@@ -3512,16 +3521,23 @@ function drawFinalBackground(){
     ctx.drawImage(finalForestSheet,left,FINAL_FLOOR-height*.66-cameraY,width,height);
     for(let x=left+width;x<W;x+=width*.5)ctx.drawImage(finalForestSheet,768,0,768,1024,x,FINAL_FLOOR-height*.66-cameraY,width*.5,height);
   }
-  const hallX=3130-cameraX;
+  const hallX=FINAL_HALL.start-cameraX;
   if(hallX<W){
-    ctx.save();ctx.beginPath();ctx.rect(hallX,0,FINAL_W-3130,H);ctx.clip();
-    ctx.fillStyle='#242734';ctx.fillRect(hallX,0,FINAL_W-3130,H);
+    ctx.save();ctx.beginPath();ctx.rect(hallX,0,FINAL_W-FINAL_HALL.start,H);ctx.clip();
+    ctx.fillStyle='#242734';ctx.fillRect(hallX,0,FINAL_W-FINAL_HALL.start,H);
     if(finalHallSheet.complete&&finalHallSheet.naturalWidth){
       // Tall portrait screens keep a painted masonry ceiling above the fixed walking plane.
-      const top=FINAL_FLOOR-660*.725-cameraY;
+      const top=FINAL_HALL.top-cameraY;
       for(let y=top-160;y>-160;y-=160)for(let x=hallX;x<W;x+=450)ctx.drawImage(finalHallSheet,320,0,600,180,x,y,450,160);
-      const panelW=1050;
-      for(let x=hallX;x<W;x+=panelW)ctx.drawImage(finalHallSheet,x,top,panelW,660);
+      // Repeat only masonry/window bays; the painted exterior opening and door are endpoints.
+      for(let x=hallX;x<W;x+=FINAL_HALL_TILE_W)ctx.drawImage(finalHallSheet,FINAL_HALL.bodyX,0,FINAL_HALL.bodyWidth,1024,x,top,FINAL_HALL_TILE_W,FINAL_HALL.height);
+      const doorX=FINAL_INNER_DOOR_X-cameraX;
+      if(doorX<W&&doorX+FINAL_INNER_DOOR_HALF_W*2>0){
+        // The source ends halfway across its door; mirror the leaf and jamb to close the full arch.
+        ctx.drawImage(finalHallSheet,FINAL_HALL.doorX,0,1536-FINAL_HALL.doorX,1024,doorX,top,FINAL_INNER_DOOR_HALF_W,FINAL_HALL.height);
+        ctx.save();ctx.translate(doorX+FINAL_INNER_DOOR_HALF_W*2,0);ctx.scale(-1,1);
+        ctx.drawImage(finalHallSheet,FINAL_HALL.doorX,0,1536-FINAL_HALL.doorX,1024,0,top,FINAL_INNER_DOOR_HALF_W,FINAL_HALL.height);ctx.restore();
+      }
     }
     ctx.restore();
   }
@@ -3550,9 +3566,8 @@ function drawFinalTorch(x,y){
   const flicker=1+.09*Math.sin(finalTime*11+x),radius=52*flicker;
   const glow=ctx.createRadialGradient(x,y,2,x,y,radius);glow.addColorStop(0,'rgba(255,178,60,.36)');glow.addColorStop(1,'rgba(255,133,40,0)');
   ctx.fillStyle=glow;ctx.fillRect(x-radius,y-radius,radius*2,radius*2);
-  ctx.strokeStyle='#5b4435';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(x,y+8);ctx.lineTo(x,y+28);ctx.lineTo(x-9,y+36);ctx.stroke();
-  ctx.fillStyle='#ffa335';ctx.beginPath();ctx.ellipse(x,y,7,17*flicker,.12*Math.sin(finalTime*7+x),0,7);ctx.fill();
-  ctx.fillStyle='#ffe2a0';ctx.beginPath();ctx.ellipse(x,y+6,3,9,0,0,7);ctx.fill();
+  // The painting supplies the mounted torch and flame; animate its light without a second floating fire.
+  ctx.fillStyle=`rgba(255,221,153,${.12+.06*Math.sin(finalTime*9+x)})`;ctx.beginPath();ctx.ellipse(x,y+5,3,9*flicker,0,0,7);ctx.fill();
 }
 function drawFinalWorld(){
   const archX=2820-cameraX,archW=440,archH=660,archY=FINAL_FLOOR-archH*1445/1536;
