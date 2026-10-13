@@ -81,5 +81,28 @@
         "baseY": 1000
       }
     ]
+  },
+  "turtle": {
+    "asset": "assets/reef-turtle-v1.png",
+    "width": 2172,
+    "height": 724,
+    "frames": [
+      {
+        "sx": 40,
+        "sy": 117,
+        "sw": 1020,
+        "sh": 478,
+        "ax": 550,
+        "ay": 390
+      },
+      {
+        "sx": 1149,
+        "sy": 118,
+        "sw": 996,
+        "sh": 496,
+        "ax": 1636,
+        "ay": 390
+      }
+    ]
   }
 }

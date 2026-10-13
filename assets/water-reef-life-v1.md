@@ -10,6 +10,8 @@ Created on 13 October 2026 with the built-in imagegen tool. Original transparent
 
 Fish retain all 21 five-fish school paths, colors, direction mirroring, gentle swimming motion, and rock/ship avoidance. Their painted silhouettes fit the existing 40 × 16 safe swimming envelope. This changes scenery only; swimming, enemies, oxygen, coins, and other gameplay retain their existing logic.
 
+The five swimming turtles also use `reef-turtle-v1.png`, adapting the forest turtle identity with two registered flipper poses; see `reef-turtle-v1.md` for that exact built-in imagegen prompt. Their painted bodies fit within the existing swimming clearance and retain the same paths.
+
 Runtime source: `assets/water-reef-life-v1.js`, embedded verbatim inside `WATER_REEF_LIFE_BEGIN/END` in `index.html`. Preview: `previews/water-reef-life.html`. Tests: `tests/water-surface-life.cjs` and `tests/water-reef-life-browser.cjs`.
 
 ## fish
