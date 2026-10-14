@@ -1,0 +1,20 @@
+# Turtle walking and swimming animation v1
+
+Created on 14 October 2026 with built-in imagegen as edits of the existing forest and reef turtle paintings. Selected native RGBA PNG files are copied unchanged into the project:
+
+- [Walking atlas](turtle-walk-v1.png): 1536 × 1024; six alternating leg poses, 3 × 2 cells.
+- [Swimming atlas](turtle-swim-v1.png): 1536 × 1024; six paddle-stroke poses, 3 × 2 cells.
+
+Runtime foot/shell anchors register the walking shell at 63 game units above the ground, preserving the moving one-way riding platform. The walking cycle advances once per 54 units of travel. Forty-eight cached blends loop smoothly without pixel reads, so direct-file play is supported. The swimming poses remain inside the existing rock-clearance envelope and continue while Benny is on shore; map, death and ad states pause both animations. Original source artwork is kept for references/fallback.
+
+## Walking cycle
+
+Use case: identity-preserve. Edit target/reference is the attached forest turtle. Create a production transparent walking animation sprite atlas of this EXACT turtle, six poses in 3 columns by 2 rows, equal 512x512 cells, total 1536x1024. Same mossy gold/olive domed shell, scutes, face, happy dark eye, textured green legs, tiny ivory claws, hand-painted storybook lighting. Every turtle faces RIGHT in identical side view and has the SAME body scale and shell registration, body and shell do not rise or shift between frames because the shell carries a rider. Only four legs move in a genuine alternating walking cycle: six evenly spaced consecutive steps, front near leg forward while rear near leg back, alternating planted weight-bearing feet and lifted bent feet, opposite far legs. Clearly visible leg articulation, no sliding all feet together. All grounded feet share exactly the same horizontal floor baseline in all six cells. Keep full turtle and tail inside each cell, transparent margins, no cell labels, no borders, no floor, no shadow or golden glow. Genuinely zero-alpha transparent background. No identity changes or new accessories.
+
+## Walking registration edit
+
+Use case: precise-object-edit. Edit the attached six-pose WALKING turtle sheet only to fix animation registration and transparent gutters. Preserve the exact turtles, six different alternating walking-leg poses, painted details, faces, shell, style and genuine alpha. Keep a 3x2 atlas at1536x1024 with512x512cells. In EVERY cell slightly reduce the figure to fit fully, leaving at least20px clear transparent margin at left/right of nose/tail, so no turtle crosses a cell border or is cropped. Place all six identical shells at the SAME local x/y in their cells: shell summit at local y180 and planted toes at y430; no shell bobbing or size drift. Legs still alternate, only their walking pose changes. No haze, glow, shadows, labels, ground or background; alpha zero outside turtle.
+
+## Swimming cycle
+
+Use case: identity-preserve. Edit target/reference: the attached two-pose underwater turtle. Create a SIX-frame swimming cycle of this exact same friendly mossy olive/gold turtle in a hand-painted storybook platform game. 3 columns by 2 rows, equal cells, landscape1536x1024, one complete turtle per cell facing RIGHT. Same shell scutes and moss, cream belly, textured green limbs, face and dark round eye, identical body proportions and shell/head positions in each cell. Six consecutive evenly spaced stroke phases, visibly move the front paddles from high and forward down into a strong back stroke and then recover; rear paddles counter-stroke. Keep strong clearly different limb angles between phases, while shell and head stay absolutely registered and do not change scale. These are swimming leg/paddle poses, no standing planted feet. Generous transparent margins around all animals, full limbs and tail inside each cell, no clipped tips or overlap. Genuinely zero-alpha transparent background, no underwater scenery, water, floor, haze, glow, shadows, text or grid. Preserve the existing turtle's identity and painted style.

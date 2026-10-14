@@ -1,12 +1,12 @@
 // Painted friendly wildlife and a rideable turtle. Embedded verbatim in index.html.
 const earthGroundBirds=[460,810,1750,2630,4740];
-const earthTurtle={x:650,w:144,min:500,max:970,speed:48,facing:1,shellHeight:63};
+const earthTurtle={x:650,w:144,min:500,max:970,speed:48,facing:1,shellHeight:63,cycle:0};
 const EARTH_ANIMAL_ART={
   turtle:{asset:'assets/wildwood-turtle-v1.png',sx:86,sy:201,sw:1402,sh:636},
   bird:{asset:'assets/wildwood-bird-v1.png',sx:201,sy:72,sw:1045,sh:895}
 };
 for(const art of Object.values(EARTH_ANIMAL_ART)){art.image=new Image();art.image.src=art.asset;}
-function resetEarthTurtle(){earthTurtle.x=650;earthTurtle.facing=1;}
+function resetEarthTurtle(){earthTurtle.x=650;earthTurtle.facing=1;earthTurtle.cycle=0;}
 function earthTurtlePlatform(){
   const t=earthTurtle;
   return {x:t.x+43,y:earthGroundAt(t.x+t.w/2)-t.shellHeight,w:58,h:8,kind:'turtle',oneWay:true};
@@ -14,6 +14,7 @@ function earthTurtlePlatform(){
 function updateEarthTurtle(dt){
   const t=earthTurtle,oldShell=earthTurtlePlatform(),oldX=t.x;
   // Reflect at the clearing edges, retaining overshoot so speed is frame-independent.
+  t.cycle=(t.cycle+Math.abs(t.speed)*dt/54)%1;
   t.x+=t.facing*t.speed*dt;
   while(t.x>t.max||t.x<t.min){
     if(t.x>t.max){t.x=2*t.max-t.x;t.facing=-1;}
@@ -54,7 +55,7 @@ function drawEarthAnimals(){
   }
   const t=earthTurtle,x=t.x-cameraX,y=earthGroundAt(t.x+t.w/2);
   if(x<W+180&&x+t.w>-180){
-    drawEarthAnimal('turtle',t.x+t.w/2,y+1,t.w,t.facing);
+    drawWalkingEarthTurtle(t.x+t.w/2,y,t.w,t.facing);
     if(Math.abs(player.x+player.w/2-(t.x+t.w/2))<155&&Math.abs(player.y+player.h-y)<100){
       ctx.save();ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff6d4';
       ctx.shadowColor='#284332';ctx.shadowBlur=4;

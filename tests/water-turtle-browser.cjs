@@ -9,7 +9,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await capture('swimming');await page.locator('#turtleComparison').screenshot({path:'previews/water-turtle-style-comparison-v1.png'});
   const paintings=await game.evaluate(()=>{
    const a=WATER_REEF_ART.turtle,c=document.createElement('canvas');c.width=a.width;c.height=a.height;const p=c.getContext('2d');p.drawImage(a.image,0,0);
-   return {corner:p.getImageData(0,0,1,1).data[3],poses:Array.from({length:13},(_,step)=>{
+   return {corner:p.getImageData(0,0,1,1).data[3],poses:Array.from({length:48},(_,step)=>{
     const painting=waterTurtlePainting(step),paint=painting.getContext('2d'),pixels=paint.getImageData(0,0,130,100).data;let minX=130,minY=100,maxX=0,maxY=0;
     for(let y=0;y<100;y++)for(let x=0;x<130;x++)if(pixels[(y*130+x)*4+3]>12){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);}
     return{minX,maxX,minY,maxY,body:paint.getImageData(65,50,1,1).data[3]};
@@ -24,6 +24,6 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   fs.writeFileSync('previews/water-turtle-directions-v1.png',Buffer.from(await game.evaluate(()=>canvas.toDataURL().split(',')[1]),'base64'));
   for(const viewport of [{width:390,height:844},{width:844,height:390}]){await page.setViewportSize(viewport);await page.locator('[data-scene="turtle"]').click();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await capture(viewport.width===390?'phone':'landscape');}
   const local=await browser.newPage();local.on('pageerror',e=>errors.push(e.message));await local.goto('file://'+process.cwd()+'/index.html');await local.waitForFunction(()=>WATER_REEF_ART.turtle.image.naturalWidth);await local.evaluate(()=>{beginDeveloperSession();level='water';start();state='review';player.inWater=true;player.x=2430;player.y=650;cameraX=2020;cameraY=470;waterTime=2;render(0);});
-  assert.deepEqual(errors,[]);console.log('PASS swimming turtle browser: forest-matched painted character, transparent two-pose atlas, steady shell through 13 flipper blends, safe swimming envelope, both directions, pause/animation, desktop/phone and direct-file rendering.');
+  assert.deepEqual(errors,[]);console.log('PASS swimming turtle browser: forest-matched painted character, transparent six-pose atlas, steady shell through 48 flipper blends, safe swimming envelope, both directions, pause/animation, desktop/phone and direct-file rendering.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

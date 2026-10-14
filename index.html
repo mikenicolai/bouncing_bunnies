@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.20',build:2026101404,builtAt:'2026-10-14',builtLabel:'14 October 2026',deployment:'Bow jumps and clearer castle obstacles'});
+const BUILD_INFO=Object.freeze({version:'0.21.21',build:2026101405,builtAt:'2026-10-14',builtLabel:'14 October 2026',deployment:'Walking and swimming turtle animation'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -1257,16 +1257,56 @@ const earthGround=[
   [4450,-900,1120],[5570,-1220,1090],[6660,-1480,1440]
 ].map(([x,y,w],id)=>({x,y,w,h:3500,kind:'ground',id}));
 function earthGroundAt(x){return (earthGround.find(p=>x>=p.x&&x<p.x+p.w)||earthGround.at(-1)).y;}
+// TURTLE_ANIMATION_BEGIN
+// Registered painted poses share a smooth six-frame cycle without pixel reads.
+const TURTLE_ANIMATION_STEPS=48;
+const TURTLE_ANIMATION={
+  walk:{asset:'assets/turtle-walk-v1.png',width:190,height:100,x:95,y:80,scaleX:144/512,
+    anchors:[[156,430],[156,430],[156,432],[125,395],[125,395],[125,394]],paintings:[]},
+  swim:{asset:'assets/turtle-swim-v1.png',width:130,height:100,x:65,y:50,scaleX:.17,
+    anchors:[[305],[305],[305],[255],[255],[255]],paintings:[]}
+};
+for(const a of Object.values(TURTLE_ANIMATION)){a.image=new Image();a.image.src=a.asset;}
+function turtleAnimationLayers(cycle){
+  const phase=((cycle%1)+1)%1*6,frame=Math.floor(phase),raw=phase-frame;
+  return{frame,next:(frame+1)%6,mix:raw*raw*(3-2*raw)};
+}
+function turtleCyclePainting(mode,cycle){
+  const a=TURTLE_ANIMATION[mode];
+  if(!a.image.complete||!a.image.naturalWidth)return null;
+  const step=Math.floor((((cycle%1)+1)%1)*TURTLE_ANIMATION_STEPS);
+  if(a.paintings[step])return a.paintings[step];
+  const c=document.createElement('canvas');c.width=a.width;c.height=a.height;
+  const paint=c.getContext('2d'),pose=turtleAnimationLayers(step/TURTLE_ANIMATION_STEPS);
+  // Add premultiplied colors so the overlapping shell remains fully opaque.
+  paint.globalCompositeOperation='lighter';
+  for(const [frame,weight] of [[pose.frame,1-pose.mix],[pose.next,pose.mix]]){
+    if(!weight)continue;
+    const sw=a.image.naturalWidth/3,sh=a.image.naturalHeight/2,anchor=a.anchors[frame];
+    const ax=mode==='walk'?230:256,ay=mode==='walk'?anchor[1]:anchor[0];
+    const sy=mode==='walk'?63/(anchor[1]-anchor[0]):a.scaleX;
+    paint.globalAlpha=weight;
+    paint.drawImage(a.image,frame%3*sw,Math.floor(frame/3)*sh,sw,sh,a.x-ax*a.scaleX,a.y-ay*sy,sw*a.scaleX,sh*sy);
+  }
+  a.paintings[step]=c;return c;
+}
+function drawWalkingEarthTurtle(x,floor,width,facing){
+  const painting=turtleCyclePainting('walk',earthTurtle.cycle);
+  if(!painting){drawEarthAnimal('turtle',x,floor,width,facing);return;}
+  ctx.save();ctx.translate(x-cameraX,floor);ctx.scale(facing,1);ctx.drawImage(painting,-95,-80);ctx.restore();
+}
+
+// TURTLE_ANIMATION_END
 // EARTH_ANIMALS_BEGIN
 // Painted friendly wildlife and a rideable turtle. Embedded verbatim in index.html.
 const earthGroundBirds=[460,810,1750,2630,4740];
-const earthTurtle={x:650,w:144,min:500,max:970,speed:48,facing:1,shellHeight:63};
+const earthTurtle={x:650,w:144,min:500,max:970,speed:48,facing:1,shellHeight:63,cycle:0};
 const EARTH_ANIMAL_ART={
   turtle:{asset:'assets/wildwood-turtle-v1.png',sx:86,sy:201,sw:1402,sh:636},
   bird:{asset:'assets/wildwood-bird-v1.png',sx:201,sy:72,sw:1045,sh:895}
 };
 for(const art of Object.values(EARTH_ANIMAL_ART)){art.image=new Image();art.image.src=art.asset;}
-function resetEarthTurtle(){earthTurtle.x=650;earthTurtle.facing=1;}
+function resetEarthTurtle(){earthTurtle.x=650;earthTurtle.facing=1;earthTurtle.cycle=0;}
 function earthTurtlePlatform(){
   const t=earthTurtle;
   return {x:t.x+43,y:earthGroundAt(t.x+t.w/2)-t.shellHeight,w:58,h:8,kind:'turtle',oneWay:true};
@@ -1274,6 +1314,7 @@ function earthTurtlePlatform(){
 function updateEarthTurtle(dt){
   const t=earthTurtle,oldShell=earthTurtlePlatform(),oldX=t.x;
   // Reflect at the clearing edges, retaining overshoot so speed is frame-independent.
+  t.cycle=(t.cycle+Math.abs(t.speed)*dt/54)%1;
   t.x+=t.facing*t.speed*dt;
   while(t.x>t.max||t.x<t.min){
     if(t.x>t.max){t.x=2*t.max-t.x;t.facing=-1;}
@@ -1314,7 +1355,7 @@ function drawEarthAnimals(){
   }
   const t=earthTurtle,x=t.x-cameraX,y=earthGroundAt(t.x+t.w/2);
   if(x<W+180&&x+t.w>-180){
-    drawEarthAnimal('turtle',t.x+t.w/2,y+1,t.w,t.facing);
+    drawWalkingEarthTurtle(t.x+t.w/2,y,t.w,t.facing);
     if(Math.abs(player.x+player.w/2-(t.x+t.w/2))<155&&Math.abs(player.y+player.h-y)<100){
       ctx.save();ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff6d4';
       ctx.shadowColor='#284332';ctx.shadowBlur=4;
@@ -4655,8 +4696,8 @@ function drawWaterAirPockets(){
 }
 // WATER_REEF_LIFE_BEGIN
 // Painted fish, turtles, coral and sea grass; embedded verbatim in index.html.
-const WATER_REEF_ART={"fish":{"asset":"assets/reef-fish-v1.png","width":1254,"height":1254,"frames":[{"sx":38,"sy":214,"sw":576,"sh":349},{"sx":665,"sy":213,"sw":575,"sh":350},{"sx":39,"sy":736,"sw":574,"sh":349},{"sx":665,"sy":736,"sw":575,"sh":349}]},"coral":{"asset":"assets/reef-coral-v1.png","width":1254,"height":1254,"frames":[{"sx":41,"sy":61,"sw":570,"sh":538},{"sx":663,"sy":69,"sw":552,"sh":530},{"sx":40,"sy":661,"sw":578,"sh":535},{"sx":661,"sy":660,"sw":564,"sh":537}]},"seagrass":{"asset":"assets/reef-seagrass-v1.png","width":1402,"height":1122,"frames":[{"sx":177,"sy":33,"sw":445,"sh":1062,"baseY":1000},{"sx":838,"sy":15,"sw":448,"sh":1082,"baseY":1000}]},"turtle":{"asset":"assets/reef-turtle-v1.png","width":2172,"height":724,"frames":[{"sx":40,"sy":117,"sw":1020,"sh":478,"ax":550,"ay":390},{"sx":1149,"sy":118,"sw":996,"sh":496,"ax":1636,"ay":390}]}};
-for(const a of Object.values(WATER_REEF_ART)){a.image=new Image();a.image.src=a.asset;}
+const WATER_REEF_ART={"fish":{"asset":"assets/reef-fish-v1.png","width":1254,"height":1254,"frames":[{"sx":38,"sy":214,"sw":576,"sh":349},{"sx":665,"sy":213,"sw":575,"sh":350},{"sx":39,"sy":736,"sw":574,"sh":349},{"sx":665,"sy":736,"sw":575,"sh":349}]},"coral":{"asset":"assets/reef-coral-v1.png","width":1254,"height":1254,"frames":[{"sx":41,"sy":61,"sw":570,"sh":538},{"sx":663,"sy":69,"sw":552,"sh":530},{"sx":40,"sy":661,"sw":578,"sh":535},{"sx":661,"sy":660,"sw":564,"sh":537}]},"seagrass":{"asset":"assets/reef-seagrass-v1.png","width":1402,"height":1122,"frames":[{"sx":177,"sy":33,"sw":445,"sh":1062,"baseY":1000},{"sx":838,"sy":15,"sw":448,"sh":1082,"baseY":1000}]},"turtle":{"asset":"assets/turtle-swim-v1.png","width":1536,"height":1024,"frames":[{"sx":0,"sy":0,"sw":512,"sh":512,"ax":256,"ay":305},{"sx":512,"sy":0,"sw":512,"sh":512,"ax":768,"ay":305},{"sx":1024,"sy":0,"sw":512,"sh":512,"ax":1280,"ay":305},{"sx":0,"sy":512,"sw":512,"sh":512,"ax":256,"ay":767},{"sx":512,"sy":512,"sw":512,"sh":512,"ax":768,"ay":767},{"sx":1024,"sy":512,"sw":512,"sh":512,"ax":1280,"ay":767}]}};
+for(const [name,a] of Object.entries(WATER_REEF_ART)){a.image=name==='turtle'?TURTLE_ANIMATION.swim.image:new Image();a.image.src=a.asset;}
 // Bend decorative swimming paths around physical rocks, with room for tails.
 function waterCreatureY(x,preferred,halfWidth=20,halfHeight=8){
   const ceiling=Math.max(...[x-halfWidth,x,x+halfWidth].map(wx=>wx<WATER_CAVE_START?WATER_SURFACE:waterProfileY(WATER_ROOF,wx)));
@@ -4708,35 +4749,16 @@ function drawWaterReefFish(pose,variant,time=waterTime){
   ctx.save();ctx.translate(pose.x-cameraX,pose.y);ctx.scale(pose.direction*pulse,1);
   ctx.drawImage(a.image,f.sx,f.sy,f.sw,f.sh,-f.sw*scale/2,-f.sh*scale/2,f.sw*scale,f.sh*scale);ctx.restore();
 }
-const waterTurtlePaintings=[];
 function waterTurtlePose(i,time=waterTime){
   const phase=time*.33+i,x=2300+i*1750+Math.sin(phase)*58;
-  return {x,y:waterCreatureY(x,waterFloorY(x)-190+Math.sin(time*1.1+i)*12,50,28),direction:Math.cos(phase)>=0?1:-1,stroke:(Math.sin(time*3+i)+1)/2};
+  return {x,y:waterCreatureY(x,waterFloorY(x)-190+Math.sin(time*1.1+i)*12,50,28),direction:Math.cos(phase)>=0?1:-1,stroke:(Math.sin(time*3+i)+1)/2,cycle:(time*.75+i*.23)%1};
 }
-function waterTurtleArtScale(){
-  let halfWidth=0,halfHeight=0;
-  for(const f of WATER_REEF_ART.turtle.frames){
-    halfWidth=Math.max(halfWidth,Math.abs(f.sx-f.ax),Math.abs(f.sx+f.sw-f.ax));
-    halfHeight=Math.max(halfHeight,Math.abs(f.sy-f.ay),Math.abs(f.sy+f.sh-f.ay));
-  }
-  // Painted flippers fit inside the existing rock-avoidance envelope.
-  return Math.min(44/halfWidth,27/halfHeight);
-}
-function waterTurtlePainting(step){
-  if(waterTurtlePaintings[step])return waterTurtlePaintings[step];
-  const a=WATER_REEF_ART.turtle,c=document.createElement('canvas');c.width=130;c.height=100;
-  const paint=c.getContext('2d'),scale=waterTurtleArtScale(),mix=step/12;
-  paint.globalCompositeOperation='lighter';
-  for(const [i,weight] of [[0,1-mix],[1,mix]]){
-    if(!weight)continue;const f=a.frames[i];paint.globalAlpha=weight;
-    paint.drawImage(a.image,f.sx,f.sy,f.sw,f.sh,65+(f.sx-f.ax)*scale,50+(f.sy-f.ay)*scale,f.sw*scale,f.sh*scale);
-  }
-  waterTurtlePaintings[step]=c;return c;
-}
+function waterTurtleArtScale(){return TURTLE_ANIMATION.swim.scaleX;}
+function waterTurtlePainting(step){return turtleCyclePainting('swim',step/TURTLE_ANIMATION_STEPS);}
 function drawWaterTurtle(pose){
   const a=WATER_REEF_ART.turtle;if(!a.image.complete||!a.image.naturalWidth)return;
   ctx.save();ctx.translate(pose.x-cameraX,pose.y);ctx.scale(pose.direction,1);
-  ctx.drawImage(waterTurtlePainting(Math.max(0,Math.min(12,Math.round(pose.stroke*12)))),-65,-50);ctx.restore();
+  const painting=turtleCyclePainting('swim',pose.cycle??pose.stroke??0);if(painting)ctx.drawImage(painting,-65,-50);ctx.restore();
 }
 function drawReefLife(){
   for(let i=0;i<92;i++){
