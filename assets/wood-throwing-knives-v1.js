@@ -12,7 +12,7 @@ function collectEarthKnives(){
   }
 }
 function throwEarthKnife(){
-  if(level!=='earth'||!earthKnives.equipped||player.attackCooldown>0||player.duck||state!=='playing')return false;
+  if(!['earth','final'].includes(level)||!earthKnives.equipped||player.attackCooldown>0||player.duck||state!=='playing')return false;
   const k=earthKnives.slots.find(k=>k.state==='ready');if(!k)return false;
   Object.assign(k,{state:'flying',remaining:EARTH_KNIFE_RETURN,x:player.x+player.w/2+player.facing*30,y:player.y+player.h*.48,vx:player.facing*540,age:0,spin:player.facing<0?Math.PI:0});
   if(earthBossVine?.grabbed)releaseEarthVine();

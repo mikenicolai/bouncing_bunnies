@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.16',build:2026101323,builtAt:'2026-10-13',builtLabel:'13 October 2026',deployment:'Smooth touch running and high jumps'});
+const BUILD_INFO=Object.freeze({version:'0.21.17',build:2026101401,builtAt:'2026-10-14',builtLabel:'14 October 2026',deployment:'Castle arsenal and crumbling lava tower'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -1357,8 +1357,8 @@ const earthMushroomBoughs=earthPlatforms.filter(p=>p.kind==='mushroom').map(eart
 const earthGoblinPlatforms=[2,6,10,14,19,22];
 const FINAL_W=9500,FINAL_FLOOR=470,FINAL_GATE={x:3020,y:170,w:28,h:300},FINAL_END_X=8290;
 const FINAL_TOWER={left:8500,right:9420,height:1620,top:FINAL_FLOOR-1620,lavaY:520,entryX:8560,summitX:8695};
-const finalTowerPlatforms=[{x:8360,y:FINAL_FLOOR,w:410,h:32,kind:'tower',oneWay:true,entry:true},
-  ...Array.from({length:12},(_,i)=>({x:i%2?8580:8850,y:FINAL_FLOOR-(i+1)*135,w:230,h:24,kind:'tower',oneWay:true,towerStep:i+1}))];
+const finalTowerPlatforms=[{x:8360,y:FINAL_FLOOR,w:310,h:32,kind:'tower',oneWay:true,entry:true},
+  ...Array.from({length:12},(_,i)=>({x:i===11?8580:i%2?8590:i===0?8790:8850,y:FINAL_FLOOR-(i+1)*135,w:i===11?230:170,h:24,kind:'tower',oneWay:true,towerStep:i+1,crumble:i<11,crackAge:-1,collapsed:false,fallAge:0}))];
 const finalTowerWalls=[{x:FINAL_TOWER.left-30,y:FINAL_TOWER.top-260,w:30,h:FINAL_TOWER.height+40,kind:'castle',towerWall:true},
   {x:FINAL_TOWER.right,y:FINAL_TOWER.top-260,w:40,h:FINAL_TOWER.height+600,kind:'castle',towerWall:true}];
 const finalPlatforms=[
@@ -1430,6 +1430,17 @@ function updateFinalMonsters(dt){
     else if(!wasDizzy&&m.dizzy<=0)hurt(player.x+player.w/2<m.x+m.w/2?-1:1);
   }
 }
+const FINAL_STONE_LIFE=1.05;
+function resetFinalTowerStones(){for(const p of finalTowerPlatforms){p.crackAge=-1;p.collapsed=false;p.fallAge=0;}}
+function updateFinalTowerStones(dt){
+  for(const p of finalTowerPlatforms){
+    if(p.collapsed){p.fallAge+=dt;continue;}
+    if(!p.crumble||p.crackAge<0)continue;
+    const before=p.crackAge;p.crackAge+=dt;
+    if(Math.floor(before/.18)!==Math.floor(p.crackAge/.18))burst(p.x+p.w*.5,p.y+p.h,'#a5a098',2);
+    if(p.crackAge>=FINAL_STONE_LIFE){p.collapsed=true;p.fallAge=0;burst(p.x+p.w*.5,p.y+10,'#a5a098',18);tone(130,.08,'triangle',.02);}
+  }
+}
 function enterFinalTower(){
   if(finalTowerEntered)return;
   finalTowerEntered=true;finalTowerDoorLift=1;
@@ -1439,7 +1450,7 @@ function finalTowerFall(){
   lives--;burst(player.x+player.w/2,FINAL_TOWER.lavaY,'#ffac51',22);tone(100,.22,'sawtooth');
   if(lives<=0){showEnd(false);return;}
   clearInputs();Object.assign(player,{x:checkpoint.x,y:checkpoint.y,h:58,vx:0,vy:0,onGround:true,duck:false,duckVisual:0,attack:0,attackCooldown:0,jumpAge:9,boosts:0,invincible:2});
-  bunnyArrows=[];fireArrow.cooldown=0;fireArrow.release=0;
+  bunnyArrows=[];fireArrow.cooldown=0;fireArrow.release=0;clearFinalWeaponHazards();resetFinalTowerStones();
   cameraX=finalTowerCameraX();cameraY=touchDockHeight?phoneGroundCameraY():0;
 }
 function finalTowerCameraX(){
@@ -1466,7 +1477,7 @@ function updateFinalCastle(dt){
     const floor=finalPlatforms.find(p=>p.h>100&&player.x>=p.x&&player.x+player.w<=p.x+p.w&&Math.abs(player.y+player.h-p.y)<1);
     if(floor)checkpoint={x:Math.max(floor.x+40,player.x-100),y:floor.y-58};
   }
-  updateFireArchery(dt);updateFinalMonsters(dt);
+  updateFireArchery(dt);updateFinalWeapons(dt);updateFinalMonsters(dt);
   if(state==='playing'&&finalTowerEntered&&player.onGround&&Math.abs(player.y+player.h-FINAL_TOWER.top)<1&&Math.abs(player.x+player.w/2-FINAL_TOWER.summitX)<28)showCastleOpeningEnd();
 }
 function showCastleOpeningEnd(){
@@ -1670,6 +1681,103 @@ function drawEarthBossHearts(){
 }
 
 // WILDWOOD_ENCOUNTER_END
+// CASTLE_ARSENAL_BEGIN
+// Castle loadout: four earned weapons, shared selection and safe land dashes.
+const FINAL_WEAPONS=['bow','trident','knives','stars'],FINAL_LAND_DASH_TIME=.34;
+let finalWeapon='bow',finalDashAirUsed=false;
+function resetFinalWeapons(){
+  finalWeapon='bow';finalDashAirUsed=false;
+  waterTrident.owned=true;waterTrident.cyber=true;waterTrident.mode='dash';
+  earthKnives.slots.forEach(k=>Object.assign(k,{state:'ready',remaining:0}));
+  windStars.owned=true;
+}
+function selectFinalWeapon(name){
+  if(level!=='final'||state!=='playing'||!FINAL_WEAPONS.includes(name))return false;
+  stopWaterDash();finalWeapon=name;
+  fireArrow.aiming=name==='bow'&&fireArrow.owned&&player.onGround&&!player.duck;
+  earthKnives.equipped=name==='knives';windStars.equipped=name==='stars';
+  joystick.jumpGesture=null;player.attack=0;tone(480,.08,'triangle',.02);return true;
+}
+function cycleFinalWeapon(){return selectFinalWeapon(FINAL_WEAPONS[(FINAL_WEAPONS.indexOf(finalWeapon)+1)%4]);}
+function toggleFinalWeapon(){
+  if(level!=='final'||state!=='playing')return;
+  if(finalWeapon==='bow')toggleFireAim();
+  else if(finalWeapon==='trident'){waterTrident.mode=waterTrident.mode==='dash'?'throw':'dash';tone(560,.07,'triangle',.025);}
+  else if(finalWeapon==='knives')earthKnives.equipped=!earthKnives.equipped;
+  else windStars.equipped=!windStars.equipped;
+}
+function clearFinalWeaponHazards(){
+  stopWaterDash();waterTrident.shot=null;finalDashAirUsed=false;
+  for(const k of [...earthKnives.slots,...windStars.slots])if(k.state==='flying')k.state='returning';
+}
+function finalSolids(){return [...finalPlatforms.filter(p=>!p.collapsed),{...FINAL_GATE,y:FINAL_GATE.y-FINAL_GATE.h*finalGateLift}];}
+function moveFinalDash(dt){
+  const t=waterTrident,travel=Math.min(dt,t.dash),steps=Math.max(1,Math.ceil(travel*WATER_TRIDENT_DASH_SPEED/7));
+  const solids=finalSolids();player.onGround=false;player.jumpAge=9;player.boosts=2;
+  for(let i=0;i<steps;i++){
+    const feet=player.y+player.h;
+    const next={...player,x:player.x+t.dx*WATER_TRIDENT_DASH_SPEED*travel/steps,y:player.y+t.dy*WATER_TRIDENT_DASH_SPEED*travel/steps};
+    const landing=solids.find(p=>p.oneWay&&t.dy>0&&feet<=p.y+1&&next.y+next.h>=p.y&&next.x+next.w>p.x&&next.x<p.x+p.w);
+    if(landing){next.y=landing.y-next.h;player.x=next.x;player.y=next.y;player.onGround=true;if(landing.crumble&&landing.crackAge<0)landing.crackAge=0;stopWaterDash();break;}
+    if(next.x<0||next.x+next.w>FINAL_W||solids.some(p=>!p.oneWay&&overlap(next,p))){stopWaterDash();break;}
+    player.previousFeet=feet;player.x=next.x;player.y=next.y;
+    for(const m of finalMonsters)if(m.alive&&overlap(player,m))hitFinalMonster(m);
+    if(i%3===0)burst(player.x+21-t.dx*25,player.y+29-t.dy*25,'#a8fff0',1);
+  }
+  if(t.dash>0){t.dash=Math.max(0,t.dash-travel);if(t.dash===0){player.vx=t.dx*130;player.vy=t.dy*130;if(t.shot)t.shot.returning=true;}}
+  if(Math.abs(t.dy)<.01&&solids.some(p=>Math.abs(player.y+player.h-p.y)<1&&player.x+player.w>p.x&&player.x<p.x+p.w))player.onGround=true;
+  if(player.onGround)player.vy=0;
+}
+function finalProjectileHit(old,shot){
+  const hit=arrowFirstCollision(old,shot);
+  if(hit){shot.x=old.x+(shot.x-old.x)*hit.t;shot.y=old.y+(shot.y-old.y)*hit.t;if(hit.kind==='castleMonster')hitFinalMonster(hit.target);burst(shot.x,shot.y,'#acede2',5);}
+  return !!hit;
+}
+function returnFinalProjectile(shot,dt,speed=1000){
+  const dx=player.x+21-shot.x,dy=player.y+29-shot.y,d=Math.hypot(dx,dy);
+  if(d<=speed*dt+18)return true;
+  shot.x+=dx/d*speed*dt;shot.y+=dy/d*speed*dt;return false;
+}
+function updateFinalWeapons(dt){
+  const t=waterTrident;t.cooldown=Math.max(0,t.cooldown-dt);
+  if(player.onGround&&t.dash===0)finalDashAirUsed=false;
+  if(t.shot){
+    const shot=t.shot;shot.age+=dt;
+    if(shot.returning){if(returnFinalProjectile(shot,dt,WATER_TRIDENT_RETURN_SPEED))t.shot=null;}
+    else if(shot.dash){shot.x=player.x+21+t.dx*40;shot.y=player.y+29+t.dy*40;}
+    else{const old={x:shot.x,y:shot.y};shot.x+=shot.vx*dt;shot.y+=shot.vy*dt;if(finalProjectileHit(old,shot)||shot.age>=.7)shot.returning=true;}
+  }
+  for(const k of [...earthKnives.slots,...windStars.slots]){
+    if(k.state==='ready'||k.state==='hidden')continue;
+    k.spin+=dt*12;k.age+=dt;
+    if(k.state==='returning'){if(returnFinalProjectile(k,dt)){k.state='ready';k.remaining=0;}continue;}
+    const old={x:k.x,y:k.y};k.x+=k.vx*dt;
+    if(finalProjectileHit(old,k)||k.age>=.8)k.state='returning';
+  }
+}
+function finalWeaponButtons(){const x=W<650?12:75,y=W<650?152:94;return FINAL_WEAPONS.map((name,i)=>({name,x:x+i*62,y,w:60,h:60}));}
+function drawFinalWeaponInventory(){
+  if(level!=='final')return;
+  const buttons=finalWeaponButtons(),first=buttons[0];ctx.save();ctx.fillStyle='rgba(20,26,37,.9)';roundRect(first.x-4,first.y-4,252,84,10);
+  for(const b of buttons){
+    const selected=finalWeapon===b.name;ctx.fillStyle=selected?'#4a665b':'#293444';roundRect(b.x,b.y,b.w,b.h,8);
+    if(selected){ctx.strokeStyle='#ffe3a0';ctx.lineWidth=2;ctx.strokeRect(b.x+2,b.y+2,b.w-4,b.h-4);}
+    const x=b.x+30,y=b.y+23;
+    if(b.name==='bow')drawArrowIcon(x,y,45,0,'normal');else if(b.name==='trident')drawWaterTrident(x+cameraX,y,50,-.4);else if(b.name==='knives')drawEarthKnife(x,y,34,-.4);else drawWindStar(x,y,30,.2);
+    ctx.fillStyle='#fff2ce';ctx.font='bold 9px system-ui';ctx.textAlign='center';ctx.fillText(b.name.toUpperCase(),x,b.y+52);
+  }
+  const status=finalWeapon==='bow'?`ARROWS ${fireArrow.ammo.filter(Boolean).length}/5 · Z ${fireArrow.aiming?'STOW':'EQUIP'}`:finalWeapon==='trident'?`Z ${waterTrident.mode==='dash'?'THROW':'DASH'} · X ${waterTrident.mode.toUpperCase()}`:finalWeapon==='knives'?`${earthKnives.slots.filter(k=>k.state==='ready').length}/3 · X ${earthKnives.equipped?'THROW':'HIT'} · Z ${earthKnives.equipped?'STOW':'EQUIP'}`:`${windStars.slots.filter(k=>k.state==='ready').length}/8 · X ${windStars.equipped?'THROW':'HIT'} · Z ${windStars.equipped?'STOW':'EQUIP'}`;
+  ctx.font='bold 9px system-ui';ctx.fillText(`O CHOOSE · ${status}`,first.x+122,first.y+74);ctx.restore();
+}
+function drawFinalWeapons(){
+  for(const k of earthKnives.slots)if(k.state==='flying'||k.state==='returning')drawEarthKnife(k.x-cameraX,k.y,40,k.spin);
+  for(const k of windStars.slots)if(k.state==='flying'||k.state==='returning')drawWindStar(k.x-cameraX,k.y,40,k.spin);
+  if(waterTrident.shot){const s=waterTrident.shot;drawWaterTrident(s.x,s.y,72,Math.atan2(s.vy,s.vx));}
+  if(finalWeapon==='trident'&&!waterTrident.shot)drawWaterTrident(player.x+21+player.facing*18,player.y+35,58,player.facing<0?Math.PI+.35:-.35);
+  if(finalWeapon==='knives')drawHeldEarthKnife();if(finalWeapon==='stars')drawHeldWindStar();
+}
+
+// CASTLE_ARSENAL_END
 // WILDWOOD_KNIVES_BEGIN
 // Three individually discoverable knives on a lower bough beneath Wildwood's final tree route.
 const EARTH_KNIFE_RETURN=5;
@@ -1685,7 +1793,7 @@ function collectEarthKnives(){
   }
 }
 function throwEarthKnife(){
-  if(level!=='earth'||!earthKnives.equipped||player.attackCooldown>0||player.duck||state!=='playing')return false;
+  if(!['earth','final'].includes(level)||!earthKnives.equipped||player.attackCooldown>0||player.duck||state!=='playing')return false;
   const k=earthKnives.slots.find(k=>k.state==='ready');if(!k)return false;
   Object.assign(k,{state:'flying',remaining:EARTH_KNIFE_RETURN,x:player.x+player.w/2+player.facing*30,y:player.y+player.h*.48,vx:player.facing*540,age:0,spin:player.facing<0?Math.PI:0});
   if(earthBossVine?.grabbed)releaseEarthVine();
@@ -1744,6 +1852,7 @@ function drawEarthKnifeInventory(){
   });
   ctx.fillStyle='#edf7e3';ctx.font='bold 10px system-ui';ctx.textAlign='center';ctx.fillText(earthKnives.equipped?'THROW · Z STOW':'PUNCH · Z EQUIP',84,y+42);ctx.restore();
 }
+
 // WILDWOOD_KNIVES_END
 
 let fireMode='surface';
@@ -2010,7 +2119,7 @@ function updateFireArrowRecharge(dt){
   }
   if(fireArrow.ammo.every(Boolean))fireArrow.recharge=0;
 }
-function fireArrowToggleAvailable(){return fireArrow.owned&&(level==='meadow'&&!meadowLesson.bowStored||level==='final'||level==='fire'&&['maze','secondVolcano','king'].includes(fireMode)&&!(fireMode==='king'&&lavaKing.defeated));}
+function fireArrowToggleAvailable(){return fireArrow.owned&&(level==='meadow'&&!meadowLesson.bowStored||level==='final'&&finalWeapon==='bow'||level==='fire'&&['maze','secondVolcano','king'].includes(fireMode)&&!(fireMode==='king'&&lavaKing.defeated));}
 function fireWeaponEquipped(){return (level==='fire'||level==='final'||level==='meadow')&&fireArrow.owned&&fireArrow.aiming&&!player.inWater;}
 function fireSlopeTravelMode(){return level==='fire'&&['volcano','secondVolcano'].includes(fireMode);}
 function fireHillCrawlMode(){return fireSlopeTravelMode()&&player.onGround&&Math.abs(fireSlopeGrade(player.x+player.w/2))>.05;}
@@ -2067,7 +2176,7 @@ function arrowFirstCollision(a,b,inMaze=false){
     return hit;
   }
   if(level==='final'){
-    for(const p of finalPlatforms)consider(arrowSegmentEntry(a,b,p),'wall');
+    for(const p of finalPlatforms.filter(p=>!p.collapsed))consider(arrowSegmentEntry(a,b,p),'wall');
     consider(arrowSegmentEntry(a,b,{...FINAL_GATE,y:FINAL_GATE.y-FINAL_GATE.h*finalGateLift}),'wall');
     for(const m of finalMonsters)if(m.alive)consider(arrowSegmentEntry(a,b,m),'castleMonster',m);
     return hit;
@@ -2395,7 +2504,7 @@ function updateFireMaze(dt){
 const WATER_TRIDENT_SPOT={x:11130,y:1110},WATER_SUIT_SPOT={x:12220,y:1380};
 const WATER_RUINS_START=11850,WATER_ARENA={left:12600,right:14560,exit:14670};
 const NEPTUNUS_HP=10;
-const WATER_TRIDENT_DASH_SPEED=720,WATER_TRIDENT_DASH_TIME=.82,WATER_TRIDENT_RETURN_SPEED=1500;
+const WATER_TRIDENT_DASH_SPEED=720,WATER_TRIDENT_DASH_TIME=.68,WATER_TRIDENT_RETURN_SPEED=1500;
 let waterTrident,waterAquaSuit,neptunus,neptunusShots;
 const neptunusSheet=new Image();neptunusSheet.src='assets/neptunus-v1.png';
 const waterRuinsSheet=new Image();waterRuinsSheet.src='assets/ancient-water-ruins-v1.png';
@@ -2432,12 +2541,13 @@ function toggleWaterTrident(){
 }
 function fireWaterTrident(){
   const t=waterTrident;
-  if(!t.owned||!player.inWater||player.breaching||t.cooldown>0||t.shot)return false;
+  if(!t.owned||level!=='final'&&(!player.inWater||player.breaching)||t.cooldown>0||t.shot)return false;
+  if(level==='final'&&(finalWeapon!=='trident'||t.mode==='dash'&&finalDashAirUsed))return false;
   const direction=waterAimVector();t.dx=direction.x;t.dy=direction.y;
   t.cooldown=.85;player.attack=.25;
   t.shot={x:player.x+player.w/2+t.dx*35,y:player.y+player.h/2+t.dy*35,
     vx:t.dx*650,vy:t.dy*650,age:0,returning:false,dash:t.mode==='dash',hit:false};
-  if(t.mode==='dash'){t.dash=WATER_TRIDENT_DASH_TIME;player.vx=t.dx*WATER_TRIDENT_DASH_SPEED;player.vy=t.dy*WATER_TRIDENT_DASH_SPEED;}
+  if(t.mode==='dash'){t.dash=level==='final'?FINAL_LAND_DASH_TIME:WATER_TRIDENT_DASH_TIME;if(level==='final'){finalDashAirUsed=true;t.cooldown=1.2;player.onGround=false;player.jumpAge=9;player.boosts=2;}player.vx=t.dx*WATER_TRIDENT_DASH_SPEED;player.vy=t.dy*WATER_TRIDENT_DASH_SPEED;}
   tone(t.mode==='dash'?700:480,.12,'triangle',.03);return true;
 }
 function stopWaterDash(){
@@ -2888,6 +2998,8 @@ function resumeWithHearts(hearts){
     if(neptunus.hp>0){neptunus.mode='idle';neptunus.age=0;neptunus.dizzy=1.2;neptunus.cooldown=1.5;}
   }else if(level==='meadow'){
     player.inWater=false;player.air=WATER_AIR;player.stroke=0;
+  }else if(level==='final'){
+    clearFinalWeaponHazards();if(checkpoint.tower)resetFinalTowerStones();
   }else if(level==='air'){
     tempestWinds=[];tempest.dizzy=1.5;tempest.shotCooldown=Math.max(1.2,tempest.shotCooldown);
     player.airCloud=airPlatforms.find(p=>!p.removed&&p.kind==='white'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x<p.x+p.w)||null;
@@ -2956,7 +3068,7 @@ function resetGame(autoPlay = true) {
   waterPirates.forEach(positionWaterPirate);
   earthPlatforms.forEach(p=>p.spring=0);
   earthGoblins=level==='earth'?earthGoblinPlatforms.map((id,i)=>{const p=earthPlatforms[id];return{x:p.x+p.w*.5-27,y:p.y-58,w:54,h:58,home:p,id,hp:2,facing:i%2?-1:1,vx:0,mode:Math.random()<.7?'dance':'idle',modeAge:0,modeDuration:2+Math.random()*2,phase:i*.7,dizzy:0,alive:true};}):[];
-  if(level==='final')resetFinalMonsters();else finalMonsters=[];
+  if(level==='final'){resetFinalMonsters();resetFinalWeapons();resetFinalTowerStones();}else finalMonsters=[];
   particles = []; score = 0; resetRunWallet(); lives = 3; cameraX = 0; cameraY = level==='fire'?fireCameraTargetY():touchDockHeight?phoneGroundCameraY():level==='earth'?72:0;
   state = autoPlay ? "playing" : "title";
 }
@@ -3481,10 +3593,13 @@ function updateWorld(dt) {
   }
   updateDuck();
   player.duckVisual=Math.max(0,Math.min(.18,(player.duckVisual||0)+(player.duck?dt:-dt)));
+  if(level==='final')updateFinalTowerStones(dt);
+  if(level==='final'&&waterTrident.dash>0)moveFinalDash(dt);
+  else{
   moveBunnyHorizontal(dt);
   player.vy+=1450*dt; player.vy=Math.min(player.vy,level==='air'&&descentStarted&&player.y>airPlatforms[19].y+60?300:850);
   player.x+=player.vx*dt;
-  const movementPlatforms=level==='meadow'?[...platforms,...meadowLessonSolids()]:level==='earth'?[earthTurtlePlatform(),...platforms]:platforms;
+  const movementPlatforms=level==='final'?platforms.filter(p=>!p.collapsed):level==='meadow'?[...platforms,...meadowLessonSolids()]:level==='earth'?[earthTurtlePlatform(),...platforms]:platforms;
   for(const p of movementPlatforms) if(p.kind!=='blue'&&!p.oneWay&&overlap(player,p)) {
     // Beach collision follows the continuous floor, including its sloping lip.
     if(level==='water'&&p===waterPlatforms[0])continue;
@@ -3516,6 +3631,7 @@ function updateWorld(dt) {
     if(p.kind==='blue'&&(player.vy<0||previousFeet>p.y+1))continue;
     if(player.vy>=0&&previousFeet<=p.y+1){
       player.y=p.y-player.h;player.vy=0;player.onGround=true;player.jumpAge=9;player.boosts=0;
+       if(level==='final'&&p.crumble&&p.crackAge<0)p.crackAge=0;
        if(level==='air')player.airCloud=p;
       if(p.kind==='turtle')player.ridingTurtle=true;
       if(p.kind==='blue')player.blueContact={platform:p,age:0};
@@ -3539,6 +3655,7 @@ function updateWorld(dt) {
   }else if(level==='meadow'&&player.x+player.w/2>=MEADOW_POOL.left&&player.x+player.w/2<=MEADOW_POOL.right+player.w){
     const shoreY=meadowPoolFloorY(player.x+player.w/2);
     if(player.vy>=0&&previousFeet<=shoreY+30&&player.y+player.h>=shoreY-12){player.y=shoreY-player.h;player.vy=0;player.onGround=true;}
+  }
   }
   player.x=Math.max(0,Math.min(WORLD_W-player.w,player.x)); player.run+=Math.abs(player.vx)*dt*.04;
   player.invincible=Math.max(0,player.invincible-dt);
@@ -3629,6 +3746,9 @@ function jump() {
 
 function attack() {
   if(state!=="playing"||player.duck)return;
+  if(level==='final'&&(finalWeapon==='trident'||finalWeapon==='knives'&&earthKnives.equipped||finalWeapon==='stars'&&windStars.equipped)){
+    if(finalWeapon==='trident')fireWaterTrident();else if(finalWeapon==='knives'&&earthKnives.equipped)throwEarthKnife();else if(finalWeapon==='stars'&&windStars.equipped)throwWindStar();return;
+  }
   if(fireArcheryMode()){fireBunnyArrow();return;}
   if(level==='air'&&windStars.owned&&windStars.equipped){throwWindStar();return;}
   if(level==='earth'&&earthKnivesOwned()&&earthKnives.equipped){throwEarthKnife();return;}
@@ -3773,6 +3893,9 @@ function drawFinalTowerDoor(){
   ctx.restore();
 }
 function drawFinalPlatform(p){
+  if(p.collapsed&&p.fallAge>1.1)return;
+  if(p.collapsed)p={...p,y:p.y+220*p.fallAge*p.fallAge};
+  else if(p.crumble&&p.crackAge>0)p={...p,x:p.x+Math.sin(finalTime*38)*Math.min(2,p.crackAge*2)};
   const x=p.x-cameraX;if(x>W||x+p.w<0)return;
   const depth=p.h>100?Math.max(p.h,cameraY+H-p.y):p.h;
   ctx.save();
@@ -3789,6 +3912,7 @@ function drawFinalPlatform(p){
   }
   ctx.fillStyle=p.kind==='forest'?'#77745b':'#898784';ctx.fillRect(x,p.y,p.w,3);
   ctx.restore();
+  if(p.crumble&&p.crackAge>0){ctx.save();ctx.strokeStyle='#242127';ctx.lineWidth=1+Math.min(2,p.crackAge*2);for(let i=0;i<3;i++){const cx=x+p.w*(i+1)/4;ctx.beginPath();ctx.moveTo(cx,p.y);ctx.lineTo(cx-9,p.y+8);ctx.lineTo(cx+3,p.y+14);ctx.lineTo(cx-4,p.y+p.h*Math.min(1,p.crackAge/FINAL_STONE_LIFE));ctx.stroke();}ctx.restore();}
   if(p.kind==='tower'){ctx.save();ctx.strokeStyle='#403b37';ctx.lineWidth=5;for(const offset of [32,p.w-32]){ctx.beginPath();ctx.moveTo(x+offset,p.y+p.h);ctx.lineTo(x+offset,p.y+p.h+27);ctx.lineTo(x+offset+20,p.y+p.h);ctx.stroke();}ctx.restore();}
 }
 function drawFinalTorch(x,y){
@@ -5744,11 +5868,11 @@ function drawTouchControls() {
   for(const [name,b] of Object.entries(ACTIONS)){
     if(fireArcheryMode()&&(name==='jump'||name==='duck'))continue;
     if(fireWalking&&(name==='jump'||name==='duck')||level==='fire'&&fireJumpingMode()&&!postKing&&name==='duck')continue;
-    const aimButton=name==='ability2'&&(fireArrowToggleAvailable()||level==='air'&&windStars.owned||level==='earth'&&earthKnivesOwned()||level==='water'&&waterTrident.owned),reserved=name.startsWith('ability')&&!aimButton;if(reserved&&(touchDockHeight||canvas.getBoundingClientRect().width<520))continue;
+    const aimButton=name==='ability2'&&(level==='final'||fireArrowToggleAvailable()||level==='air'&&windStars.owned||level==='earth'&&earthKnivesOwned()||level==='water'&&waterTrident.owned),reserved=name.startsWith('ability')&&!aimButton;if(reserved&&(touchDockHeight||canvas.getBoundingClientRect().width<520))continue;
     ctx.globalAlpha=reserved?.3:.48;ctx.fillStyle=b.color;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
     ctx.globalAlpha=.7;ctx.strokeStyle='#fff';ctx.stroke();
     ctx.globalAlpha=reserved?.65:.9;ctx.fillStyle=reserved?'#d7dfdc':THEME.ink;
-    ctx.font=`900 ${aimButton?10:reserved?17:b.r>50?20:12}px system-ui`;ctx.textAlign='center';ctx.fillText(level==='water'&&waterTrident.owned&&(aimButton||name==='hit')?(aimButton?'MODE':waterTrident.mode.toUpperCase()):aimButton?((level==='air'?windStars.equipped:level==='earth'?earthKnives.equipped:fireArrow.aiming)?'STOW':'EQUIP'):(level==='air'&&windStars.owned&&windStars.equipped||level==='earth'&&earthKnivesOwned()&&earthKnives.equipped)&&name==='hit'?'THROW':fireArcheryMode()&&name==='hit'?'FIRE':bunnySwimming()&&name==='jump'?(level==='water'&&waterCanBreach()?'LEAP':'STROKE'):bunnySwimming()&&name==='duck'?'DIVE':b.label,b.x,b.y+4);
+    ctx.font=`900 ${aimButton?10:reserved?17:b.r>50?20:12}px system-ui`;ctx.textAlign='center';ctx.fillText(level==='final'&&aimButton?(finalWeapon==='trident'?'MODE':finalWeapon==='bow'?(fireArrow.aiming?'STOW':'EQUIP'):(finalWeapon==='knives'?earthKnives.equipped:windStars.equipped)?'STOW':'EQUIP'):level==='final'&&name==='hit'?(finalWeapon==='trident'?waterTrident.mode.toUpperCase():finalWeapon==='bow'?(fireArrow.aiming?'FIRE':'HIT'):(finalWeapon==='knives'?earthKnives.equipped:windStars.equipped)?'THROW':'HIT'):level==='water'&&waterTrident.owned&&(aimButton||name==='hit')?(aimButton?'MODE':waterTrident.mode.toUpperCase()):aimButton?((level==='air'?windStars.equipped:level==='earth'?earthKnives.equipped:fireArrow.aiming)?'STOW':'EQUIP'):(level==='air'&&windStars.owned&&windStars.equipped||level==='earth'&&earthKnivesOwned()&&earthKnives.equipped)&&name==='hit'?'THROW':fireArcheryMode()&&name==='hit'?'FIRE':bunnySwimming()&&name==='jump'?(level==='water'&&waterCanBreach()?'LEAP':'STROKE'):bunnySwimming()&&name==='duck'?'DIVE':b.label,b.x,b.y+4);
     if(reserved){ctx.font='700 8px system-ui';ctx.fillText('SOON',b.x,b.y+15);}
   }
   ctx.restore();
@@ -5758,13 +5882,13 @@ function render(time) {
   const nativeW=W,nativeH=H,fieldH=playfieldHeight(),view=level==='fire'?fireViewSize():level==='water'?waterViewSize():{width:W,height:fieldH,scale:1};
   ctx.save();ctx.beginPath();ctx.rect(0,0,W,fieldH);ctx.clip();ctx.scale(view.scale,view.scale);W=view.width;H=view.height;
   drawBackground();ctx.save();ctx.translate(0,-cameraY);if(level==='fire'){drawFireTrees();drawFireVolcano();drawFireMaze();drawSecondFireVolcano();drawFireMazeTransition();}if(level==='earth')drawEarthTrees();platforms.forEach(drawPlatform);if(level==='air')drawAirWorld();else if(level==='earth')drawEarthWorld();else if(level==='fire'){drawFireRollingStones();drawLavaKingBarriers();drawFireGate();drawLavaKing();drawFireArrowPickup();drawFireAimPath();drawBunnyArrows();}else if(level==='water')drawWaterWorld();else if(level==='final'){drawFinalWorld();drawFireAimPath();drawBunnyArrows();}else if(level==='meadow')drawMeadowLessons();else drawShrine(time);
-  coins.forEach(c=>drawCoin(c,time));enemies.forEach(drawEnemy);fireZombies.forEach(drawFireZombie);waterSharks.forEach(drawWaterShark);waterPirates.forEach(drawWaterPirate);if(level==='final')drawFinalMonsters();drawBunny();if(level==='air')drawHeldWindStar();if(level==='earth')drawHeldEarthKnife();if(level==='water'){drawHeldWaterEquipment();drawWaterGateForeground();drawWaterCacti();}if(level==='final')drawFinalGateForeground();drawBlueCloudForeground();
-  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;ctx.restore();ctx.restore();W=nativeW;H=nativeH;drawHUD();drawEarthBossHearts();if(level==='fire')drawLavaKingHearts();if(level==='fire'||level==='final'||level==='meadow')drawFireArrowInventory();if(level==='air')drawWindStarInventory();if(level==='earth')drawEarthKnifeInventory();drawWaterAdventureHUD();drawTouchControls();if(developerRun){ctx.save();ctx.font='bold 11px system-ui';ctx.textAlign='left';ctx.fillStyle='#fff4ae';ctx.fillText('DEVELOPER MODE · test progress',12,playfieldHeight()-12);ctx.restore();}
+  coins.forEach(c=>drawCoin(c,time));enemies.forEach(drawEnemy);fireZombies.forEach(drawFireZombie);waterSharks.forEach(drawWaterShark);waterPirates.forEach(drawWaterPirate);if(level==='final')drawFinalMonsters();drawBunny();if(level==='final')drawFinalWeapons();if(level==='air')drawHeldWindStar();if(level==='earth')drawHeldEarthKnife();if(level==='water'){drawHeldWaterEquipment();drawWaterGateForeground();drawWaterCacti();}if(level==='final')drawFinalGateForeground();drawBlueCloudForeground();
+  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;ctx.restore();ctx.restore();W=nativeW;H=nativeH;drawHUD();drawEarthBossHearts();if(level==='fire')drawLavaKingHearts();if(level==='fire'||level==='meadow')drawFireArrowInventory();if(level==='final')drawFinalWeaponInventory();if(level==='air')drawWindStarInventory();if(level==='earth')drawEarthKnifeInventory();drawWaterAdventureHUD();drawTouchControls();if(developerRun){ctx.save();ctx.font='bold 11px system-ui';ctx.textAlign='left';ctx.fillStyle='#fff4ae';ctx.fillText('DEVELOPER MODE · test progress',12,playfieldHeight()-12);ctx.restore();}
 }
 
 function loop(ms) { const t=ms/1000,dt=Math.min(.033,t-lastTime||0);lastTime=t;update(dt);render(t);requestAnimationFrame(loop); }
 
-window.addEventListener("keydown",e=>{if(state==='reviveAd'){e.preventDefault();return;}if(state==='developer'){if(e.code==='Escape')exitDeveloperMode();return;}if(e.code==='KeyO'){if(level==='earth'){e.preventDefault();if(!e.repeat)toggleEarthTurtle();}return;}if(e.code==='KeyM'){e.preventDefault();if(!e.repeat&&state!=='map')openWorldMap();return;}if(state==='map'){if(e.code==='KeyD'&&!e.repeat){e.preventDefault();openDeveloperMenu();}else if(e.code==='KeyR')start();return;}if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(["ArrowUp","KeyW","Space"].includes(e.code)&&!e.repeat)jump();if(e.code==='KeyZ'&&!e.repeat){if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}if(["KeyX","KeyF"].includes(e.code)&&!e.repeat)attack();if(e.code==="KeyR")start();});
+window.addEventListener("keydown",e=>{if(state==='reviveAd'){e.preventDefault();return;}if(state==='developer'){if(e.code==='Escape')exitDeveloperMode();return;}if(e.code==='KeyO'){if(level==='final'){e.preventDefault();if(!e.repeat)cycleFinalWeapon();}else if(level==='earth'){e.preventDefault();if(!e.repeat)toggleEarthTurtle();}return;}if(e.code==='KeyM'){e.preventDefault();if(!e.repeat&&state!=='map')openWorldMap();return;}if(state==='map'){if(e.code==='KeyD'&&!e.repeat){e.preventDefault();openDeveloperMenu();}else if(e.code==='KeyR')start();return;}if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(["ArrowUp","KeyW","Space"].includes(e.code)&&!e.repeat)jump();if(e.code==='KeyZ'&&!e.repeat){if(level==='final')toggleFinalWeapon();else if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}if(["KeyX","KeyF"].includes(e.code)&&!e.repeat)attack();if(e.code==="KeyR")start();});
 window.addEventListener("keyup",e=>keys.delete(e.code));
 function canvasPoint(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
 function fitTouchControls(){
@@ -5831,7 +5955,8 @@ canvas.addEventListener("pointerdown",e=>{
   if(state!=='playing')return;
   fitTouchControls();
   const p=canvasPoint(e);
-  if((fireArrowToggleAvailable()||level==='air'&&windStars.owned||level==='earth'&&earthKnivesOwned()||level==='water'&&waterTrident.owned)&&Math.hypot(p.x-ACTIONS.ability2.x,p.y-ACTIONS.ability2.y)<ACTIONS.ability2.r+7){e.preventDefault();if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}
+  if(level==='final'){const b=finalWeaponButtons().find(b=>p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h);if(b){e.preventDefault();selectFinalWeapon(b.name);return;}}
+  if((level==='final'||fireArrowToggleAvailable()||level==='air'&&windStars.owned||level==='earth'&&earthKnivesOwned()||level==='water'&&waterTrident.owned)&&Math.hypot(p.x-ACTIONS.ability2.x,p.y-ACTIONS.ability2.y)<ACTIONS.ability2.r+7){e.preventDefault();if(level==='final')toggleFinalWeapon();else if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}
   else if(!fireArcheryMode()&&!(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated))&&Math.hypot(p.x-ACTIONS.duck.x,p.y-ACTIONS.duck.y)<ACTIONS.duck.r+7){e.preventDefault();duckPointer=e.pointerId;canvas.setPointerCapture(e.pointerId);updateDuck();}
   else if(!joystick.active&&Math.hypot(p.x-JOY.x,p.y-JOY.y)<JOY.radius+22){e.preventDefault();joystick.active=true;joystick.pointerId=e.pointerId;canvas.setPointerCapture(e.pointerId);updateJoystick(p);}
   else if(Math.hypot(p.x-ACTIONS.jump.x,p.y-ACTIONS.jump.y)<ACTIONS.jump.r+12){e.preventDefault();jump();}

@@ -3,7 +3,7 @@
 const WATER_TRIDENT_SPOT={x:11130,y:1110},WATER_SUIT_SPOT={x:12220,y:1380};
 const WATER_RUINS_START=11850,WATER_ARENA={left:12600,right:14560,exit:14670};
 const NEPTUNUS_HP=10;
-const WATER_TRIDENT_DASH_SPEED=720,WATER_TRIDENT_DASH_TIME=.82,WATER_TRIDENT_RETURN_SPEED=1500;
+const WATER_TRIDENT_DASH_SPEED=720,WATER_TRIDENT_DASH_TIME=.68,WATER_TRIDENT_RETURN_SPEED=1500;
 let waterTrident,waterAquaSuit,neptunus,neptunusShots;
 const neptunusSheet=new Image();neptunusSheet.src='assets/neptunus-v1.png';
 const waterRuinsSheet=new Image();waterRuinsSheet.src='assets/ancient-water-ruins-v1.png';
@@ -40,12 +40,13 @@ function toggleWaterTrident(){
 }
 function fireWaterTrident(){
   const t=waterTrident;
-  if(!t.owned||!player.inWater||player.breaching||t.cooldown>0||t.shot)return false;
+  if(!t.owned||level!=='final'&&(!player.inWater||player.breaching)||t.cooldown>0||t.shot)return false;
+  if(level==='final'&&(finalWeapon!=='trident'||t.mode==='dash'&&finalDashAirUsed))return false;
   const direction=waterAimVector();t.dx=direction.x;t.dy=direction.y;
   t.cooldown=.85;player.attack=.25;
   t.shot={x:player.x+player.w/2+t.dx*35,y:player.y+player.h/2+t.dy*35,
     vx:t.dx*650,vy:t.dy*650,age:0,returning:false,dash:t.mode==='dash',hit:false};
-  if(t.mode==='dash'){t.dash=WATER_TRIDENT_DASH_TIME;player.vx=t.dx*WATER_TRIDENT_DASH_SPEED;player.vy=t.dy*WATER_TRIDENT_DASH_SPEED;}
+  if(t.mode==='dash'){t.dash=level==='final'?FINAL_LAND_DASH_TIME:WATER_TRIDENT_DASH_TIME;if(level==='final'){finalDashAirUsed=true;t.cooldown=1.2;player.onGround=false;player.jumpAge=9;player.boosts=2;}player.vx=t.dx*WATER_TRIDENT_DASH_SPEED;player.vy=t.dy*WATER_TRIDENT_DASH_SPEED;}
   tone(t.mode==='dash'?700:480,.12,'triangle',.03);return true;
 }
 function stopWaterDash(){

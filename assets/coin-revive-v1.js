@@ -55,6 +55,8 @@ function resumeWithHearts(hearts){
     if(neptunus.hp>0){neptunus.mode='idle';neptunus.age=0;neptunus.dizzy=1.2;neptunus.cooldown=1.5;}
   }else if(level==='meadow'){
     player.inWater=false;player.air=WATER_AIR;player.stroke=0;
+  }else if(level==='final'){
+    clearFinalWeaponHazards();if(checkpoint.tower)resetFinalTowerStones();
   }else if(level==='air'){
     tempestWinds=[];tempest.dizzy=1.5;tempest.shotCooldown=Math.max(1.2,tempest.shotCooldown);
     player.airCloud=airPlatforms.find(p=>!p.removed&&p.kind==='white'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x<p.x+p.w)||null;

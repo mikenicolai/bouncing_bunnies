@@ -16,9 +16,9 @@ for(const fps of [30,60,120]){
   run('neptunus.dizzy=0;neptunus.hp=6;hitNeptunus()');assert(run('waterTrident.cyber'));
   run('neptunus.dizzy=0;hitNeptunus()');assert(run('waterTrident.cyber'),'upgrade stays on below five hearts');
  }
- // The longer dash keeps its swept movement and reaches beyond the former 468px range.
+ // The shorter dash keeps swept movement and ends after roughly 490px.
  run("level='water';resetGame();player.inWater=true;waterTrident.owned=true;waterAquaSuit=true;waterSharks=[];waterPirates=[];player.x=11500;player.y=1150;waterGate.phase='open';waterTrident.mode='dash';attack()");
- tick('update',.8);assert(run('player.x>12065&&player.x<12085'),'dash travels about 576px in .8s');
+ tick('update',.7);assert(run('player.x>11985&&player.x<12005&&waterTrident.dash===0'),'shortened dash travels about 490px in .68s');
  // Return from 650px away takes under half a second, including cooldown.
  run("waterTrident.dash=0;waterTrident.cooldown=.3;waterTrident.shot={x:player.x+21+650,y:player.y+29,returning:true,age:.9}");
  tick('updateWaterTrident',.5);assert.equal(run('waterTrident.shot'),null);assert.equal(run('waterTrident.cooldown'),0);
@@ -39,4 +39,4 @@ for(const fps of [30,60,120]){
   run('bossTime+=.5');tick('updateTempest',.5);assert.equal(run('tempest.x'),x);assert.equal(run('tempestWinds.length'),0);
  }
 }
-console.log('PASS boss hit reactions: Water windup/lunge cancellation, harmless stationary hurt windows, five-heart cyber unlock, longer dash and faster return; both Wildwood forms interrupt all attacks; Tempest stops and cancels gusts at 30/60/120 FPS.');
+console.log('PASS boss hit reactions: Water windup/lunge cancellation, harmless stationary hurt windows, five-heart cyber unlock, shorter dash and faster return; both Wildwood forms interrupt all attacks; Tempest stops and cancels gusts at 30/60/120 FPS.');
