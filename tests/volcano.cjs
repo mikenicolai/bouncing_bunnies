@@ -1,6 +1,7 @@
 const assert=require('node:assert/strict');
 const {run}=require('./air.cjs');
-function slope(x=3350,vx=0){run(`level='fire';resetGame();fireMode='volcano';player.x=${x};player.y=fireSlopeY(player.x+21)-58;player.vx=${vx};player.onGround=true;fireStoneClock=100;`);}
+function slope(x=3350,vx=0){run(`level='fire';resetGame();fireZombies.forEach(z=>z.alive=false);fireMode='volcano';player.x=${x};player.y=fireSlopeY(player.x+21)-58;player.vx=${vx};player.onGround=true;fireStoneClock=100;`);}
+// Isolate slope and rolling-stone physics; moving zombies have their own regression suite.
 // Jumps keep useful height relative to the slope in either direction.
 for(const fps of [30,60,120])for(const direction of [-1,1]){
   slope(3350,direction*260);run(`keys.add('${direction>0?'ArrowRight':'ArrowLeft'}');jump()`);

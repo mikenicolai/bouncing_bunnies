@@ -5,7 +5,7 @@ function resetFinalWeapons(){
   finalWeapon='bow';finalDashAirUsed=false;
   waterTrident.owned=true;waterTrident.cyber=true;waterTrident.mode='dash';
   earthKnives.slots.forEach(k=>Object.assign(k,{state:'ready',remaining:0}));
-  windStars.owned=true;
+  windStars.owned=true;windStars.slots=windStars.slots.slice(0,2);
 }
 function selectFinalWeapon(name){
   if(level!=='final'||state!=='playing'||!FINAL_WEAPONS.includes(name))return false;
@@ -82,7 +82,7 @@ function drawFinalWeaponInventory(){
     if(b.name==='bow')drawArrowIcon(x,y,45,0,'normal');else if(b.name==='trident')drawWaterTrident(x+cameraX,y,50,-.4);else if(b.name==='knives')drawEarthKnife(x,y,34,-.4);else drawWindStar(x,y,30,.2);
     ctx.fillStyle='#fff2ce';ctx.font='bold 9px system-ui';ctx.textAlign='center';ctx.fillText(b.name.toUpperCase(),x,b.y+52);
   }
-  const status=finalWeapon==='bow'?`ARROWS ${fireArrow.ammo.filter(Boolean).length}/5 · Z ${fireArrow.aiming?'STOW':'EQUIP'}`:finalWeapon==='trident'?`Z ${waterTrident.mode==='dash'?'THROW':'DASH'} · X ${waterTrident.mode.toUpperCase()}`:finalWeapon==='knives'?`${earthKnives.slots.filter(k=>k.state==='ready').length}/3 · X ${earthKnives.equipped?'THROW':'HIT'} · Z ${earthKnives.equipped?'STOW':'EQUIP'}`:`${windStars.slots.filter(k=>k.state==='ready').length}/8 · X ${windStars.equipped?'THROW':'HIT'} · Z ${windStars.equipped?'STOW':'EQUIP'}`;
+  const status=finalWeapon==='bow'?`ARROWS ${fireArrow.ammo.filter(Boolean).length}/5 · Z ${fireArrow.aiming?'STOW':'EQUIP'}`:finalWeapon==='trident'?`Z ${waterTrident.mode==='dash'?'THROW':'DASH'} · X ${waterTrident.mode.toUpperCase()}`:finalWeapon==='knives'?`${earthKnives.slots.filter(k=>k.state==='ready').length}/3 · X ${earthKnives.equipped?'THROW':'HIT'} · Z ${earthKnives.equipped?'STOW':'EQUIP'}`:`${windStars.slots.filter(k=>k.state==='ready').length}/${windStars.slots.length} · X ${windStars.equipped?'THROW':'HIT'} · Z ${windStars.equipped?'STOW':'EQUIP'}`;
   ctx.font='bold 9px system-ui';ctx.fillText(`O CHOOSE · ${status}`,first.x+122,first.y+74);ctx.restore();
 }
 function drawFinalWeapons(){
