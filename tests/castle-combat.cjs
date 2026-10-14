@@ -40,8 +40,8 @@ for(const fps of [30,60,120]){
  // Castle masonry/gate wins the nearest collision, including a swept long step.
  reset();run("finalMonsters=[];player.x=3900;player.facing=1;fireArrow.ammo.fill('normal');toggleFireAim();fireArrow.angle=0;attack();updateFireArchery(.5)");assert.equal(run('bunnyArrows.length'),0,'low castle rubble blocks arrows');
  reset();run("finalMonsters=[];finalGateLift=0;player.x=FINAL_GATE.x-130;player.facing=1;toggleFireAim();attack();updateFireArchery(.5)");assert.equal(run('bunnyArrows.length'),0,'closed elemental gate blocks arrows');
- // Aiming uses up/down without crouching or jumping; stowing restores both actions.
- reset();run("toggleFireAim();keys.add('ArrowUp');jump()");tick(.25);assert(run('player.onGround'));assert(run('fireArrow.angle>.3'));
+ // Aiming allows jumps and preserves angle controls, with crouching still stowed.
+ reset();run("toggleFireAim();keys.add('ArrowUp');jump()");tick(.25);assert(!run('player.onGround'));assert(run('fireArrow.angle>.3'));run('clearInputs()');tick(1.2);assert(run('player.onGround'));
  run("keys.clear();keys.add('ArrowDown')");tick(.25);assert.equal(run('player.h'),58);assert(!run('player.duck'));
  run("keys.clear();toggleFireAim();jump()");assert(run('player.vy<0'));
  // Pausing freezes recharge/projectiles; losing a heart keeps gear and clears old shots.

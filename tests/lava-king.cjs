@@ -13,8 +13,8 @@ for(const width of [480,960])for(const fps of [30,60,120]){
  }
  assert.equal(run('fireMode'),'king');assert.equal(run('lives'),3);assert(jumps>=4);assert.equal(run('lavaKing.hp'),10);assert(run('lavaKing.active'));assert(run('fireArcheryMode()'));assert.equal(run('checkpoint.mode'),'king');assert.equal(run('fireRollingStones.length'),0);
 }
-// Aiming disables jumps, while sword and casting warnings give slightly more reaction time.
-arena();run('jump()');assert(run('player.onGround'));assert.equal(run('player.vy'),0);
+// Equipped aiming permits jumps; sword and casting warnings keep their reaction time.
+arena();run('jump()');assert(!run('player.onGround'));assert(run('player.vy')<0);assert(run('fireArrow.aiming'));
 run("lavaKingPhase('windup');updateLavaKing(.7)");assert.equal(run('lavaKing.phase'),'windup');assert.equal(run('lives'),3);
 run('updateLavaKing(.04)');assert.equal(run('lavaKing.phase'),'slash');run('updateLavaKing(.28)');assert.equal(run('lavaKing.phase'),'recover');
 run("lavaKingPhase('cast');updateLavaKing(.6)");assert.equal(run('lavaKingFireballs.length'),0);run('updateLavaKing(.03)');assert.equal(run('lavaKingFireballs.length'),1);

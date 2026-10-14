@@ -14,10 +14,11 @@ reset();run('fireArrow.owned=true;beginSecondVolcano();player.onGround=true;play
 run('player.vx=260;player.run=1');assert([1,2].includes(run('archeryBunnyFrame()')));run('player.onGround=false');assert.equal(run('archeryBunnyFrame()'),3);
 run('player.onGround=true;toggleFireAim();player.vx=0');assert(run('fireArcheryMode()'));assert.equal(run('archeryBunnyFrame()'),4);
 run('player.vx=260');assert([5,6].includes(run('archeryBunnyFrame()')));run('fireBunnyArrow()');assert.equal(run('archeryBunnyFrame()'),7);
-// All jump paths are disabled while aiming, but up/down keys and joystick change the angle, not height.
+// Equipped bow jumps keep limited boosts, aim control, air shooting and normal landing.
 for(const fps of [30,60,120]){
- arena();run("keys.add('ArrowUp');jump();updateJoystick({x:JOY.x,y:JOY.y-JOY.radius});");assert(run('player.onGround'));assert.equal(run('player.boosts'),0);
- for(let f=0;f<fps*.3;f++)run(`update(1/${fps})`);assert(run('fireArrow.angle>.4'));assert.equal(run('player.y'),-558);
+ arena();run("lavaKing.dizzy=99;player.invincible=99;keys.add('ArrowUp');jump();updateJoystick({x:JOY.x,y:JOY.y-JOY.radius});");assert(!run('player.onGround'));assert.equal(run('player.boosts'),2);assert(run('fireBunnyArrow()'));assert.equal(run('archeryBunnyFrame()'),3);
+ for(let f=0;f<fps*.3;f++)run(`update(1/${fps})`);assert(run('fireArrow.angle>.4'));assert(run('player.y')<-558);
+ run('clearInputs()');for(let f=0;f<fps*1.2;f++)run(`update(1/${fps})`);assert(run('player.onGround'));
  run("clearInputs();keys.add('ArrowDown')");for(let f=0;f<fps*.6;f++)run(`update(1/${fps})`);assert(run('fireArrow.angle<0'));assert.equal(run('player.h'),58);assert.equal(run('player.y'),-558);
  run("clearInputs();keys.add('ArrowRight')");const x=run('player.x');for(let f=0;f<fps*.4;f++)run(`update(1/${fps})`);assert(run('player.x')>x);assert(run('player.onGround'));
  run("clearInputs();keys.add('ArrowLeft')");for(let f=0;f<fps*.4;f++)run(`update(1/${fps})`);assert.equal(run('player.facing'),1,'backing away keeps the bow pointed toward the king');
@@ -70,7 +71,7 @@ run('attack()');assert.equal(run('bunnyArrows.length'),0);assert(run('player.att
 assert.equal(run('fireBunnyArrow()'),false);run('jump()');assert(!run('player.onGround'));assert(run('player.vy<0'));
 run('respawnFire()');assert(!run('fireArrow.aiming'),'checkpoint respects stowed arrow');
 run("fitTouchControls();canvas.listeners.pointerdown[0]({clientX:ACTIONS.ability2.x*960/W,clientY:ACTIONS.ability2.y*540/H,pointerId:71,preventDefault(){}})");assert(run('fireArcheryMode()'));
-run('jump()');assert(run('player.onGround'));run('fireBunnyArrow()');assert.equal(run('bunnyArrows.length'),1);
+run('jump()');assert(!run('player.onGround'));run('fireBunnyArrow()');assert.equal(run('bunnyArrows.length'),1);
 run("canvas.listeners.pointerdown[0]({clientX:ACTIONS.ability2.x*960/W,clientY:ACTIONS.ability2.y*540/H,pointerId:72,preventDefault(){}})");assert(!run('fireArrow.aiming'));assert.equal(run('bunnyArrows.length'),1,'stowing leaves fired arrows in flight');
 // Climb one ladder cell up and down with both weapon states, at multiple frame rates.
 for(const fps of [30,60,120])for(const equipped of [false,true]){
@@ -89,4 +90,4 @@ run("window.listeners.keydown[1]({code:'KeyZ',repeat:false,preventDefault(){}})"
 const gait=new Set();for(let phase=0;phase<8;phase++){run(`player.vx=260;player.onGround=true;player.run=${(phase+.1)/1.6}`);gait.add(run('uprightRunFrame()'));}assert.equal(gait.size,8);
 for(const [vy,frame] of [[-500,5],[0,6],[500,7]]){run(`player.onGround=false;player.vy=${vy}`);assert.equal(run('fourPawFrame()'),frame);}
 // Whole painted movement/equipment rendering is covered by upright-run.cjs.
-console.log('PASS archery: relic/maze gate, carried and aim animation states, no-jump aiming, keys/touch/movement, matching preview parabola, arrows/cooldown/shield/swept hits, fireball interception, full ten-heart ranged fight at 30/60/120 FPS, pause/respawn/reset.');
+console.log('PASS archery: relic/maze gate, carried and aim animation states, equipped-bow jumps and airborne shots, keys/touch/movement, matching preview parabola, arrows/cooldown/shield/swept hits, fireball interception, full ten-heart ranged fight at 30/60/120 FPS, pause/respawn/reset.');

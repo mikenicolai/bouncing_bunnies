@@ -1,11 +1,9 @@
 // Painted friendly wildlife and a rideable turtle. Embedded verbatim in index.html.
-const earthPandas=[240,1540,3670];
 const earthGroundBirds=[460,810,1750,2630,4740];
 const earthTurtle={x:650,w:144,min:500,max:970,speed:48,facing:1,shellHeight:63};
 const EARTH_ANIMAL_ART={
   turtle:{asset:'assets/wildwood-turtle-v1.png',sx:86,sy:201,sw:1402,sh:636},
-  bird:{asset:'assets/wildwood-bird-v1.png',sx:201,sy:72,sw:1045,sh:895},
-  panda:{asset:'assets/wildwood-panda-v1.png',sx:183,sy:80,sw:900,sh:1139}
+  bird:{asset:'assets/wildwood-bird-v1.png',sx:201,sy:72,sw:1045,sh:895}
 };
 for(const art of Object.values(EARTH_ANIMAL_ART)){art.image=new Image();art.image.src=art.asset;}
 function resetEarthTurtle(){earthTurtle.x=650;earthTurtle.facing=1;}
@@ -50,10 +48,6 @@ function drawEarthAnimal(name,x,floor,width,facing=1,stretch=1){
   ctx.drawImage(a.image,a.sx,a.sy,a.sw,a.sh,-width/2,-height,width,height);ctx.restore();
 }
 function drawEarthAnimals(){
-  for(const [i,x] of earthPandas.entries()){
-    if(x<cameraX-100||x>cameraX+W+100)continue;
-    drawEarthAnimal('panda',x,earthGroundAt(x)+2,80,i%2?-1:1,1+Math.sin(earthTime*1.8+i)*.009);
-  }
   for(const [i,x] of earthGroundBirds.entries()){
     if(x<cameraX-50||x>cameraX+W+50)continue;
     drawEarthAnimal('bird',x,earthGroundAt(x)+1,40,i%2?-1:1,1+Math.sin(earthTime*2.4+i*2)*.015);

@@ -3,12 +3,13 @@ const FINAL_KNIGHT_ROOM={width:1400,floor:470,door:1280};
 const finalKnightPlatforms=[{x:0,y:470,w:1400,h:1800,kind:'castle'},
   {x:-30,y:-800,w:30,h:1270,kind:'castle'},{x:1400,y:-800,w:30,h:1270,kind:'castle'}];
 const finalKnightSheet=new Image();finalKnightSheet.src='assets/castle-knight-v1.png';
+const finalKnightThrowSheet=new Image();finalKnightThrowSheet.src='assets/castle-knight-throw-v1.png';
 const crownedBunnySheet=new Image();crownedBunnySheet.src='assets/crowned-bunny-v1.png';
 const throneRoomSheet=new Image();throneRoomSheet.src='assets/castle-throne-room-v1.png';
 let finalChapter='castle',finalKnight,finalRevealTime=0,finalRoomFade=0;
 function resetFinalChapter(){
   finalChapter='castle';finalRevealTime=0;finalRoomFade=0;
-  finalKnight={x:850,y:354,w:72,h:116,hp:10,maxHP:10,facing:-1,phase:'guard',age:0,dizzy:0,cooldown:1.6,defeated:false,deathAge:0};
+  finalKnight={x:850,y:354,w:72,h:116,hp:10,maxHP:10,facing:-1,phase:'guard',age:0,dizzy:0,cooldown:1.3,turn:0,sword:null,defeated:false,deathAge:0};
 }
 function enterFinalKnightRoom(){
   if(finalChapter!=='castle')return;
@@ -21,11 +22,11 @@ function enterFinalKnightRoom(){
 }
 function calmFinalKnight(){
   if(finalChapter!=='knight'||finalKnight.defeated)return;
-  Object.assign(finalKnight,{phase:'guard',age:0,dizzy:1.2,cooldown:1.8});
+  Object.assign(finalKnight,{phase:'guard',age:0,dizzy:1.2,cooldown:1.8,sword:null});
 }
 function hitFinalKnight(){
   const b=finalKnight;if(finalChapter!=='knight'||b.defeated||b.dizzy>0)return false;
-  b.hp=Math.max(0,b.hp-1);b.dizzy=.8;b.phase='hurt';b.age=0;b.cooldown=1.3;
+  b.hp=Math.max(0,b.hp-1);b.dizzy=.8;b.phase='hurt';b.age=0;b.cooldown=1.1;b.sword=null;
   burst(b.x+b.w/2,b.y+55,'#e2d2ae',14);tone(180,.12,'triangle',.035);
   if(b.hp===0){b.defeated=true;b.phase='defeated';b.deathAge=0;clearFinalWeaponHazards();bunnyArrows=[];tone(440,.35,'triangle',.04);}
   return true;
@@ -33,6 +34,23 @@ function hitFinalKnight(){
 function finalKnightSwordBox(){
   const b=finalKnight;
   return{x:b.facing>0?b.x+b.w-8:b.x-100,y:FINAL_FLOOR-92,w:108,h:36};
+}
+function throwFinalKnightSword(){
+  const b=finalKnight,x=b.x+b.w/2+b.facing*50,y=FINAL_FLOOR-75;
+  const dx=player.x+21-x,dy=player.y+player.h/2-y,d=Math.hypot(dx,dy)||1;
+  b.sword={x,y,ox:x,oy:y,vx:dx/d*660,vy:dy/d*660,age:0,returning:false,spin:0};
+  b.phase='throw';b.age=0;tone(570,.12,'triangle',.025);
+}
+function updateFinalKnightSword(dt){
+  const b=finalKnight,s=b.sword;if(!s)return;
+  const old={x:s.x,y:s.y};s.age+=dt;s.spin+=dt*15;
+  if(s.returning){
+    const dx=b.x+b.w/2-s.x,dy=FINAL_FLOOR-75-s.y,d=Math.hypot(dx,dy);
+    if(d<=800*dt+18){b.sword=null;b.phase='recover';b.age=0;return;}
+    s.x+=dx/d*800*dt;s.y+=dy/d*800*dt;
+  }else{s.x+=s.vx*dt;s.y+=s.vy*dt;}
+  if(arrowSegmentEntry(old,s,player,12)!==null)hurt(player.x<b.x?-1:1);
+  if(!s.returning&&(s.age>=.7||finalKnightPlatforms.some(p=>arrowSegmentEntry(old,s,p,12)!==null)))s.returning=true;
 }
 function updateFinalKnightRoom(dt){
   finalTime+=dt;finalRoomFade=Math.max(0,finalRoomFade-dt);
@@ -45,20 +63,22 @@ function updateFinalKnightRoom(dt){
   }
   // The inner doorway stays shut until the knight is defeated, even while dashing.
   if(player.x+player.w>FINAL_KNIGHT_ROOM.door){player.x=FINAL_KNIGHT_ROOM.door-player.w;player.vx=0;}
+  updateFinalKnightSword(dt);
   if(b.dizzy>0){b.dizzy=Math.max(0,b.dizzy-dt);return;}
   const distance=player.x+21-(b.x+b.w/2);b.age+=dt;b.cooldown=Math.max(0,b.cooldown-dt);
   if(b.phase==='hurt'){b.phase='guard';b.age=0;}
   if(b.phase==='guard'){
     b.facing=Math.sign(distance)||b.facing;
-    if(Math.abs(distance)>138)b.x=Math.max(170,Math.min(1150,b.x+b.facing*80*dt));
-    if(Math.abs(distance)<195&&b.cooldown===0){b.phase='windup';b.age=0;tone(260,.14,'triangle',.015);}
-  }else if(b.phase==='windup'&&b.age>=.85){b.phase='slash';b.age=0;}
+    if(Math.abs(distance)>138&&(b.cooldown>0||Math.abs(distance)>=640))b.x=Math.max(170,Math.min(1150,b.x+b.facing*80*dt));
+    if(Math.abs(distance)<640&&b.cooldown===0){b.phase=Math.abs(distance)>230||b.turn%2?'throwWindup':'windup';b.turn++;b.age=0;tone(260,.14,'triangle',.015);}
+  }else if(b.phase==='windup'&&b.age>=.5){b.phase='slash';b.age=0;}
+  else if(b.phase==='throwWindup'&&b.age>=.45)throwFinalKnightSword();
   else if(b.phase==='slash'){
-    const old=b.x;b.x=Math.max(170,Math.min(1150,b.x+b.facing*240*dt));
+    const old=b.x;b.x=Math.max(170,Math.min(1150,b.x+b.facing*340*dt));
     const sword=finalKnightSwordBox();sword.x=Math.min(sword.x,sword.x-(b.x-old));sword.w+=Math.abs(b.x-old);
     if(overlap(player,sword))hurt(player.x<b.x?-1:1);
-    if(b.age>=.3){b.phase='recover';b.age=0;}
-  }else if(b.phase==='recover'&&b.age>=1.1){b.phase='guard';b.age=0;b.cooldown=.55;}
+    if(b.age>=.24){b.phase='recover';b.age=0;}
+  }else if(b.phase==='recover'&&b.age>=.85){b.phase='guard';b.age=0;b.cooldown=.45;}
   if(overlap(player,b))hurt(player.x<b.x?-1:1);
 }
 function enterFinalThroneRoom(){
@@ -85,12 +105,22 @@ function drawKnightPose(frame,x,floor,facing=1,height=154){
   const [ax,ay]=KNIGHT_ANCHORS[frame];ctx.save();ctx.translate(x,floor);ctx.scale(facing,1);
   ctx.drawImage(finalKnightSheet,frame%3*sw,Math.floor(frame/3)*sh,sw,sh,-ax*scale,-ay*scale,sw*scale,sh*scale);ctx.restore();
 }
+function drawKnightThrowPose(frame,x,floor,facing){
+  if(!finalKnightThrowSheet.complete||!finalKnightThrowSheet.naturalWidth)return;
+  const sw=finalKnightThrowSheet.naturalWidth/3,sh=finalKnightThrowSheet.naturalHeight,scale=154/614,ax=[355,360,420][frame];
+  ctx.save();ctx.translate(x,floor);ctx.scale(facing,1);ctx.drawImage(finalKnightThrowSheet,frame*sw,0,sw,sh,-ax*scale,-666*scale,sw*scale,sh*scale);ctx.restore();
+}
+function drawFinalKnightSword(){
+  const s=finalKnight.sword;if(!s||!finalKnightSheet.naturalWidth)return;
+  ctx.save();ctx.translate(s.x-cameraX,s.y);ctx.rotate(s.spin);ctx.drawImage(finalKnightSheet,1300,234,236,84,-43,-15,86,30);ctx.restore();
+}
 function drawFinalKnight(){
-  const b=finalKnight,frame=b.defeated?5:b.dizzy>0?4:b.phase==='windup'?1:b.phase==='slash'?2:b.phase==='recover'?3:0;
+  const b=finalKnight,frame=b.defeated?5:b.dizzy>0?4:['windup','throwWindup'].includes(b.phase)?1:b.phase==='slash'?2:b.phase==='recover'?3:0;
   ctx.save();ctx.translate(b.x+b.w/2-cameraX,FINAL_FLOOR);
   if(!b.defeated)ctx.scale(1,1+Math.sin(finalTime*2)*.007);
-  drawKnightPose(frame,0,0,b.facing);ctx.restore();
-  if(b.phase==='windup'&&!b.defeated&&b.dizzy===0){
+  if(b.sword)drawKnightThrowPose(b.age<.22?1:0,0,0,b.facing);else drawKnightPose(frame,0,0,b.facing);ctx.restore();
+  drawFinalKnightSword();
+  if(['windup','throwWindup'].includes(b.phase)&&!b.defeated&&b.dizzy===0){
     const r=finalKnightSwordBox();ctx.save();ctx.fillStyle=`rgba(255,185,87,${.13+.15*Math.sin(finalTime*18)**2})`;roundRect(r.x-cameraX,FINAL_FLOOR-8,r.w,8,4);
     ctx.font='bold 19px system-ui';ctx.textAlign='center';ctx.fillStyle='#ffd695';ctx.fillText('!',b.x+b.w/2-cameraX,b.y-55);ctx.restore();
   }

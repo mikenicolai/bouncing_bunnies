@@ -10,7 +10,7 @@ function resetFinalWeapons(){
 function selectFinalWeapon(name){
   if(level!=='final'||state!=='playing'||!FINAL_WEAPONS.includes(name))return false;
   stopWaterDash();finalWeapon=name;
-  fireArrow.aiming=name==='bow'&&fireArrow.owned&&player.onGround&&!player.duck;
+  fireArrow.aiming=name==='bow'&&fireArrow.owned&&!player.duck;
   earthKnives.equipped=name==='knives';windStars.equipped=name==='stars';
   joystick.jumpGesture=null;player.attack=0;tone(480,.08,'triangle',.02);return true;
 }

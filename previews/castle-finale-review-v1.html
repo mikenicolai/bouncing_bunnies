@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Castle finale review</title>
 <style>body{margin:0;background:#141822;color:#f7e5be;font:16px system-ui}header{padding:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}button,a{background:#334451;color:#ffe1a1;border:1px solid #8db9b4;border-radius:8px;padding:10px;font:inherit}iframe{width:100%;height:calc(100dvh - 110px);border:0}small{display:block;padding:0 16px 8px}</style>
-<header><b>The castle finale · v0.21.19</b><button onclick="scene('knight')">Play the knight fight</button><button onclick="scene('throne')">Watch the throne reveal</button><a href="../index.html">Play the full game</a></header>
-<small>Practice preview: isolated developer progress. O selects a weapon, Z equips or switches its mode, X/F attacks. Stow the bow with Z to jump.</small>
+<header><b>The castle finale · v0.21.20</b><button onclick="scene('knight')">Play the knight fight</button><button onclick="scene('throne')">Watch the throne reveal</button><a href="../index.html">Play the full game</a></header>
+<small>Practice preview: isolated developer progress. O selects a weapon, Z equips or switches its mode, X/F attacks. Jump with the bow equipped; Z stows it for punches.</small>
 <iframe id="game" src="../index.html?finale-review=1" title="Castle finale game preview"></iframe>
 <script>function scene(which){const w=document.querySelector('iframe').contentWindow;w.eval("beginDeveloperSession();level='final';start();soundOn=false;enterFinalKnightRoom();");if(which==='throne')w.eval("finalKnight.defeated=true;finalKnight.hp=0;enterFinalThroneRoom();");document.querySelector('iframe').focus();}</script></html>

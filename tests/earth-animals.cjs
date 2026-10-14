@@ -3,8 +3,8 @@ const {run}=require('./air.cjs');
 const reset=()=>run("level='earth';resetGame();soundOn=false");
 const tick=(fps,seconds)=>{for(let i=0;i<fps*seconds;i++)run(`update(1/${fps})`);};
 const html=fs.readFileSync('index.html','utf8');assert.equal(html.split('// EARTH_ANIMALS_BEGIN\n')[1].split('\n// EARTH_ANIMALS_END')[0],fs.readFileSync('assets/wildwood-animals-v1.js','utf8'));
-reset();assert.equal(run('earthPandas.length'),3);assert.equal(run('earthGroundBirds.length'),5);
-for(const name of ['turtle','bird','panda']){
+reset();assert(!html.includes('earthPandas'));assert(!run("'panda' in EARTH_ANIMAL_ART"));assert.equal(run('earthGroundBirds.length'),5);
+for(const name of ['turtle','bird']){
  const art=run(`EARTH_ANIMAL_ART.${name}`),b=fs.readFileSync(art.asset);
  assert.equal(b[25],6,'original RGBA sprite');assert(art.sx+art.sw<=b.readUInt32BE(16)&&art.sy+art.sh<=b.readUInt32BE(20),'registered crop stays inside source');
 }

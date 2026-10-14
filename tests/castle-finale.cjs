@@ -8,7 +8,7 @@ for(const fps of [30,60,120]){
  run("keys.clear();player.x=1190;player.y=412;player.onGround=true;player.facing=1;selectFinalWeapon('trident');fireWaterTrident()");for(let i=0;i<fps;i++)run(`update(1/${fps})`);assert(run('player.x+player.w<=1280'));
  // Actual sword windup gives a warning, freezes aim, swings once, recovers.
  reset();run('finalKnight.x=500;player.x=finalKnight.x+finalKnight.w+40;finalKnight.cooldown=0;player.invincible=0;');run(`update(1/${fps})`);assert.equal(run('finalKnight.phase'),'windup');
- for(let i=0;i<Math.floor(fps*.7);i++)run(`update(1/${fps})`);assert.equal(run('lives'),3);assert.equal(run('finalKnight.phase'),'windup');
+ for(let i=0;i<Math.floor(fps*.35);i++)run(`update(1/${fps})`);assert.equal(run('lives'),3);assert.equal(run('finalKnight.phase'),'windup');
  for(let i=0;i<Math.ceil(fps*.25);i++)run(`update(1/${fps})`);assert.equal(run('lives'),2);assert.equal(run('finalKnight.phase'),'slash');
  for(let i=0;i<Math.ceil(fps*.3);i++)run(`update(1/${fps})`);assert.equal(run('finalKnight.phase'),'recover');assert.equal(run('lives'),2);
  // A hit cancels the pending sword strike and repeated overlap cannot drain HP.
