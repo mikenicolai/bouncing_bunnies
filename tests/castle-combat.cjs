@@ -9,7 +9,7 @@ for(const fps of [30,60,120]){
  // A ground jump has exactly two quick extra taps, through each input path.
  const press=(repeat=false)=>run(`window.listeners.keydown[1]({code:'Space',repeat:${repeat},preventDefault(){}})`);
  const touch=()=>run("fitTouchControls();document.querySelector('#game').listeners.pointerdown[0]({clientX:ACTIONS.jump.x,clientY:ACTIONS.jump.y,pointerId:81,preventDefault(){}});document.querySelector('#game').listeners.pointerup[0]({pointerId:81})");
- const stick=()=>run('updateJoystick({x:JOY.x,y:JOY.y});updateJoystick({x:JOY.x,y:JOY.y-.6*(JOY.radius-12)})');
+ const stick=()=>run('updateJoystick({x:JOY.x,y:JOY.y});updateJoystick({x:JOY.x,y:JOY.y-.9*(JOY.radius-12)})');
  for(const input of [()=>run('jump()'),()=>press(),touch,stick]){
   reset();input();assert.equal(run('player.vy'),-570);assert.equal(run('player.boosts'),0);
   tick(1/fps);input();assert.equal(run('player.boosts'),1);assert(run('player.vy<-570'));

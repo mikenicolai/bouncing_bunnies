@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.22',build:2026101406,builtAt:'2026-10-14',builtLabel:'14 October 2026',deployment:'Arrow keys aim the bow, Space jumps'});
+const BUILD_INFO=Object.freeze({version:'0.21.23',build:2026101407,builtAt:'2026-10-14',builtLabel:'14 October 2026',deployment:'Deliberate joystick gestures and trident push dash'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -800,7 +800,7 @@ function freshTempest(){return{x:5330,y:-1865,w:120,h:175,hp:TEMPEST_MAX_HP,dizz
 let tempest=freshTempest(),tempestWinds=[];
 const keys = new Set();
 let state = "title", cameraX = 0, cameraY = 0, lastTime = 0, soundOn = true, audioCtx;
-const joystick = { active:false, pointerId:null, dx:0, dy:0, jumpArmed:true, duck:false, sprint:false, motion:false, jumpGesture:null };
+const joystick = { active:false, pointerId:null, dx:0, dy:0, rawX:0, rawY:0, dashArmed:true, jumpArmed:true, duck:false, sprint:false, motion:false, jumpGesture:null };
 const JOY = { x: W-92, y:H-94, radius:57, knob:25 };
 const ACTIONS = {
   jump:{x:82,y:H-80,r:40,label:"JUMP",color:THEME.gold},
@@ -1225,7 +1225,7 @@ function joystickAxis(value){
 function moveBunnyHorizontal(dt){
   const keyboard=(keys.has('ArrowRight')||keys.has('KeyD')?1:0)-(keys.has('ArrowLeft')||keys.has('KeyA')?1:0);
   const accel=player.onGround?(sprintHeld()&&!player.duck?1900:GROUND_RUN_ACCEL):820,max=player.duck?70:bunnyMoveSpeed();
-  const move=keyboard||joystickAxis(joystick.dx);
+  const move=keyboard||joystickAxis(joystick.rawX||joystick.dx);
   if(!keyboard&&joystick.motion){
     // Approach an analog target instead of accelerating every small pull to full speed.
     const target=move*max,change=accel*dt;
@@ -3808,6 +3808,7 @@ function update(dt) {
   updateReviveAd();
   if(state==='finalReveal'){updateFinalReveal(dt);return;}
   if(state!=="playing")return;
+  updateJoystickJump(dt);
   updateBackgroundBirds(dt);
   if(level==='earth')updateEarthTurtle(dt);
   const before=player,wasGrounded=player.onGround,wasFalling=player.vy>120;
@@ -6105,7 +6106,9 @@ function drawTouchControls() {
   ctx.fillStyle='#fff8de';ctx.font=`bold ${JOY.radius>60?20:14}px system-ui`;ctx.textAlign='center';
   const inMaze=level==='fire'&&fireMode==='maze',fireWalking=level==='fire'&&fireMode!=='surface'&&!fireJumpingMode(),postKing=level==='fire'&&fireMode==='king'&&lavaKing.defeated;
   ctx.fillText(inMaze?'↑ CLIMB':fireArcheryMode()&&fireJumpingMode()?'↑ AIM / JUMP':fireArcheryMode()&&level!=='fire'?'↑ AIM / JUMP':fireArcheryMode()?'↑ AIM':fireWalking&&!inMaze?'← MOVE →':inMaze?'↑ CLIMB':bunnySwimming()?'↑ SWIM':'↑ JUMP',JOY.x,JOY.y-JOY.radius+20);ctx.fillText(inMaze?'↓ CLIMB':fireArcheryMode()?'↓ AIM':(level==='fire'&&fireJumpingMode()&&!postKing)||fireWalking&&!inMaze?'':inMaze?'↓ CLIMB':bunnySwimming()?'↓ DIVE':'↓ DUCK',JOY.x,JOY.y+JOY.radius-10);
-  if(joystick.sprint&&!bunnySwimming()){ctx.font='bold 11px system-ui';ctx.fillText('RUN',JOY.x,JOY.y+4);}
+  if(joystick.jumpGesture){ctx.font='bold 11px system-ui';ctx.fillText(`${1+player.boosts} / 3`,JOY.x,JOY.y+4);}
+  else if(joystick.sprint&&!bunnySwimming()){ctx.font='bold 11px system-ui';ctx.fillText('RUN',JOY.x,JOY.y+4);}
+  if(joystickTridentEquipped()){ctx.font='bold 10px system-ui';ctx.fillText('PUSH · DASH',JOY.x,JOY.y+JOY.radius+14);}
   for(const [name,b] of Object.entries(ACTIONS)){
     if(fireArcheryMode()&&name==='duck')continue;
     if(fireWalking&&(name==='jump'||name==='duck')||level==='fire'&&fireJumpingMode()&&!postKing&&name==='duck')continue;
@@ -6154,46 +6157,72 @@ function fitTouchControls(){
 }
 function clearInputs(){
   keys.clear();duckPointer=null;
-  Object.assign(joystick,{active:false,pointerId:null,dx:0,dy:0,jumpArmed:true,duck:false,sprint:false,motion:false,jumpGesture:null});
+  Object.assign(joystick,{active:false,pointerId:null,dx:0,dy:0,rawX:0,rawY:0,dashArmed:true,jumpArmed:true,duck:false,sprint:false,motion:false,jumpGesture:null});
   if(player)updateDuck();
 }
+// JOYSTICK_GESTURES_BEGIN
+// Raw reach keeps deliberate outer pushes distinct from the clamped aim direction.
+const STICK_GESTURE={jump:.88,second:.95,third:.99,release:.6,duck:.9,duckRelease:.82,run:.9,runRelease:.75,dash:1.12,dashRelease:.8};
+function joystickTridentEquipped(){
+  return waterTrident.owned&&(level==='final'&&finalWeapon==='trident'||level==='water'&&player.inWater&&!player.breaching);
+}
+function dashFromJoystick(){
+  const reach=Math.hypot(joystick.rawX,joystick.rawY);
+  if(reach<STICK_GESTURE.dashRelease)joystick.dashArmed=true;
+  if(!joystick.active||!joystickTridentEquipped()||reach<STICK_GESTURE.dash)return false;
+  // A grounded downward pull is a duck, rather than a dash into the floor.
+  if(player.onGround&&joystick.rawY>=STICK_GESTURE.duck&&joystick.rawY>Math.abs(joystick.rawX))return false;
+  joystick.jumpArmed=false;joystick.jumpGesture=null;joystick.duck=false;updateDuck();
+  if(joystick.dashArmed){
+    joystick.dashArmed=false;
+    // The stick always dashes; the separate attack button keeps its selected mode.
+    const mode=waterTrident.mode;waterTrident.mode='dash';if(!player.duck)fireWaterTrident();waterTrident.mode=mode;
+  }
+  return true;
+}
 function jumpFromJoystick(){
-  if(joystick.dy>=-.25){joystick.jumpArmed=true;joystick.jumpGesture=null;}
-  if(joystick.dy<=-.6&&joystick.jumpArmed){
+  const up=-joystick.rawY;
+  if(up<=STICK_GESTURE.release){joystick.jumpArmed=true;joystick.jumpGesture=null;}
+  if(up>=STICK_GESTURE.jump&&joystick.jumpArmed){
     joystick.jumpArmed=false;const before=player.vy;jump();
     joystick.jumpGesture=player.vy<before&&player.jumpAge<.52?
-      {base:player.boosts,extra:0}:null;
+      {age:0,sinceTap:0,base:player.boosts,extra:0}:null;
   }
-  const gesture=joystick.jumpGesture;
-  if(!gesture||player.duck||player.jumpAge>=.52||player.vy>=180||player.boosts!==gesture.base+Math.ceil(gesture.extra))return;
-  // Once aimed upward, distance controls power even on a diagonal run/jump.
-  const strength=Math.max(0,Math.min(1,(Math.hypot(joystick.dx,joystick.dy)-.6)/.3));
-  const extra=Math.round((2-gesture.base)*strength*1e6)/1e6,delta=extra-gesture.extra;
-  if(delta>0){
-    player.vy=Math.min(player.vy,Math.max(-720,player.vy-145*delta));
-    gesture.extra=extra;player.boosts=gesture.base+Math.ceil(extra);
-  }
+}
+function updateJoystickJump(dt){
+  const g=joystick.jumpGesture;if(!g)return;
+  const up=-joystick.rawY;
+  if(player.duck||bunnySwimming()||waterTrident.dash>0||up<STICK_GESTURE.jump||player.jumpAge>=.52||player.vy>=180||player.boosts!==g.base+g.extra){joystick.jumpGesture=null;return;}
+  g.age+=dt;
+  const requested=up>=STICK_GESTURE.third?2:up>=STICK_GESTURE.second?1:0;
+  const extra=Math.min(2-g.base,requested),interval=up>=1.2?.07:.1;
+  g.sinceTap+=dt;
+  if(g.extra<extra&&g.sinceTap+1e-8>=interval){
+    const before=player.boosts;jump();
+    if(player.boosts===before){joystick.jumpGesture=null;return;}
+    g.extra++;g.sinceTap=Math.max(0,g.sinceTap-interval);
+  }else g.sinceTap=Math.min(interval,g.sinceTap);
+
 }
 function updateJoystick(p){
   if(state!=='playing'){clearInputs();return;}
   const dx=p.x-JOY.x,dy=p.y-JOY.y,d=Math.hypot(dx,dy)||1,limit=Math.min(JOY.radius-12,d);
+  joystick.rawX=dx/(JOY.radius-12);joystick.rawY=dy/(JOY.radius-12);
   joystick.dx=dx/d*limit/(JOY.radius-12);joystick.dy=dy/d*limit/(JOY.radius-12);joystick.motion=true;
-  if(Math.abs(joystick.dx)>=.68)joystick.sprint=true;
-  else if(Math.abs(joystick.dx)<=.56)joystick.sprint=false;
+  if(Math.abs(joystick.rawX)>=STICK_GESTURE.run)joystick.sprint=true;
+  else if(Math.abs(joystick.rawX)<=STICK_GESTURE.runRelease)joystick.sprint=false;
+  if(dashFromJoystick())return;
   if((level==='final'||level==='meadow')&&fireArcheryMode()){joystick.duck=false;jumpFromJoystick();return;}
   if(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated)){
-    joystick.duck=false;
-    if(fireJumpingMode()){
-      jumpFromJoystick();
-    }
-    return;
+    joystick.duck=false;if(fireJumpingMode())jumpFromJoystick();return;
   }
   if(bunnySwimming()){joystick.duck=false;return;}
-  if(joystick.dy>=.55)joystick.duck=true;
-  else if(joystick.dy<=.25)joystick.duck=false;
-  updateDuck();
-  jumpFromJoystick();
+  if(joystick.rawY>=STICK_GESTURE.duck)joystick.duck=true;
+  else if(joystick.rawY<=STICK_GESTURE.duckRelease)joystick.duck=false;
+  updateDuck();jumpFromJoystick();
 }
+
+// JOYSTICK_GESTURES_END
 canvas.addEventListener("pointerdown",e=>{
   if(state!=='playing')return;
   fitTouchControls();
@@ -6208,7 +6237,7 @@ canvas.addEventListener("pointerdown",e=>{
 canvas.addEventListener("pointermove",e=>{if(joystick.active&&e.pointerId===joystick.pointerId){e.preventDefault();updateJoystick(canvasPoint(e));}});
 function releaseJoystick(e){
   if(e.pointerId===duckPointer){duckPointer=null;updateDuck();}
-  if(joystick.active&&e.pointerId===joystick.pointerId){Object.assign(joystick,{active:false,pointerId:null,dx:0,dy:0,jumpArmed:true,duck:false,sprint:false,motion:true,jumpGesture:null});updateDuck();}
+  if(joystick.active&&e.pointerId===joystick.pointerId){Object.assign(joystick,{active:false,pointerId:null,dx:0,dy:0,rawX:0,rawY:0,dashArmed:true,jumpArmed:true,duck:false,sprint:false,motion:true,jumpGesture:null});updateDuck();}
 }
 canvas.addEventListener('lostpointercapture',releaseJoystick);
 window.addEventListener('blur',clearInputs);

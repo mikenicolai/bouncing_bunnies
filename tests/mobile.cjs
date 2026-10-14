@@ -1,13 +1,13 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const {run,reset,place,step}=require('./air.cjs');
 const pull=(x,y)=>run(`updateJoystick({x:JOY.x+${x}*(JOY.radius-12),y:JOY.y+${y}*(JOY.radius-12)})`);
-reset();place(100,382);step(2);pull(.7,-.7);assert.equal(run('player.vy'),-720);assert(run('joystick.dx>.6&&joystick.sprint'));assert.equal(run('player.boosts'),2);
-pull(.7,-.7);assert.equal(run('player.boosts'),2);pull(0,-.4);pull(0,-1);assert.equal(run('player.boosts'),2);assert.equal(run('player.vy'),-720);
-pull(0,0);pull(0,-1);assert.equal(run('player.boosts'),2,'a high pull already used the two boosts');
-reset();place(100,382);step(2);pull(0,-.6);assert.equal(run('player.vy'),-570);assert.equal(run('player.boosts'),0);
-pull(0,-.4);pull(0,-.6);assert.equal(run('player.boosts'),0);pull(0,0);pull(0,-.6);assert.equal(run('player.boosts'),1);pull(0,0);pull(0,-.6);assert.equal(run('player.boosts'),2);pull(0,0);pull(0,-1);assert.equal(run('player.boosts'),2);
-reset();place(100,382);step(2);pull(.7,.7);assert.equal(run('player.h'),18);assert(run('joystick.dx>.6'));assert.equal(run('player.y+player.h'),440);
-pull(.5,.35);assert(run('joystick.duck'));pull(.5,.2);assert(!run('joystick.duck'));assert.equal(run('player.h'),58);
+reset();place(100,382);step(2);pull(1,-1);assert.equal(run('player.vy'),-570);assert(run('joystick.dx>.6&&joystick.sprint'));assert.equal(run('player.boosts'),0);step(30);assert.equal(run('player.boosts'),2);
+pull(1,-1);assert.equal(run('player.boosts'),2);pull(0,-.4);pull(0,-1);assert.equal(run('player.boosts'),2);
+pull(0,0);pull(0,-1);assert.equal(run('player.boosts'),2,'a high hold already used the two boosts');
+reset();place(100,382);step(2);pull(0,-.8);assert.equal(run('player.vy'),0,'middle band does not jump');pull(0,-.9);assert.equal(run('player.vy'),-570);assert.equal(run('player.boosts'),0);
+pull(0,-.9);assert.equal(run('player.boosts'),0);pull(0,0);pull(0,-.9);assert.equal(run('player.boosts'),1);pull(0,0);pull(0,-.9);assert.equal(run('player.boosts'),2);
+reset();place(100,382);step(2);pull(.7,.7);assert.equal(run('player.h'),58,'middle diagonal does not duck');pull(1,1);assert.equal(run('player.h'),18);assert(run('joystick.dx>.6'));assert.equal(run('player.y+player.h'),440);
+pull(.8,.85);assert(run('joystick.duck'));pull(.8,.8);assert(!run('joystick.duck'));assert.equal(run('player.h'),58);
 run('duckPointer=9');pull(0,1);pull(0,0);assert.equal(run('player.h'),18,'separate duck remains held');run('releaseJoystick({pointerId:9})');assert.equal(run('player.h'),58);
 for(const event of ['pointercancel','lostpointercapture','pointerup']){
  run('joystick.active=true;joystick.pointerId=8');pull(0,1);run(`canvas.listeners['${event}'][0]({pointerId:8})`);assert(run('!joystick.duck && !joystick.active && joystick.jumpArmed && player.h===58'));
@@ -15,7 +15,7 @@ for(const event of ['pointercancel','lostpointercapture','pointerup']){
 for(const action of ["window.listeners.blur[0]()","document.querySelector('document').listeners.visibilitychange[0]()","clearInputs()","resetGame()","openWorldMap()","showEnd(false)"]){reset();pull(0,1);run(action);assert(run('!joystick.duck && !joystick.active && joystick.dy===0 && duckPointer===null'));}
 reset();pull(0,1);place(1000,700);step();assert(run('!joystick.duck && joystick.jumpArmed'));
 const html=fs.readFileSync('index.html','utf8');assert(html.includes('viewport-fit=cover'));assert(html.includes('apple-mobile-web-app-capable'));
-assert(run("document.querySelector('#buildInfo').textContent.includes(BUILD_INFO.deployment)"));assert.equal(run('BUILD_INFO.build'),2026101406);assert.equal(run('BUILD_INFO.version'),'0.21.22');assert(Number.isFinite(Date.parse(run('BUILD_INFO.builtAt'))));
+assert(run("document.querySelector('#buildInfo').textContent.includes(BUILD_INFO.deployment)"));assert.equal(run('BUILD_INFO.build'),2026101407);assert.equal(run('BUILD_INFO.version'),'0.21.23');assert(Number.isFinite(Date.parse(run('BUILD_INFO.builtAt'))));
 // Model CSS fallback geometry, visual viewport changes and scroll restoration.
 run(`
 const styles=new Map(),classes=new Set();

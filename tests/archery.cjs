@@ -16,7 +16,7 @@ run('player.onGround=true;toggleFireAim();player.vx=0');assert(run('fireArcheryM
 run('player.vx=260');assert([5,6].includes(run('archeryBunnyFrame()')));run('fireBunnyArrow()');assert.equal(run('archeryBunnyFrame()'),7);
 // Equipped bow jumps keep limited boosts, aim control, air shooting and normal landing.
 for(const fps of [30,60,120]){
- arena();run("lavaKing.dizzy=99;player.invincible=99;keys.add('ArrowUp');jump();updateJoystick({x:JOY.x,y:JOY.y-JOY.radius});");assert(!run('player.onGround'));assert.equal(run('player.boosts'),2);assert(run('fireBunnyArrow()'));assert.equal(run('archeryBunnyFrame()'),3);
+ arena();run("lavaKing.dizzy=99;player.invincible=99;keys.add('ArrowUp');jump();updateJoystick({x:JOY.x,y:JOY.y-JOY.radius});");assert(!run('player.onGround'));assert.equal(run('player.boosts'),1);assert(run('fireBunnyArrow()'));assert.equal(run('archeryBunnyFrame()'),3);
  for(let f=0;f<fps*.3;f++)run(`update(1/${fps})`);assert(run('fireArrow.angle>.4'));assert(run('player.y')<-558);
  run('clearInputs()');for(let f=0;f<fps*1.2;f++)run(`update(1/${fps})`);assert(run('player.onGround'));
  run("clearInputs();keys.add('ArrowDown')");for(let f=0;f<fps*.6;f++)run(`update(1/${fps})`);assert(run('fireArrow.angle<0'));assert.equal(run('player.h'),58);assert.equal(run('player.y'),-558);

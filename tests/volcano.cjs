@@ -52,10 +52,10 @@ assert.equal(run('lives'),2);assert(run('player.invincible>0'));
 run('fireRollingStones=[{x:player.x+21,y:player.y+40,r:21,speed:0,angle:0,variant:0,alive:true}];updateFireStones(0)');
 assert.equal(run('lives'),2);
 // The touch stick can jump on the slope and rearms only after neutral.
-slope();run('updateJoystick({x:JOY.x,y:JOY.y-.6*(JOY.radius-12)})');
+slope();run('updateJoystick({x:JOY.x,y:JOY.y-.9*(JOY.radius-12)})');
 assert(!run('player.onGround'));assert.equal(run('player.boosts'),0);
-run('updateJoystick({x:JOY.x,y:JOY.y-.6*(JOY.radius-12)})');assert.equal(run('player.boosts'),0);
-run('updateJoystick({x:JOY.x,y:JOY.y});updateJoystick({x:JOY.x,y:JOY.y-.6*(JOY.radius-12)})');assert.equal(run('player.boosts'),1);
+run('updateJoystick({x:JOY.x,y:JOY.y-.9*(JOY.radius-12)})');assert.equal(run('player.boosts'),0);
+run('updateJoystick({x:JOY.x,y:JOY.y});updateJoystick({x:JOY.x,y:JOY.y-.9*(JOY.radius-12)})');assert.equal(run('player.boosts'),1);
 // Map pauses stones; restart removes hazards and restores the spawn delay.
 slope();run("fireStoneClock=0;updateFireStones(0);state='map';const before=fireRollingStones[0].x;update(.1)");
 assert.equal(run('fireRollingStones[0].x'),run('before'));
