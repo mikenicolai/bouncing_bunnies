@@ -56,7 +56,7 @@ function resumeWithHearts(hearts){
   }else if(level==='meadow'){
     player.inWater=false;player.air=WATER_AIR;player.stroke=0;
   }else if(level==='final'){
-    clearFinalWeaponHazards();if(checkpoint.tower)resetFinalTowerStones();
+    clearFinalWeaponHazards();if(checkpoint.tower)resetFinalTowerStones();if(checkpoint.castleRoom)calmFinalKnight();
   }else if(level==='air'){
     tempestWinds=[];tempest.dizzy=1.5;tempest.shotCooldown=Math.max(1.2,tempest.shotCooldown);
     player.airCloud=airPlatforms.find(p=>!p.removed&&p.kind==='white'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x<p.x+p.w)||null;

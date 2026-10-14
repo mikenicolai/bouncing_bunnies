@@ -26,7 +26,7 @@ function clearFinalWeaponHazards(){
   stopWaterDash();waterTrident.shot=null;finalDashAirUsed=false;
   for(const k of [...earthKnives.slots,...windStars.slots])if(k.state==='flying')k.state='returning';
 }
-function finalSolids(){return [...finalPlatforms.filter(p=>!p.collapsed),{...FINAL_GATE,y:FINAL_GATE.y-FINAL_GATE.h*finalGateLift}];}
+function finalSolids(){return finalChapter==='knight'?[...finalKnightPlatforms,...(finalKnight.defeated?[]:[{x:FINAL_KNIGHT_ROOM.door,y:-800,w:120,h:1270}])]:[...finalPlatforms.filter(p=>!p.collapsed),{...FINAL_GATE,y:FINAL_GATE.y-FINAL_GATE.h*finalGateLift}];}
 function moveFinalDash(dt){
   const t=waterTrident,travel=Math.min(dt,t.dash),steps=Math.max(1,Math.ceil(travel*WATER_TRIDENT_DASH_SPEED/7));
   const solids=finalSolids();player.onGround=false;player.jumpAge=9;player.boosts=2;
@@ -35,9 +35,9 @@ function moveFinalDash(dt){
     const next={...player,x:player.x+t.dx*WATER_TRIDENT_DASH_SPEED*travel/steps,y:player.y+t.dy*WATER_TRIDENT_DASH_SPEED*travel/steps};
     const landing=solids.find(p=>p.oneWay&&t.dy>0&&feet<=p.y+1&&next.y+next.h>=p.y&&next.x+next.w>p.x&&next.x<p.x+p.w);
     if(landing){next.y=landing.y-next.h;player.x=next.x;player.y=next.y;player.onGround=true;if(landing.crumble&&landing.crackAge<0)landing.crackAge=0;stopWaterDash();break;}
-    if(next.x<0||next.x+next.w>FINAL_W||solids.some(p=>!p.oneWay&&overlap(next,p))){stopWaterDash();break;}
+    if(next.x<0||next.x+next.w>WORLD_W||solids.some(p=>!p.oneWay&&overlap(next,p))){stopWaterDash();break;}
     player.previousFeet=feet;player.x=next.x;player.y=next.y;
-    for(const m of finalMonsters)if(m.alive&&overlap(player,m))hitFinalMonster(m);
+    if(finalChapter==='knight'){if(overlap(player,finalKnight))hitFinalKnight();}else for(const m of finalMonsters)if(m.alive&&overlap(player,m))hitFinalMonster(m);
     if(i%3===0)burst(player.x+21-t.dx*25,player.y+29-t.dy*25,'#a8fff0',1);
   }
   if(t.dash>0){t.dash=Math.max(0,t.dash-travel);if(t.dash===0){player.vx=t.dx*130;player.vy=t.dy*130;if(t.shot)t.shot.returning=true;}}
@@ -46,7 +46,7 @@ function moveFinalDash(dt){
 }
 function finalProjectileHit(old,shot){
   const hit=arrowFirstCollision(old,shot);
-  if(hit){shot.x=old.x+(shot.x-old.x)*hit.t;shot.y=old.y+(shot.y-old.y)*hit.t;if(hit.kind==='castleMonster')hitFinalMonster(hit.target);burst(shot.x,shot.y,'#acede2',5);}
+  if(hit){shot.x=old.x+(shot.x-old.x)*hit.t;shot.y=old.y+(shot.y-old.y)*hit.t;if(hit.kind==='castleMonster')hitFinalMonster(hit.target);else if(hit.kind==='finalKnight')hitFinalKnight();burst(shot.x,shot.y,'#acede2',5);}
   return !!hit;
 }
 function returnFinalProjectile(shot,dt,speed=1000){

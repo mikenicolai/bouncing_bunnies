@@ -32,11 +32,11 @@ for(const width of [960,480])for(const fps of [30,60,120]){
    run(`keys.clear();keys.add('${x<coinX?'ArrowRight':'ArrowLeft'}')`);tick();
   }
   run('keys.clear()');
-  assert.equal(run('lives'),3);assert.equal(run('JSON.stringify(checkpoint)'),baseCheckpoint,'no safe checkpoint halfway up the lava shaft');
-  if(id<12)assert.equal(run('state'),'playing','only the summit finishes this chapter');
+  assert.equal(run('lives'),3);if(id<12)assert.equal(run('JSON.stringify(checkpoint)'),baseCheckpoint,'no safe checkpoint halfway up the lava shaft');
+  if(id<12){assert.equal(run('state'),'playing');assert.equal(run('finalChapter'),'castle','only the summit opens the knight chamber');if(id===11)assert(run('cameraY<-900'),'camera follows the three-screen climb');}
   previous=target;
  }
- assert.equal(run('state'),'castleOpeningComplete');assert(!run("worldCompleted('final')"));assert(run('cameraY<-900'),'camera follows the three-screen climb');
+ assert.equal(run('state'),'playing');assert.equal(run('finalChapter'),'knight');assert(!run("worldCompleted('final')"));assert.equal(run('checkpoint.castleRoom'),'knight');
  assert.equal(run('score'),12,'each climbing coin credits the real collection path');
 }
 // Lava ignores damage immunity, returns to the entrance and retains collected coins/gear.
@@ -46,4 +46,4 @@ for(const fps of [30,60,120]){
  run('lives=1;player.x=9200;player.y=FINAL_TOWER.lavaY-50;player.vy=850;player.onGround=false');run(`update(1/${fps})`);assert.equal(run('state'),'lost');assert(run('buyReviveHeart()'));assert.equal(run('player.x'),run('FINAL_TOWER.entryX'));assert.equal(run('coinWallet'),1);assert(run('finalTowerEntered'));assert(run('coins.at(-1).taken'));assert.equal(run('JSON.stringify(fireArrow.ammo)'),JSON.stringify(['normal',null,'fire','rainbow',null]));assert(run('fireArrow.owned'));
 }
 reset();run('finalTowerDoorLift=.5;finalTowerEntered=true;start()');assert(!run('finalTowerEntered'));assert.equal(run('finalTowerDoorLift'),0,'restart resets the tower door and run');
-console.log('PASS Castle tower: actual three-screen climb with limited boosted jumps and 12 coins at 30/60/120 FPS on desktop/phone; summit-only chapter end, vertical camera, lava and checkpoint/revive preserving wallet/gear, restart reset.');
+console.log('PASS Castle tower: actual three-screen climb with limited boosted jumps and 12 coins at 30/60/120 FPS on desktop/phone; summit-only knight chamber entry, vertical camera, lava and checkpoint/revive preserving wallet/gear, restart reset.');

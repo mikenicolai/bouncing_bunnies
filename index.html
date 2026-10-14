@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.18',build:2026101402,builtAt:'2026-10-14',builtLabel:'14 October 2026',deployment:'Castle stone collisions and moving volcano zombies'});
+const BUILD_INFO=Object.freeze({version:'0.21.19',build:2026101403,builtAt:'2026-10-14',builtLabel:'14 October 2026',deployment:'The crown’s sword and throne-room reveal'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -1478,6 +1478,7 @@ function finalCastleProgress(){
   return finalTowerEntered?.78+.22*Math.max(0,Math.min(1,(FINAL_FLOOR-player.y-player.h)/FINAL_TOWER.height)):.78*Math.min(1,player.x/FINAL_TOWER.left);
 }
 function updateFinalCastle(dt){
+  if(finalChapter==='knight'){updateFinalKnightRoom(dt);return;}
   finalTime+=dt;
   if(player.x+player.w>FINAL_END_X-220)finalTowerDoorLift=Math.min(1,finalTowerDoorLift+dt*1.4);
   if(finalTowerDoorLift<.9&&player.x<FINAL_END_X&&player.x+player.w>FINAL_END_X-117&&player.y+player.h>191){player.x=FINAL_END_X-117-player.w;player.vx=0;}
@@ -1493,15 +1494,168 @@ function updateFinalCastle(dt){
     if(floor)checkpoint={x:Math.max(floor.x+40,player.x-100),y:floor.y-58};
   }
   updateFireArchery(dt);updateFinalWeapons(dt);updateFinalMonsters(dt);
-  if(state==='playing'&&finalTowerEntered&&player.onGround&&Math.abs(player.y+player.h-FINAL_TOWER.top)<1&&Math.abs(player.x+player.w/2-FINAL_TOWER.summitX)<28)showCastleOpeningEnd();
+  if(state==='playing'&&finalTowerEntered&&player.onGround&&Math.abs(player.y+player.h-FINAL_TOWER.top)<1&&Math.abs(player.x+player.w/2-FINAL_TOWER.summitX)<28)enterFinalKnightRoom();
 }
-function showCastleOpeningEnd(){
-  clearInputs();state='castleOpeningComplete';overlay.inert=false;
-  overlay.querySelector('.kicker').textContent='THE LAVA TOWER';
-  overlay.querySelector('h2').textContent='The tower summit awaits';
-  overlay.querySelector('.card > p:not(.kicker):not(.controls-copy)').textContent='You crossed the castle and climbed the lava tower. The final villain lies beyond the summit door.';
-  startButton.textContent='Explore castle again';overlay.classList.remove('hidden');tone(330,.25,'triangle',.04);
+// CASTLE_FINALE_BEGIN
+// The tower opens onto a sword fight, then an untouchable story reveal.
+const FINAL_KNIGHT_ROOM={width:1400,floor:470,door:1280};
+const finalKnightPlatforms=[{x:0,y:470,w:1400,h:1800,kind:'castle'},
+  {x:-30,y:-800,w:30,h:1270,kind:'castle'},{x:1400,y:-800,w:30,h:1270,kind:'castle'}];
+const finalKnightSheet=new Image();finalKnightSheet.src='assets/castle-knight-v1.png';
+const crownedBunnySheet=new Image();crownedBunnySheet.src='assets/crowned-bunny-v1.png';
+const throneRoomSheet=new Image();throneRoomSheet.src='assets/castle-throne-room-v1.png';
+let finalChapter='castle',finalKnight,finalRevealTime=0,finalRoomFade=0;
+function resetFinalChapter(){
+  finalChapter='castle';finalRevealTime=0;finalRoomFade=0;
+  finalKnight={x:850,y:354,w:72,h:116,hp:10,maxHP:10,facing:-1,phase:'guard',age:0,dizzy:0,cooldown:1.6,defeated:false,deathAge:0};
 }
+function enterFinalKnightRoom(){
+  if(finalChapter!=='castle')return;
+  clearInputs();clearFinalWeaponHazards();bunnyArrows=[];
+  finalChapter='knight';finalTowerEntered=false;WORLD_W=FINAL_KNIGHT_ROOM.width;platforms=finalKnightPlatforms;
+  checkpoint={x:90,y:412,castleRoom:'knight'};
+  Object.assign(player,{x:90,y:412,vx:0,vy:0,onGround:true,h:58,duck:false,duckVisual:0,jumpAge:9,boosts:0,invincible:2});
+  cameraX=0;cameraY=touchDockHeight?phoneGroundCameraY():0;finalRoomFade=.7;
+  fireArrow.aiming=false;tone(220,.3,'triangle',.04);
+}
+function calmFinalKnight(){
+  if(finalChapter!=='knight'||finalKnight.defeated)return;
+  Object.assign(finalKnight,{phase:'guard',age:0,dizzy:1.2,cooldown:1.8});
+}
+function hitFinalKnight(){
+  const b=finalKnight;if(finalChapter!=='knight'||b.defeated||b.dizzy>0)return false;
+  b.hp=Math.max(0,b.hp-1);b.dizzy=.8;b.phase='hurt';b.age=0;b.cooldown=1.3;
+  burst(b.x+b.w/2,b.y+55,'#e2d2ae',14);tone(180,.12,'triangle',.035);
+  if(b.hp===0){b.defeated=true;b.phase='defeated';b.deathAge=0;clearFinalWeaponHazards();bunnyArrows=[];tone(440,.35,'triangle',.04);}
+  return true;
+}
+function finalKnightSwordBox(){
+  const b=finalKnight;
+  return{x:b.facing>0?b.x+b.w-8:b.x-100,y:FINAL_FLOOR-92,w:108,h:36};
+}
+function updateFinalKnightRoom(dt){
+  finalTime+=dt;finalRoomFade=Math.max(0,finalRoomFade-dt);
+  updateFireArchery(dt);updateFinalWeapons(dt);
+  const b=finalKnight;
+  if(b.defeated){
+    b.deathAge+=dt;
+    if(player.onGround&&player.x+player.w/2>FINAL_KNIGHT_ROOM.door+20)enterFinalThroneRoom();
+    return;
+  }
+  // The inner doorway stays shut until the knight is defeated, even while dashing.
+  if(player.x+player.w>FINAL_KNIGHT_ROOM.door){player.x=FINAL_KNIGHT_ROOM.door-player.w;player.vx=0;}
+  if(b.dizzy>0){b.dizzy=Math.max(0,b.dizzy-dt);return;}
+  const distance=player.x+21-(b.x+b.w/2);b.age+=dt;b.cooldown=Math.max(0,b.cooldown-dt);
+  if(b.phase==='hurt'){b.phase='guard';b.age=0;}
+  if(b.phase==='guard'){
+    b.facing=Math.sign(distance)||b.facing;
+    if(Math.abs(distance)>138)b.x=Math.max(170,Math.min(1150,b.x+b.facing*80*dt));
+    if(Math.abs(distance)<195&&b.cooldown===0){b.phase='windup';b.age=0;tone(260,.14,'triangle',.015);}
+  }else if(b.phase==='windup'&&b.age>=.85){b.phase='slash';b.age=0;}
+  else if(b.phase==='slash'){
+    const old=b.x;b.x=Math.max(170,Math.min(1150,b.x+b.facing*240*dt));
+    const sword=finalKnightSwordBox();sword.x=Math.min(sword.x,sword.x-(b.x-old));sword.w+=Math.abs(b.x-old);
+    if(overlap(player,sword))hurt(player.x<b.x?-1:1);
+    if(b.age>=.3){b.phase='recover';b.age=0;}
+  }else if(b.phase==='recover'&&b.age>=1.1){b.phase='guard';b.age=0;b.cooldown=.55;}
+  if(overlap(player,b))hurt(player.x<b.x?-1:1);
+}
+function enterFinalThroneRoom(){
+  if(finalChapter!=='knight'||!finalKnight.defeated)return false;
+  clearInputs();clearFinalWeaponHazards();bunnyArrows=[];particles=[];
+  finalChapter='throne';finalRevealTime=0;state='finalReveal';cameraX=0;cameraY=0;
+  tone(165,.4,'triangle',.04);return true;
+}
+function updateFinalReveal(dt){
+  finalRevealTime+=dt;
+  if(finalRevealTime>=12&&state==='finalReveal'){
+    state='finalEnding';overlay.inert=false;
+    overlay.querySelector('.kicker').textContent='THE BUNNY ON THE THRONE';
+    overlay.querySelector('h2').textContent='To be continued';
+    overlay.querySelector('.card > p:not(.kicker):not(.controls-copy)').textContent='The crown. The familiar face. Every enemy at his side. Your journey has only just begun.';
+    overlay.querySelector('.controls-copy').hidden=true;startButton.textContent='Play the castle again';overlay.classList.remove('hidden');
+  }
+}
+// Anchors register each painted foot rather than snapping the cape or sword to its bounding box.
+const KNIGHT_ANCHORS=[[207,495],[239,495],[147,495],[207,483],[241,483],[242,475]];
+function drawKnightPose(frame,x,floor,facing=1,height=154){
+  if(!finalKnightSheet.complete||!finalKnightSheet.naturalWidth)return;
+  const sw=finalKnightSheet.naturalWidth/3,sh=finalKnightSheet.naturalHeight/2,scale=height/440;
+  const [ax,ay]=KNIGHT_ANCHORS[frame];ctx.save();ctx.translate(x,floor);ctx.scale(facing,1);
+  ctx.drawImage(finalKnightSheet,frame%3*sw,Math.floor(frame/3)*sh,sw,sh,-ax*scale,-ay*scale,sw*scale,sh*scale);ctx.restore();
+}
+function drawFinalKnight(){
+  const b=finalKnight,frame=b.defeated?5:b.dizzy>0?4:b.phase==='windup'?1:b.phase==='slash'?2:b.phase==='recover'?3:0;
+  ctx.save();ctx.translate(b.x+b.w/2-cameraX,FINAL_FLOOR);
+  if(!b.defeated)ctx.scale(1,1+Math.sin(finalTime*2)*.007);
+  drawKnightPose(frame,0,0,b.facing);ctx.restore();
+  if(b.phase==='windup'&&!b.defeated&&b.dizzy===0){
+    const r=finalKnightSwordBox();ctx.save();ctx.fillStyle=`rgba(255,185,87,${.13+.15*Math.sin(finalTime*18)**2})`;roundRect(r.x-cameraX,FINAL_FLOOR-8,r.w,8,4);
+    ctx.font='bold 19px system-ui';ctx.textAlign='center';ctx.fillStyle='#ffd695';ctx.fillText('!',b.x+b.w/2-cameraX,b.y-55);ctx.restore();
+  }
+}
+function drawFinalKnightHUD(){
+  const b=finalKnight,w=Math.min(280,W-24),x=(W-w)/2,y=H>540?90:75;
+  ctx.save();ctx.fillStyle='rgba(28,20,35,.88)';roundRect(x,y,w,54,13);ctx.textAlign='center';ctx.fillStyle='#f7dcac';ctx.font='bold 12px system-ui';ctx.fillText(b.defeated?'KNIGHT DEFEATED · DOOR OPEN':'THE CROWN’S SWORD',W/2,y+18);
+  ctx.font='bold 17px system-ui';for(let i=0;i<10;i++){ctx.fillStyle=i<b.hp?'#f6a08c':'#655360';ctx.fillText('♥',W/2+(i-4.5)*20,y+40);}ctx.restore();
+}
+function renderFinalKnightRoom(){
+  const field=playfieldHeight();ctx.save();ctx.beginPath();ctx.rect(0,0,W,field);ctx.clip();ctx.fillStyle='#222332';ctx.fillRect(0,0,W,field);ctx.translate(0,-cameraY);
+  if(finalHallSheet.complete&&finalHallSheet.naturalWidth)ctx.drawImage(finalHallSheet,-cameraX,-207,1400,933);
+  finalKnightPlatforms.forEach(p=>drawFinalPlatform(p));
+  for(const [x,y] of [[266,173],[551,270],[822,273],[1144,173]])drawFinalTorch(x-cameraX,y);
+  // A dark closed door receives the same upward-opening motion as the main castle.
+  if(!finalKnight.defeated){ctx.fillStyle='rgba(15,17,28,.68)';roundRect(1280-cameraX,75,120,395,6);}
+  else{ctx.fillStyle='rgba(240,197,114,.1)';ctx.fillRect(1280-cameraX,75,120,395);}
+  drawFinalKnight();drawFireAimPath();drawBunnyArrows();drawBunny();drawFinalWeapons();
+  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;
+  if(finalRoomFade>0){ctx.fillStyle=`rgba(12,14,26,${finalRoomFade/.7})`;ctx.fillRect(0,cameraY,W,field);}
+  ctx.restore();drawHUD();drawFinalKnightHUD();drawFinalWeaponInventory();drawTouchControls();
+}
+function drawCourtCell(sheet,cols,rows,frame,x,floor,height,facing=1){
+  if(!sheet?.complete||!sheet.naturalWidth)return;
+  const sw=sheet.naturalWidth/cols,sh=sheet.naturalHeight/rows;
+  ctx.save();ctx.translate(x,floor);ctx.scale(facing,1);ctx.drawImage(sheet,frame%cols*sw,Math.floor(frame/cols)*sh,sw,sh,-height*sw/sh/2,-height,height*sw/sh,height);ctx.restore();
+}
+function drawFinalCourt(t){
+  const idle=Math.floor(t*.8)%2,floor=800;
+  // Every familiar enemy stands at floor level, five on either side of the throne.
+  if(meadowZombieSheet.complete&&meadowZombieSheet.naturalWidth){meadowZombiePaint ||=new WoodBossAnimation.PaintedPoseBlend(meadowZombieSheet,measureMeadowZombieAtlas(meadowZombieSheet),false);meadowZombiePaint.draw(ctx,4,4,0,90,floor,130,-1,1);}
+  drawCourtCell(earthGoblinSheet,4,3,idle,215,floor,140,1);
+  drawCourtCell(pirateSheet,4,2,idle,335,floor,150,1);
+  if(neptunusSheet.complete&&neptunusSheet.naturalWidth){neptunusPaint ||=makeNeptunusPainter();neptunusPaint.draw(ctx,0,0,0,470,floor,190,1,1);}
+  drawCourtCell(tempestSheet,4,2,0,585,floor+5+Math.sin(t)*2,135,1);
+  if(airMonsterSprites.length)ctx.drawImage(airMonsterSprites[idle],910,660+Math.sin(t*2)*1.5,112,140);
+  woodBossRenderer.pose(ctx,'giant','giantIdle',t,1085,floor,180,-1);
+  if(lavaKingSheet.complete&&lavaKingSheet.naturalWidth){const [ax,ay]=LAVA_KING_ART.anchors[0],s=.40;ctx.save();ctx.translate(1220,floor+Math.sin(t*1.4)*1.5);ctx.scale(-1,1);ctx.drawImage(lavaKingSheet,0,0,lavaKingSheet.naturalWidth/4,lavaKingSheet.naturalHeight/2,-ax*s,-ay*s,lavaKingSheet.naturalWidth/4*s,lavaKingSheet.naturalHeight/2*s);ctx.restore();}
+  if(fireZombieSprites.length)ctx.drawImage(fireZombieSprites[idle],1285,660+Math.sin(t*2+1)*1.5,105,140);
+  drawKnightPose(0,1435,floor,-1,140);
+}
+function renderFinalReveal(){
+  const field=playfieldHeight(),t=finalRevealTime,scale=Math.min(W/1536,field/1024),x=(W-1536*scale)/2,y=(field-1024*scale)/2;
+  ctx.save();ctx.fillStyle='#10131f';ctx.fillRect(0,0,W,H);ctx.translate(x,y);ctx.scale(scale,scale);
+  if(throneRoomSheet.complete&&throneRoomSheet.naturalWidth)ctx.drawImage(throneRoomSheet,0,0,1536,1024);
+  for(const [tx,ty] of [[153,441],[397,461],[642,502],[890,502],[1137,461],[1384,441]]){ctx.save();ctx.globalAlpha=.55;drawFinalTorch(tx,ty,t);ctx.restore();}
+  ctx.save();ctx.globalAlpha=Math.max(0,Math.min(1,(t-1.5)/2));drawFinalCourt(t);ctx.restore();
+  if(crownedBunnySheet.complete&&crownedBunnySheet.naturalWidth){
+    const sw=crownedBunnySheet.naturalWidth/2,sh=crownedBunnySheet.naturalHeight/2,cycle=t%8;
+    // Brief cross-fades register the feet while breathing, blinking and commanding.
+    const frame=cycle>6.6?3:cycle>4.4?2:cycle>3.1&&cycle<3.32?1:0;
+    const changes=[[3.1,0,1],[3.32,1,0],[4.4,0,2],[6.6,2,3],[0,3,0]];
+    const change=changes.find(([at])=>cycle>=at&&cycle<at+.16);
+    const layers=change?[[change[1],1-(cycle-change[0])/.16],[change[2],(cycle-change[0])/.16]]:[[frame,1]];
+    const s=.44;ctx.save();ctx.translate(768,716);ctx.scale(1,1+Math.sin(t*1.5)*.007);
+    for(const [f,alpha] of layers){const ay=f<2?612:602;ctx.globalAlpha=alpha;ctx.drawImage(crownedBunnySheet,f%2*sw,Math.floor(f/2)*sh,sw,sh,-370*s,-ay*s,sw*s,sh*s);}ctx.restore();
+  }
+  // Benny stops at the foot of the throne: recognizable small hero versus rounder ruler.
+  if(characterSprites.length){const s=characterSprites[0],a=CHARACTER_ANCHORS[0],k=.28;ctx.drawImage(s,-a[0]*k+690,-a[1]*k+915,s.width*k,s.height*k);}
+  ctx.fillStyle=`rgba(9,11,20,${Math.max(0,1-t/.9)})`;ctx.fillRect(0,0,1536,1024);ctx.restore();
+  ctx.save();ctx.textAlign='center';
+  if(t>5){ctx.globalAlpha=Math.min(1,(t-5)/2);ctx.fillStyle='#ffe4ad';ctx.shadowColor='#080912';ctx.shadowBlur=10;ctx.font=`bold ${Math.min(36,W*.064)}px Georgia`;ctx.fillText('To be continued',W/2,field-25);}
+  else{ctx.fillStyle='#ead8bb';ctx.font=`bold ${Math.min(18,W*.04)}px system-ui`;ctx.fillText('Beyond the tower…',W/2,Math.max(25,y-10));}ctx.restore();
+}
+
+// CASTLE_FINALE_END
 const earthHazardPlatforms=[4,9,13,18,23];
 const earthHazards=earthHazardPlatforms.map((id,i)=>{const p=earthPlatforms[id],s=EARTH_MUSHROOM_SCALE;return{x:p.x+p.w-72+65*(1-s)/2,y:p.y-70*s,w:65*s,h:70*s,variant:i%2};});
 function earthSwampYAt(x){return earthGroundAt(x)+350;}
@@ -1725,7 +1879,7 @@ function clearFinalWeaponHazards(){
   stopWaterDash();waterTrident.shot=null;finalDashAirUsed=false;
   for(const k of [...earthKnives.slots,...windStars.slots])if(k.state==='flying')k.state='returning';
 }
-function finalSolids(){return [...finalPlatforms.filter(p=>!p.collapsed),{...FINAL_GATE,y:FINAL_GATE.y-FINAL_GATE.h*finalGateLift}];}
+function finalSolids(){return finalChapter==='knight'?[...finalKnightPlatforms,...(finalKnight.defeated?[]:[{x:FINAL_KNIGHT_ROOM.door,y:-800,w:120,h:1270}])]:[...finalPlatforms.filter(p=>!p.collapsed),{...FINAL_GATE,y:FINAL_GATE.y-FINAL_GATE.h*finalGateLift}];}
 function moveFinalDash(dt){
   const t=waterTrident,travel=Math.min(dt,t.dash),steps=Math.max(1,Math.ceil(travel*WATER_TRIDENT_DASH_SPEED/7));
   const solids=finalSolids();player.onGround=false;player.jumpAge=9;player.boosts=2;
@@ -1734,9 +1888,9 @@ function moveFinalDash(dt){
     const next={...player,x:player.x+t.dx*WATER_TRIDENT_DASH_SPEED*travel/steps,y:player.y+t.dy*WATER_TRIDENT_DASH_SPEED*travel/steps};
     const landing=solids.find(p=>p.oneWay&&t.dy>0&&feet<=p.y+1&&next.y+next.h>=p.y&&next.x+next.w>p.x&&next.x<p.x+p.w);
     if(landing){next.y=landing.y-next.h;player.x=next.x;player.y=next.y;player.onGround=true;if(landing.crumble&&landing.crackAge<0)landing.crackAge=0;stopWaterDash();break;}
-    if(next.x<0||next.x+next.w>FINAL_W||solids.some(p=>!p.oneWay&&overlap(next,p))){stopWaterDash();break;}
+    if(next.x<0||next.x+next.w>WORLD_W||solids.some(p=>!p.oneWay&&overlap(next,p))){stopWaterDash();break;}
     player.previousFeet=feet;player.x=next.x;player.y=next.y;
-    for(const m of finalMonsters)if(m.alive&&overlap(player,m))hitFinalMonster(m);
+    if(finalChapter==='knight'){if(overlap(player,finalKnight))hitFinalKnight();}else for(const m of finalMonsters)if(m.alive&&overlap(player,m))hitFinalMonster(m);
     if(i%3===0)burst(player.x+21-t.dx*25,player.y+29-t.dy*25,'#a8fff0',1);
   }
   if(t.dash>0){t.dash=Math.max(0,t.dash-travel);if(t.dash===0){player.vx=t.dx*130;player.vy=t.dy*130;if(t.shot)t.shot.returning=true;}}
@@ -1745,7 +1899,7 @@ function moveFinalDash(dt){
 }
 function finalProjectileHit(old,shot){
   const hit=arrowFirstCollision(old,shot);
-  if(hit){shot.x=old.x+(shot.x-old.x)*hit.t;shot.y=old.y+(shot.y-old.y)*hit.t;if(hit.kind==='castleMonster')hitFinalMonster(hit.target);burst(shot.x,shot.y,'#acede2',5);}
+  if(hit){shot.x=old.x+(shot.x-old.x)*hit.t;shot.y=old.y+(shot.y-old.y)*hit.t;if(hit.kind==='castleMonster')hitFinalMonster(hit.target);else if(hit.kind==='finalKnight')hitFinalKnight();burst(shot.x,shot.y,'#acede2',5);}
   return !!hit;
 }
 function returnFinalProjectile(shot,dt,speed=1000){
@@ -2190,9 +2344,9 @@ function arrowFirstCollision(a,b,inMaze=false){
     return hit;
   }
   if(level==='final'){
-    for(const p of finalPlatforms.filter(p=>!p.collapsed))consider(arrowSegmentEntry(a,b,p),'wall');
-    consider(arrowSegmentEntry(a,b,{...FINAL_GATE,y:FINAL_GATE.y-FINAL_GATE.h*finalGateLift}),'wall');
-    for(const m of finalMonsters)if(m.alive)consider(arrowSegmentEntry(a,b,m),'castleMonster',m);
+    for(const p of finalSolids())consider(arrowSegmentEntry(a,b,p),'wall');
+    if(finalChapter==='knight'){if(!finalKnight.defeated)consider(arrowSegmentEntry(a,b,finalKnight),'finalKnight',finalKnight);}
+    else for(const m of finalMonsters)if(m.alive)consider(arrowSegmentEntry(a,b,m),'castleMonster',m);
     return hit;
   }
   if(inMaze){
@@ -2225,6 +2379,7 @@ function updateFireArchery(dt){
       if(hit.kind==='balloon')popMeadowBalloon(hit.target);
       else if(hit.kind==='meadowZombie')hitMeadowZombie(hit.target);
       else if(hit.kind==='castleMonster')hitFinalMonster(hit.target,a.damage);
+      else if(hit.kind==='finalKnight')hitFinalKnight();
       else if(hit.kind==='zombie')hitFireZombie(hit.target,a.damage);
       else if(hit.kind==='fireball')hit.target.alive=false;
       else if(hit.kind==='king')hitLavaKing({x:a.ox,w:0},true,a.damage);
@@ -3018,7 +3173,7 @@ function resumeWithHearts(hearts){
   }else if(level==='meadow'){
     player.inWater=false;player.air=WATER_AIR;player.stroke=0;
   }else if(level==='final'){
-    clearFinalWeaponHazards();if(checkpoint.tower)resetFinalTowerStones();
+    clearFinalWeaponHazards();if(checkpoint.tower)resetFinalTowerStones();if(checkpoint.castleRoom)calmFinalKnight();
   }else if(level==='air'){
     tempestWinds=[];tempest.dizzy=1.5;tempest.shotCooldown=Math.max(1.2,tempest.shotCooldown);
     player.airCloud=airPlatforms.find(p=>!p.removed&&p.kind==='white'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x<p.x+p.w)||null;
@@ -3087,7 +3242,7 @@ function resetGame(autoPlay = true) {
   waterPirates.forEach(positionWaterPirate);
   earthPlatforms.forEach(p=>p.spring=0);
   earthGoblins=level==='earth'?earthGoblinPlatforms.map((id,i)=>{const p=earthPlatforms[id];return{x:p.x+p.w*.5-27,y:p.y-58,w:54,h:58,home:p,id,hp:2,facing:i%2?-1:1,vx:0,mode:Math.random()<.7?'dance':'idle',modeAge:0,modeDuration:2+Math.random()*2,phase:i*.7,dizzy:0,alive:true};}):[];
-  if(level==='final'){resetFinalMonsters();resetFinalWeapons();resetFinalTowerStones();}else finalMonsters=[];
+  if(level==='final'){resetFinalMonsters();resetFinalWeapons();resetFinalTowerStones();resetFinalChapter();}else finalMonsters=[];
   particles = []; score = 0; resetRunWallet(); lives = 3; cameraX = 0; cameraY = level==='fire'?fireCameraTargetY():touchDockHeight?phoneGroundCameraY():level==='earth'?72:0;
   state = autoPlay ? "playing" : "title";
 }
@@ -3204,7 +3359,7 @@ function openWorldMap(){
     button.setAttribute('aria-label',world==='final'?`Final Villain — ${finalUnlocked()?'unlocked, enter the castle':'locked, four worlds needed'}`:`${worldDetails[world][0]}${done?' — completed':''}`);
   });
   document.querySelector('#finalSeal').hidden=!finalUnlocked();
-  document.querySelector('#mapBack').textContent=mapReturnState==='playing'?`Continue ${level}`:`Replay ${level}`;
+  document.querySelector('#mapBack').textContent=['playing','finalReveal','finalEnding'].includes(mapReturnState)?`Continue ${level}`:`Replay ${level}`;
   selectWorld(nextWorld());
   document.querySelector('#mapHeading').focus();
   if(developerRun)openDeveloperMenu();
@@ -3270,7 +3425,7 @@ document.querySelector('#mapAvailability').addEventListener('click',()=>{
 });
 document.querySelector('#mapBack').addEventListener('click',()=>{
   document.querySelector('#worldMap').hidden=true;
-  if(mapReturnState==='playing'){state='playing';}else start();
+  if(['playing','finalReveal','finalEnding'].includes(mapReturnState)){state=mapReturnState;if(state==='finalEnding'){overlay.inert=false;overlay.classList.remove('hidden');}}else start();
 });
 function burst(x,y,color,count=8) {
   for(let i=0;i<count;i++) particles.push({x,y,vx:(Math.random()-.5)*190,vy:-Math.random()*180-30,life:.5+Math.random()*.35,color,r:2+Math.random()*4});
@@ -3586,6 +3741,7 @@ function updateWater(dt){
 // Landing artwork follows real contact; animation never delays the physics.
 function update(dt) {
   updateReviveAd();
+  if(state==='finalReveal'){updateFinalReveal(dt);return;}
   if(state!=="playing")return;
   updateBackgroundBirds(dt);
   if(level==='earth')updateEarthTurtle(dt);
@@ -3681,7 +3837,7 @@ function updateWorld(dt) {
   if(!player.onGround)player.jumpAge+=dt;
   player.attack=Math.max(0,player.attack-dt);player.attackCooldown=Math.max(0,player.attackCooldown-dt);
 
-  for(const c of coins) if(!c.taken && Math.hypot(player.x+21-c.x,player.y+29-c.y)<38) {
+  for(const c of coins) if(!(level==='final'&&finalChapter!=='castle')&&!c.taken && Math.hypot(player.x+21-c.x,player.y+29-c.y)<38) {
     collectCoin(c); burst(c.x,c.y,THEME.gold,10); tone(700+score%4*80,.09,"sine",.04);
   }
   updateMeadowZombies(dt);
@@ -3785,7 +3941,7 @@ function attack() {
      enemy.hp--;enemy.dizzy=.9;if('swing' in enemy)enemy.swing=0;
      burst(enemy.x+enemy.w/2,enemy.y+enemy.h/2,enemy.hp?'#c6f4fa':'#f4e9cd',12);tone(enemy.hp?240:150,.12,'triangle');
    }
-   if(level==='final')for(const monster of finalMonsters)if(overlap(reach,monster))hitFinalMonster(monster);
+   if(level==='final'){if(finalChapter==='knight'){if(overlap(reach,finalKnight))hitFinalKnight();}else for(const monster of finalMonsters)if(overlap(reach,monster))hitFinalMonster(monster);}
   for(const e of enemies)if(overlap(reach,e))hitMeadowZombie(e);
 }
 
@@ -3942,12 +4098,12 @@ function drawFinalPlatform(p,foreground=false){
   if(p.kind==='tower'){ctx.save();ctx.strokeStyle='#403b37';ctx.lineWidth=5;for(const offset of [32,p.w-32]){ctx.beginPath();ctx.moveTo(x+offset,p.y+p.h);ctx.lineTo(x+offset,p.y+p.h+27);ctx.lineTo(x+offset+20,p.y+p.h);ctx.stroke();}ctx.restore();}
 }
 function drawFinalForegroundBlocks(){for(const p of finalPlatforms.filter(finalHallBlock))drawFinalPlatform(p,true);}
-function drawFinalTorch(x,y){
-  const flicker=1+.09*Math.sin(finalTime*11+x),radius=52*flicker;
+function drawFinalTorch(x,y,clock=finalTime){
+  const flicker=1+.09*Math.sin(clock*11+x),radius=52*flicker;
   const glow=ctx.createRadialGradient(x,y,2,x,y,radius);glow.addColorStop(0,'rgba(255,178,60,.36)');glow.addColorStop(1,'rgba(255,133,40,0)');
   ctx.fillStyle=glow;ctx.fillRect(x-radius,y-radius,radius*2,radius*2);
   // The painting supplies the mounted torch and flame; animate its light without a second floating fire.
-  ctx.fillStyle=`rgba(255,221,153,${.12+.06*Math.sin(finalTime*9+x)})`;ctx.beginPath();ctx.ellipse(x,y+5,3,9*flicker,0,0,7);ctx.fill();
+  ctx.fillStyle=`rgba(255,221,153,${.12+.06*Math.sin(clock*9+x)})`;ctx.beginPath();ctx.ellipse(x,y+5,3,9*flicker,0,0,7);ctx.fill();
 }
 function drawFinalWorld(){
   const archX=2820-cameraX,archW=440,archH=660,archY=FINAL_FLOOR-archH*1445/1536;
@@ -5862,7 +6018,7 @@ function drawHUD() {
   ctx.fillStyle=THEME.coral;for(let i=0;i<lives;i++){ctx.beginPath();ctx.arc(219+i*22,41,8,0,7);ctx.fill();ctx.beginPath();ctx.ellipse(215+i*22,32,3,7,-.3,0,7);ctx.ellipse(223+i*22,32,3,7,.3,0,7);ctx.fill();}
   ctx.restore();
   const progress=Math.max(0,Math.min(1,(level==='air'?(descentStarted?.78+.22*Math.max(0,Math.min(1,(player.y+1690)/3460)):.78*player.x/5910):level==='earth'?player.x/EARTH_GATE_X:level==='fire'?(fireMode==='king'?.9+.1*(10-lavaKing.hp)/10:fireMode==='secondVolcano'?.65+.25*Math.max(0,(player.x-6680)/(10350-6680)):fireMode==='maze'?.45+.2*Math.max(0,(player.mazeC-1)/22):fireUnderground?.3+.15*Math.max(0,Math.min(1,(player.y+1050)/3070)):.3*player.x/4750):level==='water'?player.x/WATER_ARENA.exit:level==='final'?finalCastleProgress():player.x/(WORLD_W-150)))),progressY=H>540?110:28;ctx.fillStyle="rgba(13,32,43,.4)";roundRect(W-210,progressY,180,10,5);ctx.fillStyle=THEME.shrine;roundRect(W-210,progressY,180*progress,10,5);
-  ctx.fillStyle=level==='final'?'#f5e5bf':"rgba(13,32,43,.75)";ctx.font="700 11px system-ui";ctx.textAlign="right";ctx.fillText(level==='final'?(finalTowerEntered?'FINAL · LAVA TOWER':player.x<3130?'FINAL · DEAD WOODS':'FINAL · OLD CASTLE'):level==='air'?(descentStarted?"AIR · DOWNDRAFT":"AIR · CLIMB"):level==='earth'?"EARTH · WILDWOOD":level==='fire'?(fireMode==='king'?"FIRE · LAVA KING":fireMode==='secondVolcano'?"FIRE · KING’S VOLCANO":fireMode==='maze'?"FIRE · LABYRINTH":fireMode==='dropper'?"FIRE · CRATER DROP":fireMode==='volcano'?"FIRE · VOLCANO":"FIRE · EMBER PASS"):level==='water'?(player.x<WATER_CAVE_START?"WATER · SANDY SHORE":player.x<5050?"WATER · KELP GROTTO":player.x<7000?"WATER · PIRATE WRECK":player.x<WATER_GATE.exitX?"WATER · DEEP CAVE":player.x<WATER_RUINS_START?"WATER · TRIDENT PASSAGE":neptunus.active?"WATER · NEPTUNUS":"WATER · ANCIENT RUINS"):level==='meadow'?(player.inWater?'MEADOW · DIVE PASSAGE':player.x>=6920?'MEADOW · SHRINE':player.x>=MEADOW_BOW_RACK_X?'MEADOW · SWIMMING':player.x>=4800?'MEADOW · BALLOON RANGE':'FIRST MEADOW'):'ELEMENTAL SHRINE',W-30,progressY+28);
+  ctx.fillStyle=level==='final'?'#f5e5bf':"rgba(13,32,43,.75)";ctx.font="700 11px system-ui";ctx.textAlign="right";ctx.fillText(level==='final'?(finalChapter==='knight'?'FINAL · THE CROWN’S SWORD':finalTowerEntered?'FINAL · LAVA TOWER':player.x<3130?'FINAL · DEAD WOODS':'FINAL · OLD CASTLE'):level==='air'?(descentStarted?"AIR · DOWNDRAFT":"AIR · CLIMB"):level==='earth'?"EARTH · WILDWOOD":level==='fire'?(fireMode==='king'?"FIRE · LAVA KING":fireMode==='secondVolcano'?"FIRE · KING’S VOLCANO":fireMode==='maze'?"FIRE · LABYRINTH":fireMode==='dropper'?"FIRE · CRATER DROP":fireMode==='volcano'?"FIRE · VOLCANO":"FIRE · EMBER PASS"):level==='water'?(player.x<WATER_CAVE_START?"WATER · SANDY SHORE":player.x<5050?"WATER · KELP GROTTO":player.x<7000?"WATER · PIRATE WRECK":player.x<WATER_GATE.exitX?"WATER · DEEP CAVE":player.x<WATER_RUINS_START?"WATER · TRIDENT PASSAGE":neptunus.active?"WATER · NEPTUNUS":"WATER · ANCIENT RUINS"):level==='meadow'?(player.inWater?'MEADOW · DIVE PASSAGE':player.x>=6920?'MEADOW · SHRINE':player.x>=MEADOW_BOW_RACK_X?'MEADOW · SWIMMING':player.x>=4800?'MEADOW · BALLOON RANGE':'FIRST MEADOW'):'ELEMENTAL SHRINE',W-30,progressY+28);
   if(level==='water'){
     const x=20,y=H>540?152:130;ctx.save();ctx.fillStyle='rgba(13,42,65,.8)';roundRect(x,y,176,32,10);
     ctx.globalAlpha=waterPortalKeyTaken?1:.55;drawWaterKeyIcon(x+19,y+16,25);ctx.globalAlpha=1;ctx.fillStyle=waterPortalKeyTaken?'#ffdf86':'#dcece7';ctx.font='bold 12px system-ui';ctx.textAlign='left';ctx.fillText(waterGate.phase==='open'?'GATE OPEN':waterPortalKeyTaken?'KEY · SWIM TO LOCK':'FIND THE SHIP KEY',x+36,y+20);ctx.restore();
@@ -5907,6 +6063,8 @@ function drawTouchControls() {
 }
 
 function render(time) {
+  if(level==='final'&&finalChapter==='throne'){renderFinalReveal();return;}
+  if(level==='final'&&finalChapter==='knight'){renderFinalKnightRoom();return;}
   const nativeW=W,nativeH=H,fieldH=playfieldHeight(),view=level==='fire'?fireViewSize():level==='water'?waterViewSize():{width:W,height:fieldH,scale:1};
   ctx.save();ctx.beginPath();ctx.rect(0,0,W,fieldH);ctx.clip();ctx.scale(view.scale,view.scale);W=view.width;H=view.height;
   drawBackground();ctx.save();ctx.translate(0,-cameraY);if(level==='fire'){drawFireTrees();drawFireVolcano();drawFireMaze();drawSecondFireVolcano();drawFireMazeTransition();}if(level==='earth')drawEarthTrees();platforms.forEach(drawPlatform);if(level==='air')drawAirWorld();else if(level==='earth')drawEarthWorld();else if(level==='fire'){drawFireRollingStones();drawLavaKingBarriers();drawFireGate();drawLavaKing();drawFireArrowPickup();drawFireAimPath();drawBunnyArrows();}else if(level==='water')drawWaterWorld();else if(level==='final'){drawFinalWorld();drawFireAimPath();drawBunnyArrows();}else if(level==='meadow')drawMeadowLessons();else drawShrine(time);
