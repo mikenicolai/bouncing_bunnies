@@ -44,6 +44,7 @@ function refreshReviveOffer(){
 function resumeWithHearts(hearts){
   if(!revivePending||reviveLevel!==level||!['lost','reviveAd'].includes(state))return false;
   clearInputs();
+  if(level==='water')ensureNeptunusCheckpoint();
   Object.assign(player,{x:checkpoint.x,y:checkpoint.y,h:58,vx:0,vy:0,duck:false,duckVisual:0,
     ridingTurtle:false,blueContact:null,airCloud:null,breaching:false,attack:0,attackCooldown:0,jumpAge:9,boosts:0,landingPaint:0,mazeTarget:null});
   player.onGround=platforms.some(p=>p.kind!=='blue'&&Math.abs(p.y-player.y-player.h)<2&&player.x>=p.x&&player.x+player.w<=p.x+p.w);
@@ -51,8 +52,7 @@ function resumeWithHearts(hearts){
   if(level==='fire')restoreFireCheckpoint();
   else if(level==='water'){
     stopWaterDash();waterTrident.shot=null;waterTrident.cooldown=0;
-    player.inWater=!!checkpoint.water;player.air=WATER_AIR;neptunusShots=[];
-    if(neptunus.hp>0){neptunus.mode='idle';neptunus.age=0;neptunus.dizzy=1.2;neptunus.cooldown=1.5;}
+    player.inWater=!!checkpoint.water;player.air=WATER_AIR;calmNeptunusAfterRevive();
   }else if(level==='meadow'){
     player.inWater=false;player.air=WATER_AIR;player.stroke=0;
   }else if(level==='final'){

@@ -63,6 +63,7 @@ for(const fps of [30,60,120]){
  for(let hp=run('NEPTUNUS_HP');hp>0;hp--){
   run("keys.clear();waterTrident.shot=null;waterTrident.cooldown=0;neptunus.dizzy=0;neptunus.mode='idle';neptunus.cooldown=999;player.x=neptunus.x-160;player.y=neptunus.y+neptunus.h/2-29;player.vx=0;player.vy=0;player.facing=1;attack()");
   tick(fps,.55);assert.equal(run('neptunus.hp'),hp-1);assert.equal(run('waterTrident.cyber'),hp-1<=5,'cyber unlocks on the fifth landed hit');
+  tick(fps,1.5); // Wait for the visible recovery guard before the next genuine hit.
  }
  assert.equal(run('neptunusShots.length'),0,'defeat clears water attacks');tick(fps,2);
  run("player.x=WATER_ARENA.exit-50;player.y=1260;player.vx=0;keys.add('ArrowRight')");tick(fps,.8);

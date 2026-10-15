@@ -7,14 +7,14 @@ for(const fps of [30,60,120]){
   run(`level='water';resetGame();player.inWater=true;waterTrident.owned=true;waterAquaSuit=true;neptunus.active=true;neptunus.mode='${mode}';neptunus.age=.89;neptunus.cooldown=0;player.x=neptunus.x+10;player.y=neptunus.y+80;neptunusShots=[{x:player.x,y:player.y,r:23,vx:0,vy:0,life:3,kind:'tide'}]`);
   assert(run('hitNeptunus()'));assert.equal(run('neptunus.hp'),9);assert.equal(run('neptunusShots.length'),0);
   const before=run('JSON.stringify({x:neptunus.x,y:neptunus.y})');
-  tick('updateNeptunus',1);
+  tick('updateNeptunus',.25);
   assert.equal(run('neptunus.mode'),'hurt');assert.equal(run('JSON.stringify({x:neptunus.x,y:neptunus.y})'),before);
   assert.equal(run('lives'),3,'a struck boss cannot hurt the bunny while stunned');
   assert(!run('hitNeptunus()'),'one heart per hurt window');
-  run('player.x=WATER_ARENA.left+100');tick('updateNeptunus',.6);
-  assert.equal(run('neptunus.mode'),'idle');assert.equal(run('neptunusShots.length'),0,'recovery does not spawn a retaliation');
+  run('player.x=WATER_ARENA.left+100');tick('updateNeptunus',1.2);
+  assert.notEqual(run('neptunus.mode'),'hurt');assert.equal(run('neptunus.guard'),0,'short recoil is followed by a guarded counterattack');
   run('neptunus.dizzy=0;neptunus.hp=6;hitNeptunus()');assert(run('waterTrident.cyber'));
-  run('neptunus.dizzy=0;hitNeptunus()');assert(run('waterTrident.cyber'),'upgrade stays on below five hearts');
+  run('player.x=WATER_ARENA.left+100');tick('updateNeptunus',1.5);assert(run('hitNeptunus()'));assert(run('waterTrident.cyber'),'upgrade stays on below five hearts');
  }
  // The shorter dash keeps swept movement and ends after roughly 490px.
  run("level='water';resetGame();player.inWater=true;waterTrident.owned=true;waterAquaSuit=true;waterSharks=[];waterPirates=[];player.x=11500;player.y=1150;waterGate.phase='open';waterTrident.mode='dash';attack()");
