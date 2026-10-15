@@ -30,7 +30,7 @@ function updateEarthKnives(dt){
     // landing boughs and cliffs can block throws without tunnelling at 30 FPS.
     const contacts=[];
     const add=(box,hit)=>{const t=arrowSegmentEntry(old,k,box,6);if(t!==null)contacts.push({t,hit});};
-    for(const p of platforms)add(p,()=>{});
+    for(const p of [...platforms,...(level==='earth'?earthArenaTreeSolids():[])])add(p,()=>{});
     for(const g of earthGoblins)if(g.alive)add(g,()=>hitEarthGoblin(g));
     if(earthBoss.active&&['small','giant'].includes(earthBoss.stage))add(earthBossBox(),()=>hitEarthBoss('knife'));
     contacts.sort((a,b)=>a.t-b.t);

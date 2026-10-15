@@ -151,8 +151,25 @@ function beginNeptunusAttack(){
   b.targetX=player.x+21;b.targetY=player.y+29;
   b.mode=['tideWarn','thrustWarn','volleyWarn'][b.turn++%3];
 }
+function pushNeptunusBubble(dt){
+  const b=neptunus;if(!b.active||b.hp<=0||b.guard<=0)return false;
+  const dx=player.x+player.w/2-(b.x+b.w/2),dy=player.y+player.h/2-(b.y+b.h/2);
+  if(Math.hypot(dx/(91+player.w/2),dy/(137+player.h/2))>1.03)return false;
+  const side=Math.abs(dx)>1?Math.sign(dx):-b.facing,vertical=waterClamp(dy/180,-.4,.4);
+  stopWaterDash();if(waterTrident.shot)waterTrident.shot.returning=true;
+  const vx=side*(b.mode==='thrust'?740:370),vy=vertical*220,steps=Math.max(1,Math.ceil(dt*Math.abs(vx)/6));
+  const solids=[...waterReefs,...waterShipSolids(),...waterGateSolid(),...waterAdventureSolids()];
+  for(let i=0;i<steps;i++){
+    const candidate={...player,x:player.x+vx*dt/steps,y:player.y+vy*dt/steps};
+    if(waterPositionClear(candidate,solids)){player.x=candidate.x;player.y=candidate.y;}
+    else if(waterPositionClear({...candidate,y:player.y},solids))player.x=candidate.x;
+  }
+  player.vx=vx;player.vy=vy;player.waterBubbleGrace=.22;
+  return true;
+}
 function updateNeptunus(dt){
   const b=neptunus;
+  player.waterBubbleGrace=Math.max(0,(player.waterBubbleGrace||0)-dt);
   if(!b.active&&player.x>WATER_ARENA.left+80&&waterTrident.owned&&waterAquaSuit){b.active=true;ensureNeptunusCheckpoint();tone(120,.35,'triangle',.04);}
   if(!b.active)return;
   if(b.hp<=0){b.deathAge+=dt;return;}
@@ -177,14 +194,14 @@ function updateNeptunus(dt){
   }else if(b.mode==='recover'&&b.age>=(enraged?NEPTUNUS_COMBAT.enragedRecover:NEPTUNUS_COMBAT.recover)){b.mode='idle';b.age=0;b.cooldown=enraged?NEPTUNUS_COMBAT.enragedCooldown:NEPTUNUS_COMBAT.cooldown;}
   b.x=waterClamp(b.x,WATER_ARENA.left+140,WATER_ARENA.right-220);
   b.y=waterClamp(b.y,waterProfileY(WATER_ROOF,b.x)+90,waterFloorY(b.x)-b.h-35);
-  const dashing=waterTrident.dash>0;
-  if(!dashing&&b.dizzy===0){
+  const bubblePushed=pushNeptunusBubble(dt),dashing=waterTrident.dash>0;
+  if(!dashing&&!bubblePushed&&player.waterBubbleGrace<=0&&b.dizzy===0){
     if(overlap(player,b))hurt(player.x<b.x?-1:1);
     if(b.mode==='thrust'&&overlap(player,neptunusThrustBox()))hurt(b.facing);
   }
   for(const p of neptunusShots){
     p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;
-    if(p.life>0&&!dashing&&overlap(player,{x:p.x-p.r,y:p.y-p.r,w:p.r*2,h:p.r*2})){hurt(p.vx<0?-1:1);p.life=0;}
+    if(p.life>0&&!dashing&&player.waterBubbleGrace<=0&&overlap(player,{x:p.x-p.r,y:p.y-p.r,w:p.r*2,h:p.r*2})){hurt(p.vx<0?-1:1);p.life=0;}
     if(p.y<waterProfileY(WATER_ROOF,p.x)+p.r||p.x<WATER_ARENA.left||p.x>WATER_ARENA.right||p.y>waterFloorY(p.x)+240)p.life=0;
   }
   neptunusShots=neptunusShots.filter(p=>p.life>0);
@@ -265,7 +282,9 @@ function drawWaterAdventure(){
   if(cameraX+W>=WATER_GATE.exitX-100&&cameraX+W<WATER_RUINS_START-200&&!waterTrident.owned){waterItemPedestal(WATER_TRIDENT_SPOT,'TRIDENT');drawWaterTrident(WATER_TRIDENT_SPOT.x,WATER_TRIDENT_SPOT.y+Math.sin(waterTime*2)*4,92,-.65);}
   drawWaterRuins();drawNeptunus();
   for(const p of neptunusShots){
-    const x=p.x-cameraX;ctx.fillStyle=p.kind==='tide'?'#80f7df':'#b3fff1';ctx.strokeStyle='#268fb1';ctx.lineWidth=4;
+    const x=p.x-cameraX;
+    if(drawBossEffect('water',p.kind==='tide'?'tide':'orb',x,p.y+(p.kind==='tide'?p.r*.6:0),p.r*2,p.r*(p.kind==='tide'?3.2:2),p.kind==='orb'?waterTime*.7:0))continue;
+    ctx.fillStyle=p.kind==='tide'?'#80f7df':'#b3fff1';ctx.strokeStyle='#268fb1';ctx.lineWidth=4;
     ctx.beginPath();ctx.arc(x,p.y,p.r,0,7);ctx.fill();ctx.stroke();ctx.strokeStyle='#f0fff5';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x-3,p.y-3,p.r*.6,3.3,5);ctx.stroke();
   }
   if(neptunus.active&&neptunus.hp>0){
@@ -353,10 +372,13 @@ function drawNeptunus(){
     const cx=b.x+b.w/2-cameraX,cy=b.y+b.h/2,pulse=.5+.5*Math.sin(waterTime*8);
     ctx.save();
     if(b.guard>0){
-      ctx.fillStyle='rgba(83,221,239,.12)';ctx.strokeStyle=`rgba(165,255,247,${.45+pulse*.3})`;ctx.lineWidth=3;
-      ctx.beginPath();ctx.ellipse(cx,cy,88+pulse*3,133+pulse*4,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.strokeStyle='rgba(224,255,249,.8)';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(cx-3,cy-4,77,122,0,3.4,4.6);ctx.stroke();
+      const mix=.5+.5*Math.sin(waterTime*2);
+      if(!drawBossEffect('water','bubble',cx,cy,198+pulse*4,294+pulse*5,0,1-mix)){
+        ctx.fillStyle='rgba(83,221,239,.12)';ctx.strokeStyle='rgba(165,255,247,.7)';ctx.lineWidth=3;
+        ctx.beginPath();ctx.ellipse(cx,cy,91,137,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+      }else drawBossEffect('water','bubble2',cx,cy,198+pulse*4,294+pulse*5,0,mix);
     }
+    if(b.mode==='thrust')drawBossEffect('water','wave',cx-b.facing*78,cy+15,130,58,b.facing>0?0:Math.PI);
     ctx.strokeStyle='rgba(152,247,243,.45)';ctx.lineWidth=2;
     for(let i=0;i<5;i++){const phase=(waterTime*.7+i*.23)%1;ctx.beginPath();ctx.arc(cx+Math.sin(i*2.4+waterTime)*87,cy+135-phase*285,3+i%3,0,Math.PI*2);ctx.stroke();}
     ctx.restore();

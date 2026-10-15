@@ -277,7 +277,7 @@
         ctx.lineTo(cx + w * .3, floor - h * .59); ctx.lineTo(cx + w / 2, floor + 5); ctx.closePath();
         ctx.fillStyle = '#697d75'; ctx.fill(); ctx.strokeStyle = '#344a40'; ctx.lineWidth = 3; ctx.stroke(); ctx.clip();
         const b = this.bounds.small[0];
-        ctx.globalAlpha = .75; ctx.drawImage(this.images.small, b.x + b.w * .2, b.y + b.h * .88, b.w * .08, b.h * .09, cx - w / 2, floor - h, w, h);
+        if(typeof drawBossEffect!=='function'||!drawBossEffect('earth','rock',cx,floor-h/2,w,h)){ctx.globalAlpha = .75; ctx.drawImage(this.images.small, b.x + b.w * .2, b.y + b.h * .88, b.w * .08, b.h * .09, cx - w / 2, floor - h, w, h);}
         ctx.restore();
         ctx.strokeStyle = '#40594a'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(cx + w * .06, floor - h); ctx.lineTo(cx - 3, floor - h * .52); ctx.lineTo(cx + 12, floor - h * .35); ctx.lineTo(cx + 4, floor + 3); ctx.stroke();

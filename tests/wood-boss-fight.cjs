@@ -4,7 +4,7 @@ const reset=()=>run("level='earth';resetGame();soundOn=false;earthGoblins.forEac
 const enter=()=>run("player.x=EARTH_ARENA.left+30;player.y=EARTH_ARENA.floor-58;player.vx=0;player.vy=0;player.onGround=true;update(1/60)");
 const tick=(fps,n)=>{for(let i=0;i<n;i++)run(`update(1/${fps})`);};
 const attackBoss=()=>run("{const box=earthBossBox();player.x=box.x-player.w-20;player.y=EARTH_ARENA.floor-player.h;player.facing=1;player.vx=0;player.vy=0;player.onGround=true;player.attackCooldown=0;attack();}");
-const knifeBoss=()=>run("earthKnives.slots.forEach(k=>{k.state='ready';k.remaining=0});earthKnives.equipped=true;player.x=earthBoss.x-230-player.w/2;player.y=EARTH_ARENA.floor-player.h;player.facing=1;player.attackCooldown=0;attack();updateEarthKnives(.4)");
+const knifeBoss=()=>run("earthKnives.slots.forEach(k=>{k.state='ready';k.remaining=0});earthKnives.equipped=true;var throwSide=earthBoss.x-EARTH_ARENA.left<310?1:-1;player.x=earthBoss.x+throwSide*230-player.w/2;player.y=EARTH_ARENA.floor-player.h;player.facing=-throwSide;player.attackCooldown=0;attack();updateEarthKnives(.4)");
 const safe=(protect=true)=>run("player.x=EARTH_ARENA.left+30;player.y=EARTH_ARENA.floor-58;player.vx=0;player.vy=0;player.onGround=true"+(protect?";player.invincible=100":""));
 reset();assert.equal(run('WORLD_W'),8100);assert.equal(run('EARTH_GATE_X'),8000);
 assert.equal(run('earthGround.at(-1).x+earthGround.at(-1).w'),run('WORLD_W'));
@@ -64,7 +64,7 @@ safe();tick(60,8*60);assert.equal(run('earthBoss.stage'),'giant');
 run("earthKnives.slots.forEach(k=>{k.state='ready';k.remaining=0});earthKnives.equipped=true;player.invincible=100");
 for(let hit=0;hit<8;hit++){
  while(!run("earthKnives.slots.some(k=>k.state==='ready')"))tick(60,1);
- run("player.x=earthBoss.x-250-player.w/2;player.y=EARTH_ARENA.floor-player.h;player.facing=1;player.vx=0;player.vy=0;player.onGround=true;attack()");
+ run("var throwSide=earthBoss.x-EARTH_ARENA.left<330?1:-1;player.x=earthBoss.x+throwSide*250-player.w/2;player.y=EARTH_ARENA.floor-player.h;player.facing=-throwSide;player.vx=0;player.vy=0;player.onGround=true;attack()");
  tick(60,36);assert.equal(run('earthBoss.hp'),7-hit);safe();tick(60,30);
 }
 safe();tick(60,90);assert.equal(run('earthBoss.stage'),'done');
@@ -77,5 +77,5 @@ for(const [name,file] of [['ANIMATION','wood-boss-animation-v1.js'],['ENCOUNTER'
  const source=html.split(`// WILDWOOD_${name}_BEGIN\n`)[1].split(`\n// WILDWOOD_${name}_END`)[0];
  assert.equal(source,fs.readFileSync('assets/'+file,'utf8'),'embedded runtime must match reusable source');
 }
-assert.equal(run('BUILD_INFO.version'),'0.21.25');
+assert.equal(run('BUILD_INFO.version'),'0.21.26');
 console.log('PASS Wildwood bosses: five rookie hearts and eight giant hearts, rookie punch/stomp, knife-only giant and immunity, shatter/rebuild, sealed exit, complete fight with real cooldowns, rock sweep, jumpable earthquakes, warned/retracting mountains, clean restart at 30/60/120 FPS.');

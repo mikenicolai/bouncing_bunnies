@@ -1,12 +1,24 @@
 /* Runtime portion is embedded in index.html, alongside the animation library. */
 const EARTH_ARENA={left:7000,right:7880,floor:-1480,spawn:7460};
 const EARTH_GIANT_HP=8;
-let earthBoss,earthBossRocks=[],earthBossWaves=[],earthBossMountains=[],earthBossVine=null;
+let earthBoss,earthBossRocks=[],earthBossWaves=[],earthBossMountains=[],earthBossStones=[],earthBossVine=null;
 function resetEarthBoss(){
-  earthBoss={stage:'small',hp:5,active:false,x:EARTH_ARENA.spawn,facing:-1,age:0,phase:'idle',phaseAge:0,cooldown:1.8,dizzy:0,turn:0,shot:false};
+  earthBoss={stage:'small',hp:5,active:false,x:EARTH_ARENA.spawn,facing:-1,age:0,phase:'idle',phaseAge:0,cooldown:1.8,dizzy:0,turn:0,shot:false,treeGrowth:0};
   clearEarthBossHazards();
 }
-function clearEarthBossHazards(){earthBossRocks=[];earthBossWaves=[];earthBossMountains=[];earthBossVine=null;}
+function clearEarthBossHazards(){earthBossRocks=[];earthBossWaves=[];earthBossMountains=[];earthBossStones=[];earthBossVine=null;}
+function earthArenaTreeSolids(){
+  const h=440*(earthBoss.treeGrowth||0);
+  return earthBoss.active&&earthBoss.stage!=='done'&&h>1?[{x:EARTH_ARENA.left-38,y:EARTH_ARENA.floor-h,w:30,h,kind:'arenaTree'}]:[];
+}
+function earthStoneHeight(age){
+  const ease=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
+  return age<.72?0:age<.9?54*ease((age-.72)/.18):age<1.05?54:54*(1-ease((age-1.05)/.35));
+}
+function earthStoneBoxes(stone){
+  const hidden=54-earthStoneHeight(stone.age);
+  return [24,35,54,38,25].map((height,i)=>{const h=Math.max(0,height-hidden);return {x:stone.x-60+i*24,y:EARTH_ARENA.floor-h,w:24,h};}).filter(box=>box.h>.5);
+}
 function earthBossBox(){
   const giant=earthBoss.stage==='giant',w=giant?112:86,h=giant?285:100;
   return{x:earthBoss.x-w/2,y:EARTH_ARENA.floor-h,w,h};
@@ -63,10 +75,13 @@ function updateEarthBossHazards(dt){
   earthBossWaves=earthBossWaves.filter(w=>w.age<2.8&&w.x>EARTH_ARENA.left&&w.x<EARTH_ARENA.right);
   for(const m of earthBossMountains){m.age+=dt;if(earthMountainBoxes(m).some(box=>overlap(player,box)))hurt(player.x<m.x?-1:1);}
   earthBossMountains=earthBossMountains.filter(m=>m.age<5.2);
+  for(const stone of earthBossStones){stone.age+=dt;if(earthStoneBoxes(stone).some(box=>overlap(player,box)))hurt(player.x<stone.x?-1:1);}
+  earthBossStones=earthBossStones.filter(stone=>stone.age<1.7);
 }
 function releaseEarthVine(){
   if(!earthBossVine)return;
-  earthBossVine.grabbed=false;earthBossVine.released=true;
+  earthBossVine.targetX=player.x+player.w/2;earthBossVine.targetY=player.y+player.h*.5;
+  earthBossVine.grabbed=false;earthBossVine.released=true;earthBossVine.age=2;
   burst(player.x+player.w/2,player.y+player.h*.5,'#a6df7c',7);
 }
 function earthVineTip(age){
@@ -78,14 +93,21 @@ function earthVineTip(age){
 function updateEarthVine(dt){
   const v=earthBossVine;if(!v)return;
   const old=earthVineTip(v.age);v.age+=dt;const tip=earthVineTip(v.age);
-  if(!v.released&&!v.grabbed&&v.age>=.65&&v.age<=1.3&&arrowSegmentEntry(old,tip,player,10)!==null){v.grabbed=true;v.pullAge=0;tone(220,.1,'triangle',.025);}
+  if(!v.released&&!v.grabbed&&v.age>=.65&&v.age<=1.3&&arrowSegmentEntry(old,tip,player,10)!==null){v.grabbed=true;v.pullAge=0;v.side=player.x+player.w/2<earthBoss.x?-1:1;tone(220,.1,'triangle',.025);}
   if(v.grabbed){
     v.pullAge+=dt;
-    const center=player.x+player.w/2,direction=Math.sign(earthBoss.x-center),gap=Math.abs(earthBoss.x-center);
-    player.x+=direction*Math.min(210*dt,Math.max(0,gap-105));player.vx=0;
-    if(v.pullAge>=.85||player.y+player.h<EARTH_ARENA.floor-65)releaseEarthVine();
+    const center=player.x+player.w/2,target=earthBoss.x+(v.side||Math.sign(center-earthBoss.x)||-1)*105;
+    const dx=target-center;
+    const travel=Math.sign(dx)*Math.min(330*dt,Math.abs(dx));
+    // The held bunny is lifted above the grass, then drawn to a safe point just
+    // in front of the giant. Walking input cannot cancel the pull.
+    const candidate={...player,x:player.x+travel};
+    if(!earthArenaTreeSolids().some(box=>overlap(candidate,box)))player.x=candidate.x;
+    player.y+=(EARTH_ARENA.floor-player.h-38-player.y)*(1-Math.exp(-dt*12));
+    player.vx=0;player.vy=0;player.onGround=false;
+    if(v.pullAge>=2.2||Math.abs(dx)<8&&v.pullAge>=.35)releaseEarthVine();
   }
-  if(v.age>=2.8)earthBossVine=null;
+  if(v.age>=(v.grabbed?4.4:Math.max(2.8,v.pullAge+.9)))earthBossVine=null;
 }
 function drawEarthVine(){
   const v=earthBossVine;if(!v)return;
@@ -94,9 +116,11 @@ function drawEarthVine(){
   const x=tip.x-cameraX,y=tip.y,sag=22*Math.sin(Math.min(1,v.age/.65)*Math.PI*.5);
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
   ctx.strokeStyle='#264f36';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(from.x,from.y);ctx.bezierCurveTo(from.x+(x-from.x)*.3,from.y+sag,x-(x-from.x)*.2,y+sag,x,y);ctx.stroke();
+  if(!drawPaintedEarthVine(from.x,from.y,x,y,sag,v.grabbed)){
   ctx.strokeStyle='#78b65b';ctx.lineWidth=4;ctx.stroke();
   for(let i=1;i<7;i++){const t=i/7,px=from.x+(x-from.x)*t,py=from.y+(y-from.y)*t+Math.sin(t*Math.PI)*sag;ctx.fillStyle=i%2?'#8bc969':'#547f49';ctx.beginPath();ctx.ellipse(px,py,8,3.5,i%2?.55:-.55,0,Math.PI*2);ctx.fill();}
   ctx.strokeStyle='#98d77b';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,v.grabbed?20:11,0,Math.PI*1.7);ctx.stroke();
+  }
   if(v.age<.65){ctx.globalAlpha=.35+.2*Math.sin(v.age*15)**2;ctx.fillStyle='#99d971';ctx.beginPath();ctx.ellipse(v.targetX-cameraX,EARTH_ARENA.floor+3,30,8,0,0,Math.PI*2);ctx.fill();}
   ctx.restore();
 }
@@ -106,7 +130,7 @@ function updateEarthBoss(dt){
     b.active=true;checkpoint={x:EARTH_ARENA.left+30,y:EARTH_ARENA.floor-58};
   }
   if(!b.active)return;
-  b.age+=dt;b.dizzy=Math.max(0,b.dizzy-dt);
+  b.age+=dt;b.dizzy=Math.max(0,b.dizzy-dt);b.treeGrowth=Math.min(1,(b.treeGrowth||0)+dt/.7);
   if(b.stage==='shatter'){if(b.age>=2.4){b.stage='rebuild';b.age-=2.4;}return;}
   if(b.stage==='rebuild'){if(b.age>=5.6){b.stage='giant';b.hp=EARTH_GIANT_HP;b.age=0;b.phaseAge=0;b.cooldown=1.5;b.dizzy=0;}return;}
   if(b.stage==='defeat'){if(b.age>=1.5){b.stage='done';clearEarthBossHazards();}return;}
@@ -120,8 +144,9 @@ function updateEarthBoss(dt){
     const distance=Math.abs(player.x+player.w/2-b.x);
     if(b.dizzy<=0&&distance>155)b.x=Math.max(EARTH_ARENA.left+130,Math.min(EARTH_ARENA.right-130,b.x+b.facing*(b.stage==='small'?36:52)*dt));
     if(!b.cooldown&&b.dizzy<=0&&distance<900){
-      b.phase=b.stage==='small'?'swipe':['rock','quake','mountain','vine'][b.turn++%4];b.phaseAge=0;b.shot=false;
+      b.phase=b.stage==='small'?'swipe':['rock','quake','mountain','vine','stones'][b.turn++%5];b.phaseAge=0;b.shot=false;
       if(b.phase==='vine')earthBossVine={age:0,targetX:player.x+player.w/2,targetY:player.y+player.h*.5,grabbed:false,pullAge:0,released:false};
+      if(b.phase==='stones'){for(let i=0;i<7;i++)earthBossStones.push({x:b.facing>0?EARTH_ARENA.left+100+i*112:EARTH_ARENA.right-100-i*112,age:-i*.12});}
       if(b.phase==='mountain'){
         const target=b.x-b.facing*210;
         b.retreatFrom=b.x;b.retreatTo=Math.max(EARTH_ARENA.left+155,Math.min(EARTH_ARENA.right-155,target));
@@ -141,7 +166,7 @@ function updateEarthBoss(dt){
     if(b.phase==='mountain'){
       const t=Math.max(0,Math.min(1,(b.phaseAge-.65)/.9)),p=t*t*(3-2*t);b.x=b.retreatFrom+(b.retreatTo-b.retreatFrom)*p;
     }
-    const duration={rock:3,quake:3.2,mountain:5.2,vine:3.4}[b.phase];
+    const duration={rock:3,quake:3.2,mountain:5.2,vine:4.4,stones:3.2}[b.phase];
     if(b.phaseAge>=duration){b.phase='idle';b.phaseAge=0;b.cooldown=.95;}
   }
   if(b.dizzy<=0&&overlap(player,earthBossBox())){
@@ -149,6 +174,16 @@ function updateEarthBoss(dt){
     if(player.vy>120&&player.previousFeet<=box.y+20&&hitEarthBoss()){player.vy=-460;player.onGround=false;}
     else hurt(player.x<b.x?-1:1);
   }
+}
+function drawEarthArenaTrees(){
+  const image=earthOriginalTreeSheet;if(!image.complete||!image.naturalWidth)return;
+  ctx.save();
+  for(const [x,height,alpha] of [[7110,290,.45],[7825,330,.55]]){
+    ctx.globalAlpha=alpha;ctx.drawImage(image,650,220,550,650,x-cameraX-height*550/650/2,EARTH_ARENA.floor-height,height*550/650,height);
+  }
+  const growth=earthBoss.active&&earthBoss.stage!=='done'?earthBoss.treeGrowth||0:0;
+  if(growth>0){const scale=440/840*growth;ctx.globalAlpha=1;ctx.drawImage(image,0,20,650,840,EARTH_ARENA.left-23-cameraX-300*scale,EARTH_ARENA.floor-440*growth,650*scale,440*growth);}
+  ctx.restore();
 }
 function drawEarthBoss(){
   const b=earthBoss;if(!b||b.stage==='done'||!woodBossImages.small.complete||!woodBossImages.small.naturalWidth||!woodBossImages.giant.complete||!woodBossImages.giant.naturalWidth)return;
@@ -158,7 +193,7 @@ function drawEarthBoss(){
   else if(b.stage==='rebuild')r.assembly(ctx,x,floor,b.age,b.facing);
   else{
     const giant=b.stage==='giant'||b.stage==='defeat',kind=giant?'giant':'small',height=giant?336:112;
-    let scene=b.stage==='defeat'?'defeat':b.dizzy>0?(giant?'giantHurt':'smallHurt'):b.phase==='idle'?(giant?'giantIdle':'smallIdle'):b.phase==='swipe'?'smallSwipe':b.phase;
+    let scene=b.stage==='defeat'?'defeat':b.dizzy>0?(giant?'giantHurt':'smallHurt'):b.phase==='idle'?(giant?'giantIdle':'smallIdle'):b.phase==='swipe'?'smallSwipe':b.phase==='stones'?'quake':b.phase;
     const time=b.stage==='defeat'?b.age:b.dizzy>0?(giant?.65:.9)-b.dizzy:b.phase==='idle'?b.age:b.phaseAge;
     const walking=b.phase==='idle'&&b.dizzy<=0&&b.active&&Math.abs(player.x+player.w/2-b.x)>155;
     if(walking)r.walk(ctx,kind,x,floor,height,b.age,b.facing);
@@ -166,9 +201,10 @@ function drawEarthBoss(){
     if(b.phase==='quake')r.quake(ctx,x,floor,b.phaseAge);
     if(b.stage==='defeat')r.dust(ctx,x,floor,b.age,Math.min(1,b.age));
   }
-  drawEarthVine();
-  for(const rock of earthBossRocks)r.fragment(ctx,'small',901,rock.x-cameraX,rock.y,rock.r*2,rock.spin);
+  drawEarthVine();drawEarthGroundStones();
+  for(const rock of earthBossRocks)if(!drawBossEffect('earth','rock',rock.x-cameraX,rock.y,rock.r*2,rock.r*2,rock.spin))r.fragment(ctx,'small',901,rock.x-cameraX,rock.y,rock.r*2,rock.spin);
   for(const wave of earthBossWaves){
+    if(drawBossEffect('earth','stones',wave.x-cameraX,floor-7,49,18))continue;
     ctx.save();ctx.strokeStyle='#e5d7a4';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(wave.x-cameraX,floor-5,19,9,0,Math.PI,Math.PI*2);ctx.stroke();ctx.restore();
   }
 }

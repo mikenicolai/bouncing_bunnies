@@ -588,7 +588,7 @@ kbd { padding: 2px 6px; border: 1px solid #43505b; border-radius: 4px; color: #b
         ctx.lineTo(cx + w * .3, floor - h * .59); ctx.lineTo(cx + w / 2, floor + 5); ctx.closePath();
         ctx.fillStyle = '#697d75'; ctx.fill(); ctx.strokeStyle = '#344a40'; ctx.lineWidth = 3; ctx.stroke(); ctx.clip();
         const b = this.bounds.small[0];
-        ctx.globalAlpha = .75; ctx.drawImage(this.images.small, b.x + b.w * .2, b.y + b.h * .88, b.w * .08, b.h * .09, cx - w / 2, floor - h, w, h);
+        if(typeof drawBossEffect!=='function'||!drawBossEffect('earth','rock',cx,floor-h/2,w,h)){ctx.globalAlpha = .75; ctx.drawImage(this.images.small, b.x + b.w * .2, b.y + b.h * .88, b.w * .08, b.h * .09, cx - w / 2, floor - h, w, h);}
         ctx.restore();
         ctx.strokeStyle = '#40594a'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(cx + w * .06, floor - h); ctx.lineTo(cx - 3, floor - h * .52); ctx.lineTo(cx + 12, floor - h * .35); ctx.lineTo(cx + 4, floor + 3); ctx.stroke();
@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.25',build:2026101502,builtAt:'2026-10-15',builtLabel:'15 October 2026',deployment:'Faster Neptunus and safe arena continuation'});
+const BUILD_INFO=Object.freeze({version:'0.21.26',build:2026101503,builtAt:'2026-10-15',builtLabel:'15 October 2026',deployment:'Painted elemental attacks and gripping roots'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -1223,6 +1223,7 @@ function joystickAxis(value){
   return Math.sign(value)*t*t*(3-2*t);
 }
 function moveBunnyHorizontal(dt){
+  if(level==='earth'&&earthBossVine?.grabbed){player.vx=0;return 0;}
   const keyboard=(keys.has('ArrowRight')||keys.has('KeyD')?1:0)-(keys.has('ArrowLeft')||keys.has('KeyA')?1:0);
   const accel=player.onGround?(sprintHeld()&&!player.duck?1900:GROUND_RUN_ACCEL):820,max=player.duck?70:bunnyMoveSpeed();
   const move=keyboard||joystickAxis(joystick.rawX||joystick.dx);
@@ -1725,16 +1726,73 @@ const earthHazardPlatforms=[4,9,13,18,23];
 const earthHazards=earthHazardPlatforms.map((id,i)=>{const p=earthPlatforms[id],s=EARTH_MUSHROOM_SCALE;return{x:p.x+p.w-72+65*(1-s)/2,y:p.y-70*s,w:65*s,h:70*s,variant:i%2};});
 function earthSwampYAt(x){return earthGroundAt(x)+350;}
 let earthGoblins=[];
+// ELEMENTAL_BOSS_EFFECTS_BEGIN
+// Original painted attack atlases. Native PNG alpha is preserved, including the
+// open bubble/coil centers. Source rectangles isolate each irregular painting.
+const BOSS_EFFECT_ART={
+ water:{asset:'assets/water-boss-effects-v1.png',width:1536,height:1024,frames:{bubble:[45,54,453,425],orb:[601,92,404,373],tide:[1136,16,312,487],wave:[15,601,548,330],splash:[593,554,394,402],bubble2:[1084,545,419,411]},image:new Image()},
+ earth:{asset:'assets/earth-boss-effects-v1.png',width:1536,height:1024,frames:{rock:[181,80,411,424],stones:[760,157,739,328],vine:[33,690,921,175],coil:[1007,520,461,449]},image:new Image()}
+};
+for(const art of Object.values(BOSS_EFFECT_ART))art.image.src=art.asset;
+function drawBossEffect(element,name,x,y,width,height,angle=0,alpha=1){
+ const a=BOSS_EFFECT_ART[element];if(!a?.image.complete||!a.image.naturalWidth)return false;
+ const [sx,sy,sw,sh]=a.frames[name];ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.globalAlpha*=alpha;
+ ctx.drawImage(a.image,sx,sy,sw,sh,-width/2,-height/2,width,height);ctx.restore();return true;
+}
+function drawPaintedEarthVine(fromX,fromY,x,y,sag,grabbed){
+ if(!BOSS_EFFECT_ART.earth.image.naturalWidth)return false;
+ const point=t=>({x:fromX+(x-fromX)*t,y:fromY+(y-fromY)*t+Math.sin(t*Math.PI)*sag});
+ const count=Math.max(1,Math.ceil(Math.hypot(x-fromX,y-fromY)/65));
+ for(let i=0;i<count;i++){
+  const a=point(i/count),b=point((i+1)/count);
+  drawBossEffect('earth','vine',(a.x+b.x)/2,(a.y+b.y)/2,Math.hypot(b.x-a.x,b.y-a.y)+12,34,Math.atan2(b.y-a.y,b.x-a.x));
+ }
+ if(!grabbed)drawBossEffect('earth','coil',x,y,30,34);
+ return true;
+}
+function drawEarthVineGrip(){
+ if(earthBossVine?.grabbed)drawBossEffect('earth','coil',player.x+player.w/2-cameraX,player.y+player.h*.7,player.w+12,player.h*.62,Math.sin(earthTime*6)*.035);
+}
+function drawEarthGroundStones(){
+ for(const stone of earthBossStones){
+  const height=earthStoneHeight(stone.age),x=stone.x-cameraX;
+  if(stone.age>=0&&stone.age<.72){
+   ctx.save();ctx.globalAlpha=.35+.25*Math.sin(stone.age*18)**2;ctx.strokeStyle='#efc16b';ctx.lineWidth=3;
+   ctx.beginPath();ctx.moveTo(x-49,EARTH_ARENA.floor+1);ctx.lineTo(x-22,EARTH_ARENA.floor-3);ctx.lineTo(x-8,EARTH_ARENA.floor+2);ctx.lineTo(x+15,EARTH_ARENA.floor-4);ctx.lineTo(x+50,EARTH_ARENA.floor+1);ctx.stroke();ctx.restore();
+  }
+  if(height>0){
+   ctx.save();ctx.beginPath();ctx.rect(x-64,EARTH_ARENA.floor-height,128,height);ctx.clip();
+   if(!drawBossEffect('earth','stones',x,EARTH_ARENA.floor+27-height,124,54)){
+    ctx.fillStyle='#6f7860';ctx.fillRect(x-30,EARTH_ARENA.floor-height,60,height);
+   }
+   ctx.restore();
+  }
+ }
+}
+
+// ELEMENTAL_BOSS_EFFECTS_END
 // WILDWOOD_ENCOUNTER_BEGIN
 /* Runtime portion is embedded in index.html, alongside the animation library. */
 const EARTH_ARENA={left:7000,right:7880,floor:-1480,spawn:7460};
 const EARTH_GIANT_HP=8;
-let earthBoss,earthBossRocks=[],earthBossWaves=[],earthBossMountains=[],earthBossVine=null;
+let earthBoss,earthBossRocks=[],earthBossWaves=[],earthBossMountains=[],earthBossStones=[],earthBossVine=null;
 function resetEarthBoss(){
-  earthBoss={stage:'small',hp:5,active:false,x:EARTH_ARENA.spawn,facing:-1,age:0,phase:'idle',phaseAge:0,cooldown:1.8,dizzy:0,turn:0,shot:false};
+  earthBoss={stage:'small',hp:5,active:false,x:EARTH_ARENA.spawn,facing:-1,age:0,phase:'idle',phaseAge:0,cooldown:1.8,dizzy:0,turn:0,shot:false,treeGrowth:0};
   clearEarthBossHazards();
 }
-function clearEarthBossHazards(){earthBossRocks=[];earthBossWaves=[];earthBossMountains=[];earthBossVine=null;}
+function clearEarthBossHazards(){earthBossRocks=[];earthBossWaves=[];earthBossMountains=[];earthBossStones=[];earthBossVine=null;}
+function earthArenaTreeSolids(){
+  const h=440*(earthBoss.treeGrowth||0);
+  return earthBoss.active&&earthBoss.stage!=='done'&&h>1?[{x:EARTH_ARENA.left-38,y:EARTH_ARENA.floor-h,w:30,h,kind:'arenaTree'}]:[];
+}
+function earthStoneHeight(age){
+  const ease=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
+  return age<.72?0:age<.9?54*ease((age-.72)/.18):age<1.05?54:54*(1-ease((age-1.05)/.35));
+}
+function earthStoneBoxes(stone){
+  const hidden=54-earthStoneHeight(stone.age);
+  return [24,35,54,38,25].map((height,i)=>{const h=Math.max(0,height-hidden);return {x:stone.x-60+i*24,y:EARTH_ARENA.floor-h,w:24,h};}).filter(box=>box.h>.5);
+}
 function earthBossBox(){
   const giant=earthBoss.stage==='giant',w=giant?112:86,h=giant?285:100;
   return{x:earthBoss.x-w/2,y:EARTH_ARENA.floor-h,w,h};
@@ -1791,10 +1849,13 @@ function updateEarthBossHazards(dt){
   earthBossWaves=earthBossWaves.filter(w=>w.age<2.8&&w.x>EARTH_ARENA.left&&w.x<EARTH_ARENA.right);
   for(const m of earthBossMountains){m.age+=dt;if(earthMountainBoxes(m).some(box=>overlap(player,box)))hurt(player.x<m.x?-1:1);}
   earthBossMountains=earthBossMountains.filter(m=>m.age<5.2);
+  for(const stone of earthBossStones){stone.age+=dt;if(earthStoneBoxes(stone).some(box=>overlap(player,box)))hurt(player.x<stone.x?-1:1);}
+  earthBossStones=earthBossStones.filter(stone=>stone.age<1.7);
 }
 function releaseEarthVine(){
   if(!earthBossVine)return;
-  earthBossVine.grabbed=false;earthBossVine.released=true;
+  earthBossVine.targetX=player.x+player.w/2;earthBossVine.targetY=player.y+player.h*.5;
+  earthBossVine.grabbed=false;earthBossVine.released=true;earthBossVine.age=2;
   burst(player.x+player.w/2,player.y+player.h*.5,'#a6df7c',7);
 }
 function earthVineTip(age){
@@ -1806,14 +1867,21 @@ function earthVineTip(age){
 function updateEarthVine(dt){
   const v=earthBossVine;if(!v)return;
   const old=earthVineTip(v.age);v.age+=dt;const tip=earthVineTip(v.age);
-  if(!v.released&&!v.grabbed&&v.age>=.65&&v.age<=1.3&&arrowSegmentEntry(old,tip,player,10)!==null){v.grabbed=true;v.pullAge=0;tone(220,.1,'triangle',.025);}
+  if(!v.released&&!v.grabbed&&v.age>=.65&&v.age<=1.3&&arrowSegmentEntry(old,tip,player,10)!==null){v.grabbed=true;v.pullAge=0;v.side=player.x+player.w/2<earthBoss.x?-1:1;tone(220,.1,'triangle',.025);}
   if(v.grabbed){
     v.pullAge+=dt;
-    const center=player.x+player.w/2,direction=Math.sign(earthBoss.x-center),gap=Math.abs(earthBoss.x-center);
-    player.x+=direction*Math.min(210*dt,Math.max(0,gap-105));player.vx=0;
-    if(v.pullAge>=.85||player.y+player.h<EARTH_ARENA.floor-65)releaseEarthVine();
+    const center=player.x+player.w/2,target=earthBoss.x+(v.side||Math.sign(center-earthBoss.x)||-1)*105;
+    const dx=target-center;
+    const travel=Math.sign(dx)*Math.min(330*dt,Math.abs(dx));
+    // The held bunny is lifted above the grass, then drawn to a safe point just
+    // in front of the giant. Walking input cannot cancel the pull.
+    const candidate={...player,x:player.x+travel};
+    if(!earthArenaTreeSolids().some(box=>overlap(candidate,box)))player.x=candidate.x;
+    player.y+=(EARTH_ARENA.floor-player.h-38-player.y)*(1-Math.exp(-dt*12));
+    player.vx=0;player.vy=0;player.onGround=false;
+    if(v.pullAge>=2.2||Math.abs(dx)<8&&v.pullAge>=.35)releaseEarthVine();
   }
-  if(v.age>=2.8)earthBossVine=null;
+  if(v.age>=(v.grabbed?4.4:Math.max(2.8,v.pullAge+.9)))earthBossVine=null;
 }
 function drawEarthVine(){
   const v=earthBossVine;if(!v)return;
@@ -1822,9 +1890,11 @@ function drawEarthVine(){
   const x=tip.x-cameraX,y=tip.y,sag=22*Math.sin(Math.min(1,v.age/.65)*Math.PI*.5);
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
   ctx.strokeStyle='#264f36';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(from.x,from.y);ctx.bezierCurveTo(from.x+(x-from.x)*.3,from.y+sag,x-(x-from.x)*.2,y+sag,x,y);ctx.stroke();
+  if(!drawPaintedEarthVine(from.x,from.y,x,y,sag,v.grabbed)){
   ctx.strokeStyle='#78b65b';ctx.lineWidth=4;ctx.stroke();
   for(let i=1;i<7;i++){const t=i/7,px=from.x+(x-from.x)*t,py=from.y+(y-from.y)*t+Math.sin(t*Math.PI)*sag;ctx.fillStyle=i%2?'#8bc969':'#547f49';ctx.beginPath();ctx.ellipse(px,py,8,3.5,i%2?.55:-.55,0,Math.PI*2);ctx.fill();}
   ctx.strokeStyle='#98d77b';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,v.grabbed?20:11,0,Math.PI*1.7);ctx.stroke();
+  }
   if(v.age<.65){ctx.globalAlpha=.35+.2*Math.sin(v.age*15)**2;ctx.fillStyle='#99d971';ctx.beginPath();ctx.ellipse(v.targetX-cameraX,EARTH_ARENA.floor+3,30,8,0,0,Math.PI*2);ctx.fill();}
   ctx.restore();
 }
@@ -1834,7 +1904,7 @@ function updateEarthBoss(dt){
     b.active=true;checkpoint={x:EARTH_ARENA.left+30,y:EARTH_ARENA.floor-58};
   }
   if(!b.active)return;
-  b.age+=dt;b.dizzy=Math.max(0,b.dizzy-dt);
+  b.age+=dt;b.dizzy=Math.max(0,b.dizzy-dt);b.treeGrowth=Math.min(1,(b.treeGrowth||0)+dt/.7);
   if(b.stage==='shatter'){if(b.age>=2.4){b.stage='rebuild';b.age-=2.4;}return;}
   if(b.stage==='rebuild'){if(b.age>=5.6){b.stage='giant';b.hp=EARTH_GIANT_HP;b.age=0;b.phaseAge=0;b.cooldown=1.5;b.dizzy=0;}return;}
   if(b.stage==='defeat'){if(b.age>=1.5){b.stage='done';clearEarthBossHazards();}return;}
@@ -1848,8 +1918,9 @@ function updateEarthBoss(dt){
     const distance=Math.abs(player.x+player.w/2-b.x);
     if(b.dizzy<=0&&distance>155)b.x=Math.max(EARTH_ARENA.left+130,Math.min(EARTH_ARENA.right-130,b.x+b.facing*(b.stage==='small'?36:52)*dt));
     if(!b.cooldown&&b.dizzy<=0&&distance<900){
-      b.phase=b.stage==='small'?'swipe':['rock','quake','mountain','vine'][b.turn++%4];b.phaseAge=0;b.shot=false;
+      b.phase=b.stage==='small'?'swipe':['rock','quake','mountain','vine','stones'][b.turn++%5];b.phaseAge=0;b.shot=false;
       if(b.phase==='vine')earthBossVine={age:0,targetX:player.x+player.w/2,targetY:player.y+player.h*.5,grabbed:false,pullAge:0,released:false};
+      if(b.phase==='stones'){for(let i=0;i<7;i++)earthBossStones.push({x:b.facing>0?EARTH_ARENA.left+100+i*112:EARTH_ARENA.right-100-i*112,age:-i*.12});}
       if(b.phase==='mountain'){
         const target=b.x-b.facing*210;
         b.retreatFrom=b.x;b.retreatTo=Math.max(EARTH_ARENA.left+155,Math.min(EARTH_ARENA.right-155,target));
@@ -1869,7 +1940,7 @@ function updateEarthBoss(dt){
     if(b.phase==='mountain'){
       const t=Math.max(0,Math.min(1,(b.phaseAge-.65)/.9)),p=t*t*(3-2*t);b.x=b.retreatFrom+(b.retreatTo-b.retreatFrom)*p;
     }
-    const duration={rock:3,quake:3.2,mountain:5.2,vine:3.4}[b.phase];
+    const duration={rock:3,quake:3.2,mountain:5.2,vine:4.4,stones:3.2}[b.phase];
     if(b.phaseAge>=duration){b.phase='idle';b.phaseAge=0;b.cooldown=.95;}
   }
   if(b.dizzy<=0&&overlap(player,earthBossBox())){
@@ -1877,6 +1948,16 @@ function updateEarthBoss(dt){
     if(player.vy>120&&player.previousFeet<=box.y+20&&hitEarthBoss()){player.vy=-460;player.onGround=false;}
     else hurt(player.x<b.x?-1:1);
   }
+}
+function drawEarthArenaTrees(){
+  const image=earthOriginalTreeSheet;if(!image.complete||!image.naturalWidth)return;
+  ctx.save();
+  for(const [x,height,alpha] of [[7110,290,.45],[7825,330,.55]]){
+    ctx.globalAlpha=alpha;ctx.drawImage(image,650,220,550,650,x-cameraX-height*550/650/2,EARTH_ARENA.floor-height,height*550/650,height);
+  }
+  const growth=earthBoss.active&&earthBoss.stage!=='done'?earthBoss.treeGrowth||0:0;
+  if(growth>0){const scale=440/840*growth;ctx.globalAlpha=1;ctx.drawImage(image,0,20,650,840,EARTH_ARENA.left-23-cameraX-300*scale,EARTH_ARENA.floor-440*growth,650*scale,440*growth);}
+  ctx.restore();
 }
 function drawEarthBoss(){
   const b=earthBoss;if(!b||b.stage==='done'||!woodBossImages.small.complete||!woodBossImages.small.naturalWidth||!woodBossImages.giant.complete||!woodBossImages.giant.naturalWidth)return;
@@ -1886,7 +1967,7 @@ function drawEarthBoss(){
   else if(b.stage==='rebuild')r.assembly(ctx,x,floor,b.age,b.facing);
   else{
     const giant=b.stage==='giant'||b.stage==='defeat',kind=giant?'giant':'small',height=giant?336:112;
-    let scene=b.stage==='defeat'?'defeat':b.dizzy>0?(giant?'giantHurt':'smallHurt'):b.phase==='idle'?(giant?'giantIdle':'smallIdle'):b.phase==='swipe'?'smallSwipe':b.phase;
+    let scene=b.stage==='defeat'?'defeat':b.dizzy>0?(giant?'giantHurt':'smallHurt'):b.phase==='idle'?(giant?'giantIdle':'smallIdle'):b.phase==='swipe'?'smallSwipe':b.phase==='stones'?'quake':b.phase;
     const time=b.stage==='defeat'?b.age:b.dizzy>0?(giant?.65:.9)-b.dizzy:b.phase==='idle'?b.age:b.phaseAge;
     const walking=b.phase==='idle'&&b.dizzy<=0&&b.active&&Math.abs(player.x+player.w/2-b.x)>155;
     if(walking)r.walk(ctx,kind,x,floor,height,b.age,b.facing);
@@ -1894,9 +1975,10 @@ function drawEarthBoss(){
     if(b.phase==='quake')r.quake(ctx,x,floor,b.phaseAge);
     if(b.stage==='defeat')r.dust(ctx,x,floor,b.age,Math.min(1,b.age));
   }
-  drawEarthVine();
-  for(const rock of earthBossRocks)r.fragment(ctx,'small',901,rock.x-cameraX,rock.y,rock.r*2,rock.spin);
+  drawEarthVine();drawEarthGroundStones();
+  for(const rock of earthBossRocks)if(!drawBossEffect('earth','rock',rock.x-cameraX,rock.y,rock.r*2,rock.r*2,rock.spin))r.fragment(ctx,'small',901,rock.x-cameraX,rock.y,rock.r*2,rock.spin);
   for(const wave of earthBossWaves){
+    if(drawBossEffect('earth','stones',wave.x-cameraX,floor-7,49,18))continue;
     ctx.save();ctx.strokeStyle='#e5d7a4';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(wave.x-cameraX,floor-5,19,9,0,Math.PI,Math.PI*2);ctx.stroke();ctx.restore();
   }
 }
@@ -2045,7 +2127,7 @@ function updateEarthKnives(dt){
     // landing boughs and cliffs can block throws without tunnelling at 30 FPS.
     const contacts=[];
     const add=(box,hit)=>{const t=arrowSegmentEntry(old,k,box,6);if(t!==null)contacts.push({t,hit});};
-    for(const p of platforms)add(p,()=>{});
+    for(const p of [...platforms,...(level==='earth'?earthArenaTreeSolids():[])])add(p,()=>{});
     for(const g of earthGoblins)if(g.alive)add(g,()=>hitEarthGoblin(g));
     if(earthBoss.active&&['small','giant'].includes(earthBoss.stage))add(earthBossBox(),()=>hitEarthBoss('knife'));
     contacts.sort((a,b)=>a.t-b.t);
@@ -2891,8 +2973,25 @@ function beginNeptunusAttack(){
   b.targetX=player.x+21;b.targetY=player.y+29;
   b.mode=['tideWarn','thrustWarn','volleyWarn'][b.turn++%3];
 }
+function pushNeptunusBubble(dt){
+  const b=neptunus;if(!b.active||b.hp<=0||b.guard<=0)return false;
+  const dx=player.x+player.w/2-(b.x+b.w/2),dy=player.y+player.h/2-(b.y+b.h/2);
+  if(Math.hypot(dx/(91+player.w/2),dy/(137+player.h/2))>1.03)return false;
+  const side=Math.abs(dx)>1?Math.sign(dx):-b.facing,vertical=waterClamp(dy/180,-.4,.4);
+  stopWaterDash();if(waterTrident.shot)waterTrident.shot.returning=true;
+  const vx=side*(b.mode==='thrust'?740:370),vy=vertical*220,steps=Math.max(1,Math.ceil(dt*Math.abs(vx)/6));
+  const solids=[...waterReefs,...waterShipSolids(),...waterGateSolid(),...waterAdventureSolids()];
+  for(let i=0;i<steps;i++){
+    const candidate={...player,x:player.x+vx*dt/steps,y:player.y+vy*dt/steps};
+    if(waterPositionClear(candidate,solids)){player.x=candidate.x;player.y=candidate.y;}
+    else if(waterPositionClear({...candidate,y:player.y},solids))player.x=candidate.x;
+  }
+  player.vx=vx;player.vy=vy;player.waterBubbleGrace=.22;
+  return true;
+}
 function updateNeptunus(dt){
   const b=neptunus;
+  player.waterBubbleGrace=Math.max(0,(player.waterBubbleGrace||0)-dt);
   if(!b.active&&player.x>WATER_ARENA.left+80&&waterTrident.owned&&waterAquaSuit){b.active=true;ensureNeptunusCheckpoint();tone(120,.35,'triangle',.04);}
   if(!b.active)return;
   if(b.hp<=0){b.deathAge+=dt;return;}
@@ -2917,14 +3016,14 @@ function updateNeptunus(dt){
   }else if(b.mode==='recover'&&b.age>=(enraged?NEPTUNUS_COMBAT.enragedRecover:NEPTUNUS_COMBAT.recover)){b.mode='idle';b.age=0;b.cooldown=enraged?NEPTUNUS_COMBAT.enragedCooldown:NEPTUNUS_COMBAT.cooldown;}
   b.x=waterClamp(b.x,WATER_ARENA.left+140,WATER_ARENA.right-220);
   b.y=waterClamp(b.y,waterProfileY(WATER_ROOF,b.x)+90,waterFloorY(b.x)-b.h-35);
-  const dashing=waterTrident.dash>0;
-  if(!dashing&&b.dizzy===0){
+  const bubblePushed=pushNeptunusBubble(dt),dashing=waterTrident.dash>0;
+  if(!dashing&&!bubblePushed&&player.waterBubbleGrace<=0&&b.dizzy===0){
     if(overlap(player,b))hurt(player.x<b.x?-1:1);
     if(b.mode==='thrust'&&overlap(player,neptunusThrustBox()))hurt(b.facing);
   }
   for(const p of neptunusShots){
     p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;
-    if(p.life>0&&!dashing&&overlap(player,{x:p.x-p.r,y:p.y-p.r,w:p.r*2,h:p.r*2})){hurt(p.vx<0?-1:1);p.life=0;}
+    if(p.life>0&&!dashing&&player.waterBubbleGrace<=0&&overlap(player,{x:p.x-p.r,y:p.y-p.r,w:p.r*2,h:p.r*2})){hurt(p.vx<0?-1:1);p.life=0;}
     if(p.y<waterProfileY(WATER_ROOF,p.x)+p.r||p.x<WATER_ARENA.left||p.x>WATER_ARENA.right||p.y>waterFloorY(p.x)+240)p.life=0;
   }
   neptunusShots=neptunusShots.filter(p=>p.life>0);
@@ -3005,7 +3104,9 @@ function drawWaterAdventure(){
   if(cameraX+W>=WATER_GATE.exitX-100&&cameraX+W<WATER_RUINS_START-200&&!waterTrident.owned){waterItemPedestal(WATER_TRIDENT_SPOT,'TRIDENT');drawWaterTrident(WATER_TRIDENT_SPOT.x,WATER_TRIDENT_SPOT.y+Math.sin(waterTime*2)*4,92,-.65);}
   drawWaterRuins();drawNeptunus();
   for(const p of neptunusShots){
-    const x=p.x-cameraX;ctx.fillStyle=p.kind==='tide'?'#80f7df':'#b3fff1';ctx.strokeStyle='#268fb1';ctx.lineWidth=4;
+    const x=p.x-cameraX;
+    if(drawBossEffect('water',p.kind==='tide'?'tide':'orb',x,p.y+(p.kind==='tide'?p.r*.6:0),p.r*2,p.r*(p.kind==='tide'?3.2:2),p.kind==='orb'?waterTime*.7:0))continue;
+    ctx.fillStyle=p.kind==='tide'?'#80f7df':'#b3fff1';ctx.strokeStyle='#268fb1';ctx.lineWidth=4;
     ctx.beginPath();ctx.arc(x,p.y,p.r,0,7);ctx.fill();ctx.stroke();ctx.strokeStyle='#f0fff5';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x-3,p.y-3,p.r*.6,3.3,5);ctx.stroke();
   }
   if(neptunus.active&&neptunus.hp>0){
@@ -3093,10 +3194,13 @@ function drawNeptunus(){
     const cx=b.x+b.w/2-cameraX,cy=b.y+b.h/2,pulse=.5+.5*Math.sin(waterTime*8);
     ctx.save();
     if(b.guard>0){
-      ctx.fillStyle='rgba(83,221,239,.12)';ctx.strokeStyle=`rgba(165,255,247,${.45+pulse*.3})`;ctx.lineWidth=3;
-      ctx.beginPath();ctx.ellipse(cx,cy,88+pulse*3,133+pulse*4,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.strokeStyle='rgba(224,255,249,.8)';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(cx-3,cy-4,77,122,0,3.4,4.6);ctx.stroke();
+      const mix=.5+.5*Math.sin(waterTime*2);
+      if(!drawBossEffect('water','bubble',cx,cy,198+pulse*4,294+pulse*5,0,1-mix)){
+        ctx.fillStyle='rgba(83,221,239,.12)';ctx.strokeStyle='rgba(165,255,247,.7)';ctx.lineWidth=3;
+        ctx.beginPath();ctx.ellipse(cx,cy,91,137,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+      }else drawBossEffect('water','bubble2',cx,cy,198+pulse*4,294+pulse*5,0,mix);
     }
+    if(b.mode==='thrust')drawBossEffect('water','wave',cx-b.facing*78,cy+15,130,58,b.facing>0?0:Math.PI);
     ctx.strokeStyle='rgba(152,247,243,.45)';ctx.lineWidth=2;
     for(let i=0;i<5;i++){const phase=(waterTime*.7+i*.23)%1;ctx.beginPath();ctx.arc(cx+Math.sin(i*2.4+waterTime)*87,cy+135-phase*285,3+i%3,0,Math.PI*2);ctx.stroke();}
     ctx.restore();
@@ -3874,7 +3978,7 @@ function updateWorld(dt) {
   moveBunnyHorizontal(dt);
   player.vy+=1450*dt; player.vy=Math.min(player.vy,level==='air'&&descentStarted&&player.y>airPlatforms[19].y+60?300:850);
   player.x+=player.vx*dt;
-  const movementPlatforms=level==='final'?platforms.filter(p=>!p.collapsed):level==='meadow'?[...platforms,...meadowLessonSolids()]:level==='earth'?[earthTurtlePlatform(),...platforms]:platforms;
+  const movementPlatforms=level==='final'?platforms.filter(p=>!p.collapsed):level==='meadow'?[...platforms,...meadowLessonSolids()]:level==='earth'?[earthTurtlePlatform(),...platforms,...earthArenaTreeSolids()]:platforms;
   for(const p of movementPlatforms) if(p.kind!=='blue'&&!p.oneWay&&overlap(player,p)) {
     // Beach collision follows the continuous floor, including its sloping lip.
     if(level==='water'&&p===waterPlatforms[0])continue;
@@ -4005,6 +4109,7 @@ function jump() {
     }
     player.vy=Math.max(-270,player.vy-165);player.vx=Math.max(-230,Math.min(230,player.vx+player.facing*65));player.stroke=.48;player.swimClock+=.28;tone(340,.07,'sine',.02);return;
   }
+  if(level==='earth'&&earthBossVine?.grabbed){releaseEarthVine();player.vy=-570;player.onGround=false;player.jumpAge=0;player.boosts=0;return;}
   if(player.duck||!fireArcheryMode()&&(keys.has('ArrowDown')||keys.has('KeyS'))||duckPointer!==null)return;
   if(level==='earth'&&player.ridingTurtle)leaveEarthTurtle();
   if(player.onGround||player.blueContact){
@@ -4497,7 +4602,7 @@ function drawEarthPlatform(p){
   }
 }
 function drawEarthWorld(){
-  drawEarthAnimals();
+  drawEarthArenaTrees();drawEarthAnimals();
   if(earthMushroomSheet.complete&&earthMushroomSheet.naturalWidth){
     const sw=earthMushroomSheet.naturalWidth/2,sh=earthMushroomSheet.naturalHeight/2;
     for(const h of earthHazards){if(h.x>cameraX+W+120||h.x+h.w<cameraX-120)continue;
@@ -6273,7 +6378,7 @@ function render(time) {
   const nativeW=W,nativeH=H,fieldH=playfieldHeight(),view=level==='fire'?fireViewSize():level==='water'?waterViewSize():{width:W,height:fieldH,scale:1};
   ctx.save();ctx.beginPath();ctx.rect(0,0,W,fieldH);ctx.clip();ctx.scale(view.scale,view.scale);W=view.width;H=view.height;
   drawBackground();ctx.save();ctx.translate(0,-cameraY);if(level==='fire'){drawFireTrees();drawFireVolcano();drawFireMaze();drawSecondFireVolcano();drawFireMazeTransition();}if(level==='earth')drawEarthTrees();platforms.forEach(drawPlatform);if(level==='air')drawAirWorld();else if(level==='earth')drawEarthWorld();else if(level==='fire'){drawFireRollingStones();drawLavaKingBarriers();drawFireGate();drawLavaKing();drawFireArrowPickup();drawFireAimPath();drawBunnyArrows();}else if(level==='water')drawWaterWorld();else if(level==='final'){drawFinalWorld();drawFireAimPath();drawBunnyArrows();}else if(level==='meadow')drawMeadowLessons();else drawShrine(time);
-  coins.forEach(c=>drawCoin(c,time));enemies.forEach(drawEnemy);fireZombies.forEach(drawFireZombie);waterSharks.forEach(drawWaterShark);waterPirates.forEach(drawWaterPirate);if(level==='final')drawFinalMonsters();drawBunny();if(level==='final')drawFinalWeapons();if(level==='air')drawHeldWindStar();if(level==='earth')drawHeldEarthKnife();if(level==='water'){drawHeldWaterEquipment();drawWaterGateForeground();drawWaterCacti();}if(level==='final'){drawFinalGateForeground();drawFinalForegroundBlocks();}drawBlueCloudForeground();
+  coins.forEach(c=>drawCoin(c,time));enemies.forEach(drawEnemy);fireZombies.forEach(drawFireZombie);waterSharks.forEach(drawWaterShark);waterPirates.forEach(drawWaterPirate);if(level==='final')drawFinalMonsters();drawBunny();if(level==='earth')drawEarthVineGrip();if(level==='final')drawFinalWeapons();if(level==='air')drawHeldWindStar();if(level==='earth')drawHeldEarthKnife();if(level==='water'){drawHeldWaterEquipment();drawWaterGateForeground();drawWaterCacti();}if(level==='final'){drawFinalGateForeground();drawFinalForegroundBlocks();}drawBlueCloudForeground();
   particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;ctx.restore();ctx.restore();W=nativeW;H=nativeH;drawHUD();drawEarthBossHearts();if(level==='fire')drawLavaKingHearts();if(level==='fire'||level==='meadow')drawFireArrowInventory();if(level==='final')drawFinalWeaponInventory();if(level==='air')drawWindStarInventory();if(level==='earth')drawEarthKnifeInventory();drawWaterAdventureHUD();drawTouchControls();if(developerRun){ctx.save();ctx.font='bold 11px system-ui';ctx.textAlign='left';ctx.fillStyle='#fff4ae';ctx.fillText('DEVELOPER MODE · test progress',12,playfieldHeight()-12);ctx.restore();}
 }
 
