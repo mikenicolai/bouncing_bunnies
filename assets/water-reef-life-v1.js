@@ -19,7 +19,7 @@ function waterCreatureY(x,preferred,halfWidth=20,halfHeight=8){
   }
   return y;
 }
-function waterFishPose(school,i,time=waterTime){
+function waterFishPath(school,i,time=waterTime){
   const travelSign=school%2?1:-1,phase=time*.55+school;
   const x=1740+school*445+i*26+Math.sin(phase)*44*travelSign;
   // The paintings face right; turn with the horizontal swimming velocity.
@@ -52,9 +52,108 @@ function drawWaterReefFish(pose,variant,time=waterTime){
   ctx.save();ctx.translate(pose.x-cameraX,pose.y);ctx.scale(pose.direction*pulse,1);
   ctx.drawImage(a.image,f.sx,f.sy,f.sw,f.sh,-f.sw*scale/2,-f.sh*scale/2,f.sw*scale,f.sh*scale);ctx.restore();
 }
-function waterTurtlePose(i,time=waterTime){
+function waterTurtlePath(i,time=waterTime){
   const phase=time*.33+i,x=2300+i*1750+Math.sin(phase)*58;
   return {x,y:waterCreatureY(x,waterFloorY(x)-190+Math.sin(time*1.1+i)*12,50,28),direction:Math.cos(phase)>=0?1:-1,stroke:(Math.sin(time*3+i)+1)/2,cycle:(time*.75+i*.23)%1};
+}
+// Live swimmers keep their own velocity; explicit-time poses remain useful for
+// previews of the undisturbed paths. Rendering never advances the simulation.
+let waterReefSwimmers=[];
+function resetWaterReefLife(){
+  waterReefSwimmers=[];
+  for(let school=0;school<21;school++)for(let i=0;i<5;i++){
+    const p=waterFishPath(school,i);
+    waterReefSwimmers.push({...p,school,index:i,turtle:false,hw:20,hh:8,vx:p.direction*20,vy:0});
+  }
+  for(let i=0;i<5;i++){
+    const p=waterTurtlePath(i);
+    waterReefSwimmers.push({...p,school:-1,index:i,turtle:true,hw:50,hh:28,vx:p.direction*15,vy:0});
+  }
+}
+function waterFishPose(school,i,time){
+  const live=time===undefined?waterReefSwimmers[school*5+i]:null;
+  return live?{x:live.x,y:live.y,direction:live.direction}:waterFishPath(school,i,time??waterTime);
+}
+function waterTurtlePose(i,time){
+  const live=time===undefined?waterReefSwimmers[105+i]:null;
+  return live?{x:live.x,y:live.y,direction:live.direction,stroke:(Math.sin(waterTime*3+i)+1)/2,cycle:(waterTime*.75+i*.23)%1}:waterTurtlePath(i,time??waterTime);
+}
+function waterReefObstacles(){
+  return [...waterReefs,...waterShipSolids(),...waterAirPockets.filter(p=>p.ship).map(p=>({x:p.x,y:p.y-22,w:p.w,h:210}))];
+}
+function waterSwimmerClear(c,x,y,rocks){
+  for(const wx of [x-c.hw,x,x+c.hw]){
+    const roof=wx<WATER_CAVE_START?WATER_SURFACE:waterProfileY(WATER_ROOF,wx);
+    if(y-c.hh<roof+5||y+c.hh>waterFloorY(wx)-5)return false;
+  }
+  return !rocks.some(r=>x+c.hw+4>r.x&&x-c.hw-4<r.x+r.w&&y+c.hh+4>r.y&&y-c.hh-4<r.y+r.h);
+}
+function waterSwimmerRoute(c,vx,vy,rocks){
+  const speed=Math.hypot(vx,vy);if(speed<1)return {vx,vy};
+  const angle=Math.atan2(vy,vx),look=c.turtle?48:30;
+  const clear=a=>[.33,.67,1].every(t=>waterSwimmerClear(c,c.x+Math.cos(a)*look*t,c.y+Math.sin(a)*look*t,rocks));
+  if(clear(angle))return {vx,vy};
+  // Search both sides, then turn back if a passage is too narrow for the shell.
+  const side=(c.index+c.school)%2?1:-1;
+  for(const offset of [.55,1.1,1.65,2.2,Math.PI])for(const sign of [side,-side]){
+    const a=angle+offset*sign;if(clear(a))return {vx:Math.cos(a)*speed,vy:Math.sin(a)*speed};
+  }
+  return {vx:0,vy:0};
+}
+function updateWaterReefLife(dt){
+  if(state!=='playing'||level!=='water'||dt<=0)return;
+  if(waterReefSwimmers.length!==110)resetWaterReefLife();
+  const rocks=waterReefObstacles(),steps=Math.ceil(dt/(1/60)),step=dt/steps;
+  const frameX=waterReefSwimmers.map(c=>c.x),frameFacing=waterReefSwimmers.map(c=>c.direction);
+  for(let sub=0;sub<steps;sub++){
+    const time=waterTime-dt+(sub+1)*step,bins=new Map();
+    // A spatial grid keeps the full reef inexpensive on phones and tablets.
+    for(const c of waterReefSwimmers){const key=Math.floor(c.x/200)+','+Math.floor(c.y/200);if(!bins.has(key))bins.set(key,[]);bins.get(key).push(c);}
+    const next=waterReefSwimmers.map((c,id)=>{
+      const path=t=>c.turtle?waterTurtlePath(c.index,t):waterFishPath(c.school,c.index,t);
+      const home=path(time),ahead=path(time+.1);
+      let vx=(ahead.x-home.x)*10+(home.x-c.x)*.8,vy=(ahead.y-home.y)*10+(home.y-c.y)*.8;
+      let alignX=0,alignY=0,neighbours=0;
+      const gx=Math.floor(c.x/200),gy=Math.floor(c.y/200);
+      for(let bx=gx-1;bx<=gx+1;bx++)for(let by=gy-1;by<=gy+1;by++)for(const other of bins.get(bx+','+by)||[]){
+        if(other===c)continue;
+        let dx=c.x-other.x,dy=c.y-other.y;
+        const rx=c.hw+other.hw+16,ry=c.hh+other.hh+14;
+        let distance=Math.hypot(dx/rx,dy/ry);
+        if(distance<1.7){
+          // Stable tie breaking also separates two creatures starting together.
+          if(distance<.001){const angle=id*2.399;dx=Math.cos(angle);dy=Math.sin(angle);distance=.001;}
+          const length=Math.hypot(dx,dy),force=(c.turtle?90:140)*Math.pow(1-distance/1.7,2);
+          vx+=dx/length*force;vy+=dy/length*force;
+        }
+        if(!c.turtle&&other.school===c.school&&Math.hypot(dx,dy)<180){alignX+=other.vx;alignY+=other.vy;neighbours++;}
+      }
+      if(neighbours){vx=vx*.86+alignX/neighbours*.14;vy=vy*.86+alignY/neighbours*.14;}
+      // React to Benny's body, with a little anticipation while he swims past.
+      let dx=c.x-(player.x+player.w/2+player.vx*.12),dy=c.y-(player.y+player.h/2+player.vy*.1);
+      const distance=Math.hypot(dx/(c.hw+player.w/2+65),dy/(c.hh+player.h/2+55));
+      if(distance<1.5){
+        if(Math.hypot(dx,dy)<.01){dx=id%2?1:-1;dy=id%3-1;}
+        const force=(c.turtle?130:210)*Math.pow(1-distance/1.5,2),length=Math.hypot(dx,dy);
+        vx+=dx/length*force;vy+=dy/length*force;
+      }
+      const limit=c.turtle?70:125,speed=Math.hypot(vx,vy);
+      if(speed>limit){vx*=limit/speed;vy*=limit/speed;}
+      const route=waterSwimmerRoute(c,vx,vy,rocks),blend=1-Math.exp(-step*(c.turtle?4:6));
+      vx=c.vx+(route.vx-c.vx)*blend;vy=c.vy+(route.vy-c.vy)*blend;
+      let x=c.x+vx*step,y=c.y+vy*step;
+      // Swept small steps plus axis sliding prevent fleeing through solid stone.
+      if(!waterSwimmerClear(c,x,y,rocks)){
+        if(waterSwimmerClear(c,x,c.y,rocks)){y=c.y;vy=0;}
+        else if(waterSwimmerClear(c,c.x,y,rocks)){x=c.x;vx=0;}
+        else{x=c.x;y=c.y;vx=-c.vx*.35;vy=-c.vy*.35;}
+      }
+      const actualX=(x-c.x)/step;
+      return {x,y,vx,vy,direction:Math.abs(actualX)>.5?Math.sign(actualX):c.direction};
+    });
+    next.forEach((pose,i)=>Object.assign(waterReefSwimmers[i],pose));
+  }
+  waterReefSwimmers.forEach((c,i)=>{const dx=c.x-frameX[i];c.direction=Math.abs(dx)>dt*.5?Math.sign(dx):frameFacing[i];});
 }
 function waterTurtleArtScale(){return TURTLE_ANIMATION.swim.scaleX;}
 function waterTurtlePainting(step){return turtleCyclePainting('swim',step/TURTLE_ANIMATION_STEPS);}
