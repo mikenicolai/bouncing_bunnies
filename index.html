@@ -243,7 +243,7 @@ kbd { padding: 2px 6px; border: 1px solid #43505b; border-radius: 4px; color: #b
               <p id="reviveAdStatus" role="status" aria-live="polite">Test ad only—no real advertisement.</p>
             </div>
             <button id="startButton" type="button">Begin adventure</button>
-            <p class="controls-copy"><strong>Move</strong> ← → &nbsp; <strong>Run</strong> Shift + ← → &nbsp; <strong>Jump</strong> Space &nbsp; <strong>Hit</strong> X &nbsp; <strong>Map</strong> M</p>
+            <p class="controls-copy"><strong>Move</strong> ← → &nbsp; <strong>Run</strong> Shift + ← → &nbsp; <strong>Jump</strong> ↑ / Space &nbsp; <strong>Hit</strong> X &nbsp; <strong>Map</strong> M</p>
             <small id="buildInfo" class="build-info" aria-label="Build information"></small>
             <p id="iphoneHint" class="iphone-hint" hidden>To remove Safari’s URL bar: Share → Add to Home Screen → keep “Open as Web App” on, then launch that icon. The fullscreen button alone cannot hide Safari’s bars.</p>
           </div>
@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.26',build:2026101503,builtAt:'2026-10-15',builtLabel:'15 October 2026',deployment:'Painted elemental attacks and gripping roots'});
+const BUILD_INFO=Object.freeze({version:'0.21.27',build:2026101504,builtAt:'2026-10-15',builtLabel:'15 October 2026',deployment:'Up-arrow keyboard jumping restored'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -6384,7 +6384,7 @@ function render(time) {
 
 function loop(ms) { const t=ms/1000,dt=Math.min(.033,t-lastTime||0);lastTime=t;update(dt);render(t);requestAnimationFrame(loop); }
 
-window.addEventListener("keydown",e=>{if(e.code==='KeyR')return;if(state==='reviveAd'){e.preventDefault();return;}if(state==='developer'){if(e.code==='Escape')exitDeveloperMode();return;}if(e.code==='KeyO'){if(level==='final'){e.preventDefault();if(!e.repeat)cycleFinalWeapon();}else if(level==='earth'){e.preventDefault();if(!e.repeat)toggleEarthTurtle();}return;}if(e.code==='KeyM'){e.preventDefault();if(!e.repeat&&state!=='map')openWorldMap();return;}if(state==='map'){if(e.code==='KeyD'&&!e.repeat){e.preventDefault();openDeveloperMenu();}return;}if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(e.code==='Space'&&!e.repeat)jump();if(e.code==='KeyZ'&&!e.repeat){if(level==='final')toggleFinalWeapon();else if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}if(["KeyX","KeyF"].includes(e.code)&&!e.repeat)attack();});
+window.addEventListener("keydown",e=>{if(e.code==='KeyR')return;if(state==='reviveAd'){e.preventDefault();return;}if(state==='developer'){if(e.code==='Escape')exitDeveloperMode();return;}if(e.code==='KeyO'){if(level==='final'){e.preventDefault();if(!e.repeat)cycleFinalWeapon();}else if(level==='earth'){e.preventDefault();if(!e.repeat)toggleEarthTurtle();}return;}if(e.code==='KeyM'){e.preventDefault();if(!e.repeat&&state!=='map')openWorldMap();return;}if(state==='map'){if(e.code==='KeyD'&&!e.repeat){e.preventDefault();openDeveloperMenu();}return;}if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(!e.repeat&&(e.code==='Space'||e.code==='ArrowUp'&&!fireArcheryMode()&&!bunnySwimming()))jump();if(e.code==='KeyZ'&&!e.repeat){if(level==='final')toggleFinalWeapon();else if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}if(["KeyX","KeyF"].includes(e.code)&&!e.repeat)attack();});
 window.addEventListener("keyup",e=>keys.delete(e.code));
 function canvasPoint(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
 function fitTouchControls(){

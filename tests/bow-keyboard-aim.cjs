@@ -13,6 +13,17 @@ for(const fps of [30,60,120])for(const world of ['meadow','fire','final']){
  const vy=run('player.vy');press('ArrowUp');press('KeyW');assert.equal(run('player.vy'),vy);assert.equal(run('player.boosts'),2);release('ArrowUp');release('ArrowDown');release('KeyW');assert(run('fireBunnyArrow()'));
 }
 for(const world of ['meadow','air','earth','water','fire','final']){
- run(`level='${world}';resetGame();soundOn=false;player.onGround=true;player.inWater=false;player.vy=0;`);press('ArrowUp');press('KeyW');assert.equal(run('player.vy'),0,world+' uses Space as the keyboard jump key');release('ArrowUp');release('KeyW');press('Space');release('Space');assert(run('player.vy<0'));
+ run(`level='${world}';resetGame();soundOn=false;fireArrow.aiming=false;player.onGround=true;player.inWater=false;player.vy=0;`);
+ press('KeyW');assert.equal(run('player.vy'),0,'W retains its existing controls');release('KeyW');
+ press('ArrowUp');assert.equal(run('player.vy'),-570,world+' restores Up-arrow jumping');assert.equal(run('player.boosts'),0);
+ press('ArrowUp',true);assert.equal(run('player.boosts'),0,'key repeat does not consume boosts');release('ArrowUp');
+ press('ArrowUp');release('ArrowUp');press('Space');release('Space');assert.equal(run('player.boosts'),2,'Up and Space share the limited triple-jump budget');
+ press('ArrowUp');release('ArrowUp');assert.equal(run('player.boosts'),2);
 }
-console.log('PASS real keyboard bindings: Up/Down aim without jumping, Space jumps while aiming down, finite extra boosts, air shooting and Space-only jump in every world at 30/60/120 FPS.');
+// Up swims normally rather than generating a stroke/leap in either water area.
+for(const world of ['water','meadow']){
+ run(`level='${world}';resetGame();soundOn=false;player.inWater=true;player.onGround=false;player.vy=0;player.stroke=0;`);
+ press('ArrowUp');assert.equal(run('player.vy'),0);assert.equal(run('player.stroke'),0);release('ArrowUp');
+ press('Space');assert(run('player.vy<0'),'Space retains the swim stroke');release('Space');
+}
+console.log('PASS keyboard bindings: Up/Space land jumps and shared finite boosts, no repeat boosts, bow Up/Down aiming and Space jumping, plus unchanged upward swimming at 30/60/120 FPS.');

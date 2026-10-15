@@ -15,7 +15,7 @@ python3 -m http.server 8080
 Then visit <http://localhost:8080>.
 
 - Move: left/right arrow keys (or `A` / `D`)
-- Jump: `Space` only on the keyboard. Tap Space again quickly (up to twice) for a higher jump, including in the Castle. The two extra taps must follow a ground jump within 0.52 seconds. Landing restores the sequence; Castle monster bounces do not refill it. Jumping and the two limited boosts also work while the bow is equipped.
+- Jump: `↑` or `Space` on the keyboard. Tap either jump key again quickly (up to twice) for a higher jump, including in the Castle. The two extra taps must follow a ground jump within 0.52 seconds. Landing restores the sequence; Castle monster bounces do not refill it. With the bow equipped, Up aims and Space jumps, including the two limited boosts.
 - Hit: `X` or `F`
 - Duck: hold down arrow / `S`, or hold the **DUCK** touch button. Release to stand. Ducking preserves foot position, reduces the hurt box from 58 to 18 pixels, limits movement, and blocks jumping/attacking.
 - Drag the on-screen joystick with a finger or mouse; use the on-screen jump button to hop.
@@ -119,7 +119,7 @@ The lower-right stick uses a small dead zone and a smooth speed curve. Gentle si
 
 With the trident equipped, a deliberate push beyond the outer threshold dashes in the stick direction in Castle or underwater, even if the separate attack button is set to THROW. Ease toward center before another push. On land, a straight down pull still ducks; downward dashes work in the air. Existing cooldowns, one Castle air dash per landing, wall collisions and return behavior still apply. Normal pushes continue to move/swim. Separate Jump, Duck, Hit and Dash/Throw buttons remain available. Cancellation, lost capture, blur/visibility, reset, death and map/end overlays clear held gestures. `tests/joystick-gestures-v2.cjs` covers thresholds, timed taps, cancellation, trident push dashes and limits at 30/60/120 FPS; `tests/joystick-smooth-browser.cjs` exercises real touch gestures on phone and tablet layouts in both orientations.
 
-Title build metadata is defined in `BUILD_INFO`: v0.21.26, build 2026101503, 15 October 2026; label **Painted elemental attacks and gripping roots**. This identifies the local artifact, rather than a GitHub Pages deployment timestamp. `tests/mobile.cjs` covers joystick and viewport regressions; `tests/mobile-preview.html` offers iPhone/CSS/standalone emulation fixtures. Emulation does not replace a real-device Safari check.
+Title build metadata is defined in `BUILD_INFO`: v0.21.27, build 2026101504, 15 October 2026; label **Up-arrow keyboard jumping restored**. This identifies the local artifact, rather than a GitHub Pages deployment timestamp. `tests/mobile.cjs` covers joystick and viewport regressions; `tests/mobile-preview.html` offers iPhone/CSS/standalone emulation fixtures. Emulation does not replace a real-device Safari check.
 
 One turquoise hair monster inhabits the first enlarged 370-pixel solid island at x=1330. The second island at x=2420 is clear. It walks at 48 pixels/second toward the bunny while it stands on or jumps from that cloud, reverses when jumped over, and stops when the bunny leaves or lands on another cloud. It never jumps or leaves the cloud. The guardian displays three hearts. Punching or landing on its head removes one heart; stomping also bounces the bunny upward. Surviving hits cause 1.5 seconds of dizziness, shown by swaying, closed/crossed eyes and orbiting stars. While dizzy the monster neither chases nor causes contact damage, and additional hits do not reduce its hearts. Its third recovered hit makes it disappear. Awake side contact still costs the bunny one life with normal immunity. Eight source poses provide glances, blinking, mouth movement and a four-frame walk, mirrored for left/right. `previews/air-monster-animation.html` shows both walking directions side by side. Source and prompt: `assets/air-hair-monster-v1.png` and `assets/air-hair-monster-v1.md`.
 
@@ -203,7 +203,7 @@ The forest turtle has a six-pose walking cycle with alternating legs, timed to i
 
 Open `previews/turtle-animation-v1.html` for live enlarged walk/swim cycles and the actual forest ride or underwater game scene. Native PNG assets and built-in imagegen prompts are documented in `assets/turtle-animation-v1.md`. `tests/turtle-animation.cjs` checks cadence, stopping, pause and looping at 30/60/120 FPS; its browser suite verifies changing limb pixels, opaque bodies, stable riding, mobile layouts and direct-file rendering.
 
-Keyboard bow controls: Up/Down (or W/S) aim without jumping; Space jumps, including while aiming down. Repeated Space taps retain the two limited boosts. The same Space-only keyboard jump binding applies in other worlds. Touch Jump and joystick jumps continue to work.
+Keyboard bow controls: Up/Down (or W/S) aim without jumping; Space jumps, including while aiming down. Repeated Space taps retain the two limited boosts. With the bow stowed, Up also jumps on land; underwater, Up continues to swim upward. Touch Jump and joystick jumps continue to work.
 
 ## Living reef and painted coins
 
