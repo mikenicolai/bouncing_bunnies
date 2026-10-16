@@ -1,6 +1,6 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
 (async()=>{
- const browser=await chromium.launch({headless:true,executablePath:process.env.BOSS_BROWSER||'/Users/mike/Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'});
+ const browser=await chromium.launch({headless:true,executablePath:process.env.BOSS_BROWSER||chromium.executablePath()});
  try{
   const page=await browser.newPage({viewport:{width:1100,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:8772/previews/water-ruins-review.html');
@@ -19,8 +19,8 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   const art=await game.evaluate(()=>{
    const source=document.createElement('canvas');source.width=neptunusSheet.naturalWidth;source.height=neptunusSheet.naturalHeight;const c=source.getContext('2d');c.drawImage(neptunusSheet,0,0);
    const pixels=c.getImageData(0,0,source.width,source.height).data;let transparent=0;for(let i=3;i<pixels.length;i+=4)if(pixels[i]===0)transparent++;
-   return {transparent,poses:NEPTUNUS_FRAMES.map((b,i)=>({valid:b.x>=0&&b.y>=0&&b.x+b.w<=source.width&&b.y+b.h<=source.height,cached:!!neptunusPaint.frame(i)}))};
-  });assert(art.transparent>200000);assert(art.poses.every(p=>p.valid&&p.cached),'all painted poses are within the alpha atlas');
+   return {src:neptunusSheet.src,transparent,poses:NEPTUNUS_FRAMES.map((b,i)=>({valid:b.x>=0&&b.y>=0&&b.x+b.w<=source.width&&b.y+b.h<=source.height,cached:!!neptunusPaint.frame(i)}))};
+  });assert(art.src.endsWith('/neptunus-v2.png'),'the simpler cartoon atlas is used');assert(art.transparent>200000);assert(art.poses.every(p=>p.valid&&p.cached),'all painted poses are within the alpha atlas');
   await page.locator('[data-scene="boss"]').click();await game.evaluate(()=>{state='review';player.invincible=99;});
   await game.evaluate(()=>{state='playing';});await page.keyboard.press('z');
   assert.equal(await game.evaluate(()=>waterTrident.mode),'dash');await page.keyboard.press('z');assert.equal(await game.evaluate(()=>waterTrident.mode),'throw');
@@ -36,6 +36,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
    const iframe=await page.locator('iframe').boundingBox();await game.evaluate(()=>{state='playing';});await page.mouse.click(iframe.x+point.x,iframe.y+point.y);
    assert.equal(await game.evaluate(()=>waterTrident.mode),'dash','MODE button switches water equipment on phones');
   }
+  await page.setViewportSize({width:1140,height:1000});await page.goto('http://127.0.0.1:8772/previews/neptunus-cartoon-review.html');await page.waitForFunction(()=>document.body.dataset.ready==='true');await page.locator('#poses').screenshot({path:'previews/neptunus-cartoon-poses-v2.png'});
   assert.deepEqual(errors,[]);console.log('PASS water browser: transparent eight-pose Neptunus, painted ruins, both pickups, attack warnings, real keyboard/touch mode controls, desktop and both phone orientations without runtime errors.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

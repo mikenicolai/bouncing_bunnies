@@ -1,22 +1,5 @@
 // Raw reach keeps deliberate outer pushes distinct from the clamped aim direction.
-const STICK_GESTURE={jump:.88,second:.95,third:.99,release:.6,duck:.9,duckRelease:.82,run:.9,runRelease:.75,dash:1.12,dashRelease:.8};
-function joystickTridentEquipped(){
-  return waterTrident.owned&&(level==='final'&&finalWeapon==='trident'||level==='water'&&player.inWater&&!player.breaching);
-}
-function dashFromJoystick(){
-  const reach=Math.hypot(joystick.rawX,joystick.rawY);
-  if(reach<STICK_GESTURE.dashRelease)joystick.dashArmed=true;
-  if(!joystick.active||!joystickTridentEquipped()||reach<STICK_GESTURE.dash)return false;
-  // A grounded downward pull is a duck, rather than a dash into the floor.
-  if(player.onGround&&joystick.rawY>=STICK_GESTURE.duck&&joystick.rawY>Math.abs(joystick.rawX))return false;
-  joystick.jumpArmed=false;joystick.jumpGesture=null;joystick.duck=false;updateDuck();
-  if(joystick.dashArmed){
-    joystick.dashArmed=false;
-    // The stick always dashes; the separate attack button keeps its selected mode.
-    const mode=waterTrident.mode;waterTrident.mode='dash';if(!player.duck)fireWaterTrident();waterTrident.mode=mode;
-  }
-  return true;
-}
+const STICK_GESTURE={jump:.88,second:.95,third:.99,release:.6,duck:.9,duckRelease:.82,run:.9,runRelease:.75};
 function jumpFromJoystick(){
   const up=-joystick.rawY;
   if(up<=STICK_GESTURE.release){joystick.jumpArmed=true;joystick.jumpGesture=null;}
@@ -51,7 +34,6 @@ function updateJoystick(p){
   else if(Math.abs(joystick.rawX)<=STICK_GESTURE.runRelease)joystick.sprint=false;
   // Equipped bows reserve the vertical stick axis for aiming in every world.
   if(fireArcheryMode()){joystick.duck=false;joystick.jumpGesture=null;joystick.jumpArmed=-joystick.rawY<=STICK_GESTURE.release;return;}
-  if(dashFromJoystick())return;
   if(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated)){
     joystick.duck=false;if(fireJumpingMode())jumpFromJoystick();return;
   }

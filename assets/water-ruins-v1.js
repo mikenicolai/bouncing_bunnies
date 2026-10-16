@@ -6,7 +6,7 @@ const NEPTUNUS_HP=10;
 const NEPTUNUS_COMBAT={hurt:.38,guard:1.35,warn:.52,enragedWarn:.42,recover:.42,enragedRecover:.32,cooldown:.25,enragedCooldown:.16};
 const WATER_TRIDENT_DASH_SPEED=720,WATER_TRIDENT_DASH_TIME=.68,WATER_TRIDENT_RETURN_SPEED=1500;
 let waterTrident,waterAquaSuit,neptunus,neptunusShots;
-const neptunusSheet=new Image();neptunusSheet.src='assets/neptunus-v1.png';
+const neptunusSheet=new Image();neptunusSheet.src='assets/neptunus-v2.png';
 const waterRuinsSheet=new Image();waterRuinsSheet.src='assets/ancient-water-ruins-v1.png';
 const waterTridentSheet=new Image();waterTridentSheet.src='assets/benny-trident-gold-cyber-v1.png';
 
@@ -329,21 +329,21 @@ function drawWaterAdventureHUD(){
     const hx=x+(i-(NEPTUNUS_HP-1)/2)*19,hy=y+7;ctx.fillStyle=i<b.hp?'#ff8e91':'#456477';ctx.beginPath();ctx.moveTo(hx,hy+7);ctx.bezierCurveTo(hx-15,hy-2,hx-8,hy-12,hx,hy-5);ctx.bezierCurveTo(hx+8,hy-12,hx+15,hy-2,hx,hy+7);ctx.fill();
   }
 }
-// Atlas registration is populated from the final transparent painted sheet.
+// Cartoon atlas uses a shared pixel scale and foot anchors across all eight poses.
 const NEPTUNUS_FRAMES=[
-  [0,18,443,460,215], [414,56,478,422,667], [857,107,513,371,1125], [1318,0,456,480,1537],
-  [0,523,374,320,236], [371,521,634,323,758], [927,464,404,380,1180], [1327,545,447,330,1539]
+  [15,138,399,407,208], [379,186,430,356,612], [754,198,430,346,993], [1130,43,399,507,1361],
+  [9,623,400,320,215], [365,635,506,311,685], [815,589,383,359,1022], [1180,695,350,272,1396]
 ].map(([x,y,w,h,anchorX])=>({x,y,w,h,anchorX}));
-// Source silhouettes are isolated before blending so neighbouring cloak tips do not leak into a pose.
+// Isolate nearby trident/cape tips without altering the native transparent PNG.
 const NEPTUNUS_CLIPS=[
-  [[0,18],[405,18],[405,255],[443,285],[443,478],[0,478]],
-  [[414,56],[848,56],[848,242],[892,242],[892,478],[540,478],[540,270],[414,205]],
-  [[857,107],[1318,107],[1318,230],[1370,270],[1370,478],[996,478],[996,235],[857,208]],
-  [[1318,0],[1774,0],[1774,480],[1420,480],[1390,270],[1335,145],[1318,90]],
-  null,
-  [[371,558],[590,521],[900,521],[900,612],[1005,650],[1005,844],[600,844],[530,689],[371,690]],
-  [[927,464],[1331,464],[1331,844],[1040,844],[1040,640],[1010,610],[927,590]],
-  null
+  [[15,138],[378,138],[378,366],[414,405],[414,545],[15,545]],
+  [[379,186],[751,186],[751,363],[809,407],[809,542],[420,542],[420,365],[379,345]],
+  [[754,198],[1129,198],[1129,315],[1184,395],[1184,544],[815,544],[815,365],[754,345]],
+  [[1130,43],[1529,43],[1529,550],[1198,550],[1198,365],[1130,280]],
+  [[9,623],[365,623],[365,800],[409,820],[409,943],[9,943]],
+  [[365,635],[815,635],[815,752],[871,752],[871,842],[866,842],[866,890],[871,890],[871,946],[420,946],[420,810],[365,800]],
+  [[815,589],[1198,589],[1198,890],[1178,905],[1178,948],[877,948],[877,890],[866,890],[866,842],[877,842],[877,752],[815,752]],
+  [[1210,695],[1530,695],[1530,967],[1180,967],[1180,907],[1210,875]]
 ];
 function makeNeptunusPainter(){
   const painter=new window.WoodBossAnimation.PaintedPoseBlend(neptunusSheet,NEPTUNUS_FRAMES,false);

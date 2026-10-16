@@ -1,0 +1,11 @@
+# Neptunus cartoon atlas v2
+
+- Mode: built-in imagegen, reference-based style-transfer edit; transparent_background=true.
+- Final asset: `assets/neptunus-v2.png` (1536 × 1024 RGBA), copied byte-for-byte with native transparency.
+- Generated source: `/Users/mike/.codex/generated_images/01a13103-5122-7353-ac66-be35e89d4387/exec-94ee025a-ee87-41f5-988f-f54b2adf5f0f.png`.
+- References: `assets/neptunus-v1.png` (identity and poses); `assets/tree-goblin-v1.png` (style only).
+- Eight left-facing poses: guard, swim A, swim B, summon, thrust windup, thrust, hurt, defeated. Runtime polygon clips isolate nearby tips; source PNG is unchanged. Registration lives in `assets/water-ruins-v1.js` and is mirrored in `index.html`.
+
+## Exact prompt
+
+Create a replacement transparent sprite atlas for this HTML5 hand-painted cartoon bunny game. First reference is the OLD Neptunus identity and action poses; second reference is STYLE ONLY, do not add goblins. Make Neptunus much simpler and more cartoonish to match the second image: thick dark charcoal outlines, rounded readable shapes, large expressive eyes, subtle colored-pencil texture, flat warm shading, minimal detail. Recognizable turquoise sea king with a large head, small stocky body, simplified white beard and hair, simple gold crown, a few gold armor shapes, blue fin cape and gold three-pronged trident with turquoise accents. No realistic anatomy, tiny scales, ornate filigree, or glossy photorealistic rendering. Exactly eight complete isolated poses in a clean 4-column by 2-row atlas on transparent background, ideally 1536x1024. Every character faces LEFT, same body scale in all cells, generously spaced with transparent margins, no touching neighboring cells. Row one: 1 standing guarding with trident, 2 swimming stride A, 3 swimming stride B, 4 raising trident overhead to summon water. Row two: 5 winding up a leftward thrust, 6 lunging with trident extended left, 7 recoiling hurt, 8 defeated kneeling with lowered trident. Keep complete trident, cape, crown, hands and feet inside each cell. Full body each pose. No text, grid lines, floor, scenery, shadows on ground, labels, or background. Preserve the fun, charming villain character of our children's adventure game. Match the bold simple linework and limited shading of the STYLE reference especially.

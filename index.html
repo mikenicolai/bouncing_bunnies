@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.28',build:2026101601,builtAt:'2026-10-16',builtLabel:'16 October 2026',deployment:'Bow joystick aiming without jumps'});
+const BUILD_INFO=Object.freeze({version:'0.21.29',build:2026101602,builtAt:'2026-10-16',builtLabel:'16 October 2026',deployment:'Button-only trident dash and cartoon Neptunus'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -800,7 +800,7 @@ function freshTempest(){return{x:5330,y:-1865,w:120,h:175,hp:TEMPEST_MAX_HP,dizz
 let tempest=freshTempest(),tempestWinds=[];
 const keys = new Set();
 let state = "title", cameraX = 0, cameraY = 0, lastTime = 0, soundOn = true, audioCtx;
-const joystick = { active:false, pointerId:null, dx:0, dy:0, rawX:0, rawY:0, dashArmed:true, jumpArmed:true, duck:false, sprint:false, motion:false, jumpGesture:null };
+const joystick = { active:false, pointerId:null, dx:0, dy:0, rawX:0, rawY:0,  jumpArmed:true, duck:false, sprint:false, motion:false, jumpGesture:null };
 const JOY = { x: W-92, y:H-94, radius:57, knob:25 };
 const ACTIONS = {
   jump:{x:82,y:H-80,r:40,label:"JUMP",color:THEME.gold},
@@ -2828,7 +2828,7 @@ const NEPTUNUS_HP=10;
 const NEPTUNUS_COMBAT={hurt:.38,guard:1.35,warn:.52,enragedWarn:.42,recover:.42,enragedRecover:.32,cooldown:.25,enragedCooldown:.16};
 const WATER_TRIDENT_DASH_SPEED=720,WATER_TRIDENT_DASH_TIME=.68,WATER_TRIDENT_RETURN_SPEED=1500;
 let waterTrident,waterAquaSuit,neptunus,neptunusShots;
-const neptunusSheet=new Image();neptunusSheet.src='assets/neptunus-v1.png';
+const neptunusSheet=new Image();neptunusSheet.src='assets/neptunus-v2.png';
 const waterRuinsSheet=new Image();waterRuinsSheet.src='assets/ancient-water-ruins-v1.png';
 const waterTridentSheet=new Image();waterTridentSheet.src='assets/benny-trident-gold-cyber-v1.png';
 
@@ -3151,21 +3151,21 @@ function drawWaterAdventureHUD(){
     const hx=x+(i-(NEPTUNUS_HP-1)/2)*19,hy=y+7;ctx.fillStyle=i<b.hp?'#ff8e91':'#456477';ctx.beginPath();ctx.moveTo(hx,hy+7);ctx.bezierCurveTo(hx-15,hy-2,hx-8,hy-12,hx,hy-5);ctx.bezierCurveTo(hx+8,hy-12,hx+15,hy-2,hx,hy+7);ctx.fill();
   }
 }
-// Atlas registration is populated from the final transparent painted sheet.
+// Cartoon atlas uses a shared pixel scale and foot anchors across all eight poses.
 const NEPTUNUS_FRAMES=[
-  [0,18,443,460,215], [414,56,478,422,667], [857,107,513,371,1125], [1318,0,456,480,1537],
-  [0,523,374,320,236], [371,521,634,323,758], [927,464,404,380,1180], [1327,545,447,330,1539]
+  [15,138,399,407,208], [379,186,430,356,612], [754,198,430,346,993], [1130,43,399,507,1361],
+  [9,623,400,320,215], [365,635,506,311,685], [815,589,383,359,1022], [1180,695,350,272,1396]
 ].map(([x,y,w,h,anchorX])=>({x,y,w,h,anchorX}));
-// Source silhouettes are isolated before blending so neighbouring cloak tips do not leak into a pose.
+// Isolate nearby trident/cape tips without altering the native transparent PNG.
 const NEPTUNUS_CLIPS=[
-  [[0,18],[405,18],[405,255],[443,285],[443,478],[0,478]],
-  [[414,56],[848,56],[848,242],[892,242],[892,478],[540,478],[540,270],[414,205]],
-  [[857,107],[1318,107],[1318,230],[1370,270],[1370,478],[996,478],[996,235],[857,208]],
-  [[1318,0],[1774,0],[1774,480],[1420,480],[1390,270],[1335,145],[1318,90]],
-  null,
-  [[371,558],[590,521],[900,521],[900,612],[1005,650],[1005,844],[600,844],[530,689],[371,690]],
-  [[927,464],[1331,464],[1331,844],[1040,844],[1040,640],[1010,610],[927,590]],
-  null
+  [[15,138],[378,138],[378,366],[414,405],[414,545],[15,545]],
+  [[379,186],[751,186],[751,363],[809,407],[809,542],[420,542],[420,365],[379,345]],
+  [[754,198],[1129,198],[1129,315],[1184,395],[1184,544],[815,544],[815,365],[754,345]],
+  [[1130,43],[1529,43],[1529,550],[1198,550],[1198,365],[1130,280]],
+  [[9,623],[365,623],[365,800],[409,820],[409,943],[9,943]],
+  [[365,635],[815,635],[815,752],[871,752],[871,842],[866,842],[866,890],[871,890],[871,946],[420,946],[420,810],[365,800]],
+  [[815,589],[1198,589],[1198,890],[1178,905],[1178,948],[877,948],[877,890],[866,890],[866,842],[877,842],[877,752],[815,752]],
+  [[1210,695],[1530,695],[1530,967],[1180,967],[1180,907],[1210,875]]
 ];
 function makeNeptunusPainter(){
   const painter=new window.WoodBossAnimation.PaintedPoseBlend(neptunusSheet,NEPTUNUS_FRAMES,false);
@@ -6358,7 +6358,6 @@ function drawTouchControls() {
   ctx.fillText(inMaze?'↑ CLIMB':fireArcheryMode()?'↑ AIM':fireWalking&&!inMaze?'← MOVE →':inMaze?'↑ CLIMB':bunnySwimming()?'↑ SWIM':'↑ JUMP',JOY.x,JOY.y-JOY.radius+20);ctx.fillText(inMaze?'↓ CLIMB':fireArcheryMode()?'↓ AIM':(level==='fire'&&fireJumpingMode()&&!postKing)||fireWalking&&!inMaze?'':inMaze?'↓ CLIMB':bunnySwimming()?'↓ DIVE':'↓ DUCK',JOY.x,JOY.y+JOY.radius-10);
   if(joystick.jumpGesture){ctx.font='bold 11px system-ui';ctx.fillText(`${1+player.boosts} / 3`,JOY.x,JOY.y+4);}
   else if(joystick.sprint&&!bunnySwimming()){ctx.font='bold 11px system-ui';ctx.fillText('RUN',JOY.x,JOY.y+4);}
-  if(joystickTridentEquipped()){ctx.font='bold 10px system-ui';ctx.fillText('PUSH · DASH',JOY.x,JOY.y+JOY.radius+14);}
   for(const [name,b] of Object.entries(ACTIONS)){
     if(fireArcheryMode()&&name==='duck')continue;
     if(fireWalking&&(name==='jump'||name==='duck')||level==='fire'&&fireJumpingMode()&&!postKing&&name==='duck')continue;
@@ -6407,29 +6406,12 @@ function fitTouchControls(){
 }
 function clearInputs(){
   keys.clear();duckPointer=null;
-  Object.assign(joystick,{active:false,pointerId:null,dx:0,dy:0,rawX:0,rawY:0,dashArmed:true,jumpArmed:true,duck:false,sprint:false,motion:false,jumpGesture:null});
+  Object.assign(joystick,{active:false,pointerId:null,dx:0,dy:0,rawX:0,rawY:0,jumpArmed:true,duck:false,sprint:false,motion:false,jumpGesture:null});
   if(player)updateDuck();
 }
 // JOYSTICK_GESTURES_BEGIN
 // Raw reach keeps deliberate outer pushes distinct from the clamped aim direction.
-const STICK_GESTURE={jump:.88,second:.95,third:.99,release:.6,duck:.9,duckRelease:.82,run:.9,runRelease:.75,dash:1.12,dashRelease:.8};
-function joystickTridentEquipped(){
-  return waterTrident.owned&&(level==='final'&&finalWeapon==='trident'||level==='water'&&player.inWater&&!player.breaching);
-}
-function dashFromJoystick(){
-  const reach=Math.hypot(joystick.rawX,joystick.rawY);
-  if(reach<STICK_GESTURE.dashRelease)joystick.dashArmed=true;
-  if(!joystick.active||!joystickTridentEquipped()||reach<STICK_GESTURE.dash)return false;
-  // A grounded downward pull is a duck, rather than a dash into the floor.
-  if(player.onGround&&joystick.rawY>=STICK_GESTURE.duck&&joystick.rawY>Math.abs(joystick.rawX))return false;
-  joystick.jumpArmed=false;joystick.jumpGesture=null;joystick.duck=false;updateDuck();
-  if(joystick.dashArmed){
-    joystick.dashArmed=false;
-    // The stick always dashes; the separate attack button keeps its selected mode.
-    const mode=waterTrident.mode;waterTrident.mode='dash';if(!player.duck)fireWaterTrident();waterTrident.mode=mode;
-  }
-  return true;
-}
+const STICK_GESTURE={jump:.88,second:.95,third:.99,release:.6,duck:.9,duckRelease:.82,run:.9,runRelease:.75};
 function jumpFromJoystick(){
   const up=-joystick.rawY;
   if(up<=STICK_GESTURE.release){joystick.jumpArmed=true;joystick.jumpGesture=null;}
@@ -6464,7 +6446,6 @@ function updateJoystick(p){
   else if(Math.abs(joystick.rawX)<=STICK_GESTURE.runRelease)joystick.sprint=false;
   // Equipped bows reserve the vertical stick axis for aiming in every world.
   if(fireArcheryMode()){joystick.duck=false;joystick.jumpGesture=null;joystick.jumpArmed=-joystick.rawY<=STICK_GESTURE.release;return;}
-  if(dashFromJoystick())return;
   if(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated)){
     joystick.duck=false;if(fireJumpingMode())jumpFromJoystick();return;
   }
@@ -6489,7 +6470,7 @@ canvas.addEventListener("pointerdown",e=>{
 canvas.addEventListener("pointermove",e=>{if(joystick.active&&e.pointerId===joystick.pointerId){e.preventDefault();updateJoystick(canvasPoint(e));}});
 function releaseJoystick(e){
   if(e.pointerId===duckPointer){duckPointer=null;updateDuck();}
-  if(joystick.active&&e.pointerId===joystick.pointerId){Object.assign(joystick,{active:false,pointerId:null,dx:0,dy:0,rawX:0,rawY:0,dashArmed:true,jumpArmed:true,duck:false,sprint:false,motion:true,jumpGesture:null});updateDuck();}
+  if(joystick.active&&e.pointerId===joystick.pointerId){Object.assign(joystick,{active:false,pointerId:null,dx:0,dy:0,rawX:0,rawY:0,jumpArmed:true,duck:false,sprint:false,motion:true,jumpGesture:null});updateDuck();}
 }
 canvas.addEventListener('lostpointercapture',releaseJoystick);
 window.addEventListener('blur',clearInputs);

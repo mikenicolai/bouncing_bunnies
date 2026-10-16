@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cartoon Neptunus</title>
+<style>body{margin:0;background:#102d45;color:#eef9ed;font:16px system-ui}main{max-width:1100px;margin:auto;padding:18px}h1{margin:0 0 10px;font-size:26px}p{color:#bedce3;line-height:1.5}a{color:#ffe3a0}canvas{display:block;width:100%;height:auto;background:#26536a;border-radius:12px;margin-bottom:18px}iframe{width:100%;height:720px;border:1px solid #71a4aa;border-radius:12px;display:block}</style>
+<main><h1>Neptunus · cartoon sea king</h1><p>Eight animated poses with simpler shapes and bold outlines. The joystick moves and aims. Use MODE to select DASH, then press the separate DASH button to use it. <a href="water-ruins-review.html">Practice the fight</a> · <a href="../index.html">Play</a></p><canvas id="poses" width="1440" height="760"></canvas><iframe src="../index.html" title="Practice the Neptunus encounter" allow="fullscreen"></iframe></main>
+<script>
+const frame=document.querySelector('iframe'),c=document.querySelector('#poses'),paint=c.getContext('2d');
+frame.onload=async()=>{
+ const game=frame;
+ while(!game.contentWindow.neptunusSheet?.naturalWidth){
+  if(game.contentWindow.eval('typeof neptunusSheet!=="undefined"&&!!neptunusSheet.naturalWidth'))break;
+  await new Promise(r=>setTimeout(r,100));
+ }
+ game.contentWindow.eval("fallbackFullscreen=true;syncFullscreen();beginDeveloperSession();level='water';start();soundOn=false;waterSharks=[];waterPirates=[];waterPortalKeyTaken=true;waterGate.phase='open';waterGate.lift=1;player.inWater=true;player.x=13230;player.y=1150;player.invincible=999;waterTrident.owned=true;waterAquaSuit=true;neptunus.active=true;neptunus.x=13630;cameraX=player.x-waterViewSize().width*.28;cameraY=player.y-waterViewSize().height*.62;render(0);");
+ const painter=game.contentWindow.eval('makeNeptunusPainter()');
+ const labels=['Guard','Swim A','Swim B','Summon','Windup','Thrust','Hurt','Defeated'];
+ labels.forEach((label,i)=>{
+  const x=(i%4)*360,y=Math.floor(i/4)*380;
+  paint.fillStyle=(i+Math.floor(i/4))%2?'#23495e':'#2a586d';paint.fillRect(x,y,360,380);
+  painter.draw(paint,i,i,0,x+180,y+325,230,-1);
+  paint.fillStyle='#fff0be';paint.font='bold 20px system-ui';paint.textAlign='center';paint.fillText(label,x+180,y+360);
+ });
+ document.body.dataset.ready='true';
+};
+</script></html>

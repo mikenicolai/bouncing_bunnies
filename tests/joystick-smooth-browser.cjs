@@ -1,6 +1,6 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict');
 (async()=>{
- const browser=await chromium.launch({headless:true,executablePath:process.env.BOSS_BROWSER||'/Users/mike/Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'});
+ const browser=await chromium.launch({headless:true,executablePath:process.env.BOSS_BROWSER||chromium.executablePath()});
  try{
   const page=await browser.newPage({hasTouch:true,viewport:{width:390,height:844}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:8772/index.html');await page.waitForFunction(()=>earthGroundSheet.naturalWidth);
@@ -32,10 +32,42 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
    await scene();await touch('touchStart');await touch('touchMove',1,-1);assert(await page.evaluate(()=>joystick.sprint&&player.vy<0&&player.boosts===0),name+' deliberate diagonal starts run and jump');await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>player.boosts),2);
    await touch('touchCancel');assert(await page.evaluate(()=>!joystick.active&&!joystick.sprint&&!joystick.jumpGesture&&joystick.dx===0&&joystick.dy===0),name+' touch cancellation');
   }
-  await page.setViewportSize({width:390,height:844});await page.waitForTimeout(150);await page.evaluate(()=>{beginDeveloperSession();level='final';start();soundOn=false;player.x=100;player.y=412;player.onGround=true;player.invincible=999;selectFinalWeapon('trident');waterTrident.mode='throw';});
-  await touch('touchStart');await touch('touchMove',0,1.25);assert(await page.evaluate(()=>player.duck&&waterTrident.dash===0),'straight down still ducks with trident');await touch('touchMove',0,0);await touch('touchMove',1.25,0);assert(await page.evaluate(()=>waterTrident.dash>0&&waterTrident.dx>0&&waterTrident.mode==='throw'),'outer push dashes even when the attack button throws');const dashX=await page.evaluate(()=>player.x);await page.waitForTimeout(200);assert(await page.evaluate(x=>player.x>x+100,dashX));await page.evaluate(()=>{state='review';player.invincible=0;render(0);});await page.locator('#game').screenshot({path:'previews/trident-push-dash-phone-v2.png'});await page.evaluate(()=>{state='playing';player.invincible=999;});await page.waitForTimeout(1300);await touch('touchMove',1.25,0);assert.equal(await page.evaluate(()=>waterTrident.dash),0);await touch('touchMove',.4,0);await touch('touchMove',-1.25,0);assert(await page.evaluate(()=>waterTrident.dash>0&&waterTrident.dx<0));await touch('touchEnd');
-  await page.evaluate(()=>{level='water';start();soundOn=false;player.x=2300;player.y=650;player.inWater=true;player.invincible=999;waterTrident.owned=true;waterTrident.mode='throw';});await touch('touchStart');await touch('touchMove',0,-1.25);assert(await page.evaluate(()=>waterTrident.dash>0&&waterTrident.dy<0));await touch('touchEnd');
+  // Real touch: large stick pushes never attack, including after cooldown.
+  // A second finger on the labeled button still dashes along the held stick.
+  for(const [name,width,height] of [['phone',390,844],['phone-landscape',844,390],['tablet',768,1024],['tablet-landscape',1024,768]]){
+   await page.setViewportSize({width,height});
+   for(const world of ['water','final']){
+    await page.evaluate(world=>{
+     beginDeveloperSession();level=world;start();soundOn=false;fallbackFullscreen=true;syncFullscreen();player.invincible=999;
+     if(world==='water'){player.x=2300;player.y=650;player.inWater=true;waterAquaSuit=true;waterSharks=[];waterPirates=[];}
+     else{platforms=[{x:0,y:470,w:9000,h:400}];player.x=100;player.y=412;player.onGround=true;finalMonsters=[];selectFinalWeapon('trident');}
+     waterTrident.owned=true;waterTrident.mode='throw';fitTouchControls();
+     window.tridentOriginalAttack??=attack;window.tridentAttackCalls=0;attack=function(){window.tridentAttackCalls++;return window.tridentOriginalAttack();};
+    },world);await page.waitForTimeout(150);
+    await touch('touchStart');
+    for(const mode of ['throw','dash']){
+     await page.evaluate(mode=>{waterTrident.mode=mode;},mode);
+     for(const [x,y] of [[1.35,0],[-1.35,0],[0,-1.35],[0,1.35],[1.2,-1.2]]){
+      await touch('touchMove',x,y);await page.waitForTimeout(80);
+      assert(await page.evaluate(()=>waterTrident.dash===0&&waterTrident.shot===null&&window.tridentAttackCalls===0),name+' '+world+' '+mode+': strong stick never attacks');
+     }
+    }
+    await touch('touchMove',0,0);
+    if(world==='final'){await page.waitForFunction(()=>player.onGround,{},{timeout:4000});await page.evaluate(()=>{player.x=1600;});}
+    await touch('touchMove',-1.35,0);await page.waitForTimeout(1000);
+    assert(await page.evaluate(()=>waterTrident.dash===0&&waterTrident.shot===null),name+' '+world+': holding outer stick cannot repeat dashes');
+    const points=await page.evaluate(()=>{
+     const r=canvas.getBoundingClientRect(),point=(id,x,y)=>({id,x:r.left+x*r.width/W,y:r.top+y*r.height/H});
+     return [point(1,JOY.x-1.35*(JOY.radius-12),JOY.y),point(2,ACTIONS.hit.x,ACTIONS.hit.y)];
+    });
+    await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points});
+    assert(await page.evaluate(()=>window.tridentAttackCalls===1&&waterTrident.dash>0&&waterTrident.dx<0),name+' '+world+': separate Dash button works while holding stick');
+    await touch('touchEnd');
+    const labels=await page.evaluate(()=>{const labels=[],old=ctx.fillText;ctx.fillText=function(t,...a){labels.push(t);return old.call(this,t,...a);};try{drawTouchControls();}finally{ctx.fillText=old;}return labels;});
+    assert(!labels.includes('PUSH · DASH'),'no misleading push-to-dash hint');
+   }
+  }
   const local=await browser.newPage({hasTouch:true,viewport:{width:390,height:844}});local.on('pageerror',e=>errors.push(e.message));await local.goto('file://'+process.cwd()+'/index.html');await local.evaluate(()=>{level='meadow';start();soundOn=false;player.onGround=true;player.vy=0;updateJoystick({x:JOY.x,y:JOY.y-JOY.radius});});await local.waitForFunction(()=>player.boosts===2);assert(await local.evaluate(()=>player.vy<0));
-  assert.deepEqual(errors,[]);console.log('PASS smooth joystick browser: real touch slow/run/reverse/release, wide movement band, deep duck, timed triple-jump hold, diagonal run+jump, finite burst/cancel, directional Castle/water trident push-dash, phone/tablet in both orientations and direct-file play.');
+  assert.deepEqual(errors,[]);console.log('PASS smooth joystick browser: real touch slow/run/reverse/release, wide movement band, deep duck, timed triple-jump hold, diagonal run+jump, finite burst/cancel, button-only Castle/Water trident dashes with simultaneous touch, phone/tablet in both orientations and direct-file play.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
