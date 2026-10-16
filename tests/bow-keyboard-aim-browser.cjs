@@ -1,5 +1,5 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict');
-(async()=>{const browser=await chromium.launch({headless:true,executablePath:'/Users/mike/Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'});try{
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.BOSS_BROWSER||chromium.executablePath()});try{
  const page=await browser.newPage({viewport:{width:1100,height:800},hasTouch:true}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:8772/index.html');await page.waitForFunction(()=>fireArcherySheet.naturalWidth);
  async function setup(world){await page.evaluate(world=>{beginDeveloperSession();level=world;start();soundOn=false;fireArrow.owned=true;player.invincible=999;player.x=90;player.onGround=true;player.y=platforms[0].y-58;if(world==='fire'){beginSecondVolcano();player.x=10340;player.y=-558;player.onGround=true;beginLavaKing();lavaKing.dizzy=999;}else if(world==='final')selectFinalWeapon('bow');else toggleFireAim();},world);await page.locator('#game').focus();}
  for(const world of ['meadow','fire','final']){

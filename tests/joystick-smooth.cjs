@@ -30,7 +30,7 @@ for(const fps of [30,60,120]){
 for(const world of ['meadow','air','earth','water','fire','final']){
  run(`level='${world}';resetGame();player.onGround=true;player.vy=0;player.inWater=false;player.ridingTurtle=false;`);pull(0,-1);assert.equal(run('player.vy'),-570,world+' starts with one hop');for(let i=0;i<30;i++)run('update(1/120)');assert.equal(run('player.boosts'),2);
 }
-run("level='fire';resetGame();fireArrow.owned=true;player.x=10340;player.y=-558;player.onGround=true;beginLavaKing()");pull(0,-1);assert(run('player.vy<0'));for(let i=0;i<30;i++)run('update(1/120)');assert.equal(run('player.boosts'),2,'equipped bow keeps the timed triple jump');
+run("level='fire';resetGame();fireArrow.owned=true;player.x=10340;player.y=-558;player.onGround=true;beginLavaKing()");pull(0,-1);assert(run('player.onGround&&player.vy===0'));for(let i=0;i<30;i++)run('update(1/120)');assert.equal(run('player.boosts'),0,'equipped bow uses the stick only to aim');assert(run('fireArrow.angle>.1'));
 run('fireArrow.aiming=false;beginFireMaze()');pull(0,-1);assert.equal(run('player.vy'),0,'maze climbing does not jump');
 run("level='water';resetGame();player.inWater=true;player.x=2200;player.y=600;waterReefs.length=0;player.vx=0;player.vy=0;waterPirates=[];waterSharks=[];player.invincible=999");pull(.4,0);for(let i=0;i<120;i++)run('update(1/120)');assert(run('player.vx>20&&player.vx<130'),'swimming also responds proportionally');
 for(const action of ['clearInputs()',"window.listeners.blur[0]()",'openWorldMap()','showEnd(false)','resetGame()']){reset();pull(1,-1);run(action);assert(!run('joystick.sprint||joystick.motion||joystick.jumpGesture'));}

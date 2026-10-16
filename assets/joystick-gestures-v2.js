@@ -27,6 +27,7 @@ function jumpFromJoystick(){
   }
 }
 function updateJoystickJump(dt){
+  if(fireArcheryMode()){joystick.jumpGesture=null;joystick.jumpArmed=-joystick.rawY<=STICK_GESTURE.release;return;}
   const g=joystick.jumpGesture;if(!g)return;
   const up=-joystick.rawY;
   if(player.duck||bunnySwimming()||waterTrident.dash>0||up<STICK_GESTURE.jump||player.jumpAge>=.52||player.vy>=180||player.boosts!==g.base+g.extra){joystick.jumpGesture=null;return;}
@@ -48,8 +49,9 @@ function updateJoystick(p){
   joystick.dx=dx/d*limit/(JOY.radius-12);joystick.dy=dy/d*limit/(JOY.radius-12);joystick.motion=true;
   if(Math.abs(joystick.rawX)>=STICK_GESTURE.run)joystick.sprint=true;
   else if(Math.abs(joystick.rawX)<=STICK_GESTURE.runRelease)joystick.sprint=false;
+  // Equipped bows reserve the vertical stick axis for aiming in every world.
+  if(fireArcheryMode()){joystick.duck=false;joystick.jumpGesture=null;joystick.jumpArmed=-joystick.rawY<=STICK_GESTURE.release;return;}
   if(dashFromJoystick())return;
-  if((level==='final'||level==='meadow')&&fireArcheryMode()){joystick.duck=false;jumpFromJoystick();return;}
   if(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated)){
     joystick.duck=false;if(fireJumpingMode())jumpFromJoystick();return;
   }

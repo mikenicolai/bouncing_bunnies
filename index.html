@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.27',build:2026101504,builtAt:'2026-10-15',builtLabel:'15 October 2026',deployment:'Up-arrow keyboard jumping restored'});
+const BUILD_INFO=Object.freeze({version:'0.21.28',build:2026101601,builtAt:'2026-10-16',builtLabel:'16 October 2026',deployment:'Bow joystick aiming without jumps'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -6355,7 +6355,7 @@ function drawTouchControls() {
   ctx.fillStyle=joystick.sprint?'rgba(255,207,111,.95)':"rgba(131,220,200,.9)";ctx.beginPath();ctx.arc(kx,ky,JOY.knob,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#fff8de';ctx.font=`bold ${JOY.radius>60?20:14}px system-ui`;ctx.textAlign='center';
   const inMaze=level==='fire'&&fireMode==='maze',fireWalking=level==='fire'&&fireMode!=='surface'&&!fireJumpingMode(),postKing=level==='fire'&&fireMode==='king'&&lavaKing.defeated;
-  ctx.fillText(inMaze?'↑ CLIMB':fireArcheryMode()&&fireJumpingMode()?'↑ AIM / JUMP':fireArcheryMode()&&level!=='fire'?'↑ AIM / JUMP':fireArcheryMode()?'↑ AIM':fireWalking&&!inMaze?'← MOVE →':inMaze?'↑ CLIMB':bunnySwimming()?'↑ SWIM':'↑ JUMP',JOY.x,JOY.y-JOY.radius+20);ctx.fillText(inMaze?'↓ CLIMB':fireArcheryMode()?'↓ AIM':(level==='fire'&&fireJumpingMode()&&!postKing)||fireWalking&&!inMaze?'':inMaze?'↓ CLIMB':bunnySwimming()?'↓ DIVE':'↓ DUCK',JOY.x,JOY.y+JOY.radius-10);
+  ctx.fillText(inMaze?'↑ CLIMB':fireArcheryMode()?'↑ AIM':fireWalking&&!inMaze?'← MOVE →':inMaze?'↑ CLIMB':bunnySwimming()?'↑ SWIM':'↑ JUMP',JOY.x,JOY.y-JOY.radius+20);ctx.fillText(inMaze?'↓ CLIMB':fireArcheryMode()?'↓ AIM':(level==='fire'&&fireJumpingMode()&&!postKing)||fireWalking&&!inMaze?'':inMaze?'↓ CLIMB':bunnySwimming()?'↓ DIVE':'↓ DUCK',JOY.x,JOY.y+JOY.radius-10);
   if(joystick.jumpGesture){ctx.font='bold 11px system-ui';ctx.fillText(`${1+player.boosts} / 3`,JOY.x,JOY.y+4);}
   else if(joystick.sprint&&!bunnySwimming()){ctx.font='bold 11px system-ui';ctx.fillText('RUN',JOY.x,JOY.y+4);}
   if(joystickTridentEquipped()){ctx.font='bold 10px system-ui';ctx.fillText('PUSH · DASH',JOY.x,JOY.y+JOY.radius+14);}
@@ -6440,6 +6440,7 @@ function jumpFromJoystick(){
   }
 }
 function updateJoystickJump(dt){
+  if(fireArcheryMode()){joystick.jumpGesture=null;joystick.jumpArmed=-joystick.rawY<=STICK_GESTURE.release;return;}
   const g=joystick.jumpGesture;if(!g)return;
   const up=-joystick.rawY;
   if(player.duck||bunnySwimming()||waterTrident.dash>0||up<STICK_GESTURE.jump||player.jumpAge>=.52||player.vy>=180||player.boosts!==g.base+g.extra){joystick.jumpGesture=null;return;}
@@ -6461,8 +6462,9 @@ function updateJoystick(p){
   joystick.dx=dx/d*limit/(JOY.radius-12);joystick.dy=dy/d*limit/(JOY.radius-12);joystick.motion=true;
   if(Math.abs(joystick.rawX)>=STICK_GESTURE.run)joystick.sprint=true;
   else if(Math.abs(joystick.rawX)<=STICK_GESTURE.runRelease)joystick.sprint=false;
+  // Equipped bows reserve the vertical stick axis for aiming in every world.
+  if(fireArcheryMode()){joystick.duck=false;joystick.jumpGesture=null;joystick.jumpArmed=-joystick.rawY<=STICK_GESTURE.release;return;}
   if(dashFromJoystick())return;
-  if((level==='final'||level==='meadow')&&fireArcheryMode()){joystick.duck=false;jumpFromJoystick();return;}
   if(level==='fire'&&fireMode!=='surface'&&!(fireMode==='king'&&lavaKing.defeated)){
     joystick.duck=false;if(fireJumpingMode())jumpFromJoystick();return;
   }
