@@ -1,6 +1,6 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
 (async()=>{
- const browser=await chromium.launch({headless:true,executablePath:process.env.BOSS_BROWSER||'/Users/mike/Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'});
+ const browser=await chromium.launch({headless:true,executablePath:process.env.BOSS_BROWSER||chromium.executablePath()});
  try{
   const page=await browser.newPage({viewport:{width:1200,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:8772/previews/lava-king-review.html');const game=page.frames().find(f=>f.parentFrame());assert(game);
@@ -16,7 +16,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
    })};
   });assert.equal(art.width,1774);assert.equal(art.height,887);assert(art.src.endsWith('/lava-king-v2.png'));
   for(const [i,p] of art.poses.entries()){assert.equal(p.corner,0);assert(p.minX>8&&p.minY>8&&p.maxX<443&&p.maxY<440,`pose ${i} keeps its full equipment inside its own cell`);assert(p.helmet>230,`pose ${i} registers the helmet inside the solid body`);}
-  for(const scene of ['shield','windup','slash','cast','defeated']){
+  for(const scene of ['shield','windup','slash','cast','spinWarn','spin','defeated']){
    await page.locator(`[data-scene="${scene}"]`).click();assert(await game.evaluate(()=>developerRun&&lives===3));
    await game.evaluate(()=>render(0));
   }
@@ -26,7 +26,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await game.evaluate(()=>{state='review';lavaKingPhase('flight');updateLavaKing(1);render(0);});assert(await game.evaluate(()=>lavaKing.phase==='flight'&&lavaKing.y+lavaKing.h<FIRE_KING_ARENA.y-100));
   for(const viewport of [{width:390,height:844},{width:844,height:390}]){await page.setViewportSize(viewport);await page.locator('[data-scene="shield"]').click();await game.evaluate(()=>render(0));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
   const local=await browser.newPage();local.on('pageerror',e=>errors.push(e.message));await local.goto('file://'+process.cwd()+'/index.html');await local.waitForFunction(()=>lavaKingSheet.naturalWidth);
-  await local.evaluate(()=>{beginDeveloperSession();level='fire';start();fireArrow.owned=true;player.x=10340;player.y=-558;beginLavaKing();state='review';cameraX=10300;cameraY=fireCameraTargetY();for(const phase of ['patrol','shield','windup','slash','cast','flight','recover']){lavaKingPhase(phase);render(0);}});
+  await local.evaluate(()=>{beginDeveloperSession();level='fire';start();fireArrow.owned=true;player.x=10340;player.y=-558;beginLavaKing();state='review';cameraX=10300;cameraY=fireCameraTargetY();for(const phase of ['patrol','shield','windup','slash','cast','spinWarn','spin','flight','recover']){lavaKingPhase(phase);render(0);}});
   assert.deepEqual(errors,[]);console.log('PASS painted Lava King: native transparent eight-pose atlas, complete equipment, registered helmets, shield/sword/cast/hurt/flight rendering, live battle, portrait/landscape and direct-file play.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

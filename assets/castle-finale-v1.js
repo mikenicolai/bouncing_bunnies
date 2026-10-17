@@ -31,6 +31,20 @@ function hitFinalKnight(){
   if(b.hp===0){b.defeated=true;b.phase='defeated';b.deathAge=0;clearFinalWeaponHazards();bunnyArrows=[];tone(440,.35,'triangle',.04);}
   return true;
 }
+// A stunned knight still has a body. Resolve relative sweeps so neither running
+// nor a fast trident dash can swap sides through his recoil animation.
+function blockFinalKnight(previousX=player.x,previousKnightX=finalKnight.x){
+  const b=finalKnight;
+  if(finalChapter!=='knight'||b.defeated||player.y+player.h<=b.y||player.y>=b.y+b.h)return false;
+  const wasLeft=previousX+player.w<=previousKnightX+.01,wasRight=previousX>=previousKnightX+b.w-.01;
+  const crossed=wasLeft&&player.x+player.w>b.x||wasRight&&player.x<b.x+b.w;
+  if(!crossed&&!overlap(player,b))return false;
+  const left=wasLeft||!wasRight&&previousX+player.w/2<previousKnightX+b.w/2;
+  player.x=left?b.x-player.w:b.x+b.w;player.vx=0;
+  if(waterTrident.dash>0)stopWaterDash();
+  if(b.dizzy<=0)hurt(left?-1:1);
+  return true;
+}
 function finalKnightSwordBox(){
   const b=finalKnight;
   return{x:b.facing>0?b.x+b.w-8:b.x-100,y:FINAL_FLOOR-92,w:108,h:36};
@@ -52,10 +66,10 @@ function updateFinalKnightSword(dt){
   if(arrowSegmentEntry(old,s,player,12)!==null)hurt(player.x<b.x?-1:1);
   if(!s.returning&&(s.age>=.7||finalKnightPlatforms.some(p=>arrowSegmentEntry(old,s,p,12)!==null)))s.returning=true;
 }
-function updateFinalKnightRoom(dt){
+function updateFinalKnightRoom(dt,previousX=player.x){
   finalTime+=dt;finalRoomFade=Math.max(0,finalRoomFade-dt);
   updateFireArchery(dt);updateFinalWeapons(dt);
-  const b=finalKnight;
+  const b=finalKnight,previousKnightX=finalKnight.x;
   if(b.defeated){
     b.deathAge+=dt;
     if(player.onGround&&player.x+player.w/2>FINAL_KNIGHT_ROOM.door+20)enterFinalThroneRoom();
@@ -64,7 +78,7 @@ function updateFinalKnightRoom(dt){
   // The inner doorway stays shut until the knight is defeated, even while dashing.
   if(player.x+player.w>FINAL_KNIGHT_ROOM.door){player.x=FINAL_KNIGHT_ROOM.door-player.w;player.vx=0;}
   updateFinalKnightSword(dt);
-  if(b.dizzy>0){b.dizzy=Math.max(0,b.dizzy-dt);return;}
+  if(b.dizzy>0){blockFinalKnight(previousX,previousKnightX);b.dizzy=Math.max(0,b.dizzy-dt);return;}
   const distance=player.x+21-(b.x+b.w/2);b.age+=dt;b.cooldown=Math.max(0,b.cooldown-dt);
   if(b.phase==='hurt'){b.phase='guard';b.age=0;}
   if(b.phase==='guard'){
@@ -79,7 +93,7 @@ function updateFinalKnightRoom(dt){
     if(overlap(player,sword))hurt(player.x<b.x?-1:1);
     if(b.age>=.24){b.phase='recover';b.age=0;}
   }else if(b.phase==='recover'&&b.age>=.85){b.phase='guard';b.age=0;b.cooldown=.45;}
-  if(overlap(player,b))hurt(player.x<b.x?-1:1);
+  blockFinalKnight(previousX,previousKnightX);
 }
 function enterFinalThroneRoom(){
   if(finalChapter!=='knight'||!finalKnight.defeated)return false;

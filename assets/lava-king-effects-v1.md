@@ -1,0 +1,12 @@
+# Comic Lava King effects v1
+
+- Mode: built-in imagegen, reference-based generation, transparent_background=true.
+- Asset: `assets/lava-king-effects-v1.png`, native 1536 × 1024 RGBA copied unchanged.
+- Source: `/Users/mike/.codex/generated_images/01a13103-5122-7353-ac66-be35e89d4387/exec-853ea823-5243-4daa-a3bf-20a83a1574a0.png`.
+- References: `assets/lava-king-v2.png` (palette/context) and `assets/neptunus-v2.png` (comic linework/style).
+- Top row: four right-facing fireball flicker frames, rotated to the actual velocity. Hot-head anchors match the existing radius-13 collision circle; flame tails are decorative.
+- Bottom row: four hollow spin trails, clipped into back/front layers around the upright rotating king. Registration and rendering: `assets/lava-king-effects-v1.js`, embedded verbatim in `index.html`.
+
+## Exact prompt
+
+Use case: stylized-concept. Asset type: transparent sprite atlas of fire attack effects for our comic-style bunny platform game. References: Image 1 lava king establishes orange/red/yellow flame palette and game context only; Image 2 cartoon Neptunus establishes the bold dark outlines, simple readable shapes, subtle colored-pencil texture and flat cartoon shading to MATCH. Create exactly eight isolated effects in a 4-column by 2-row atlas, 1536x1024, generous transparent gutters so no effect touches its cell edges or neighbors. Top row: four animation frames of the SAME right-moving fireball. Each has a round bright cream-yellow hot head on the RIGHT, layered orange and red flame tongues trailing LEFT, thick dark brown comic outlines, a few tiny embers, hand-drawn texture, minimal shading. Vary flame tongues across the four frames for a lively looping flicker; same scale and head position in each cell. Keep the head compact and readable at 30 pixels diameter in game. Bottom row: four animation frames of a hollow fiery horizontal whirl / sword-sweep ring, viewed as a flattened three-quarter ellipse, orange-red rim, bright yellow inner streaks, dark outline and a few embers. Leave the ring center transparent so the boss can stand inside it; vary flame arc positions to suggest spinning around an upright character. No characters, swords, shields, scenery, text, labels, floor shadows, cell borders or background. No photorealism, no intricate fine detail, no blurry enormous glow. Native genuine transparency around every effect and in the ring holes. Retain an appealing playful hand-drawn comic style.

@@ -31,13 +31,13 @@ function moveFinalDash(dt){
   const t=waterTrident,travel=Math.min(dt,t.dash),steps=Math.max(1,Math.ceil(travel*WATER_TRIDENT_DASH_SPEED/7));
   const solids=finalSolids();player.onGround=false;player.jumpAge=9;player.boosts=2;
   for(let i=0;i<steps;i++){
-    const feet=player.y+player.h;
+    const feet=player.y+player.h,previousX=player.x;
     const next={...player,x:player.x+t.dx*WATER_TRIDENT_DASH_SPEED*travel/steps,y:player.y+t.dy*WATER_TRIDENT_DASH_SPEED*travel/steps};
     const landing=solids.find(p=>p.oneWay&&t.dy>0&&feet<=p.y+1&&next.y+next.h>=p.y&&next.x+next.w>p.x&&next.x<p.x+p.w);
     if(landing){next.y=landing.y-next.h;player.x=next.x;player.y=next.y;player.onGround=true;if(landing.crumble&&landing.crackAge<0)landing.crackAge=0;stopWaterDash();break;}
     if(next.x<0||next.x+next.w>WORLD_W||solids.some(p=>!p.oneWay&&overlap(next,p))){stopWaterDash();break;}
     player.previousFeet=feet;player.x=next.x;player.y=next.y;
-    if(finalChapter==='knight'){if(overlap(player,finalKnight))hitFinalKnight();}else for(const m of finalMonsters)if(m.alive&&overlap(player,m))hitFinalMonster(m);
+    if(finalChapter==='knight'){if(overlap(player,finalKnight))hitFinalKnight();if(blockFinalKnight(previousX))break;}else for(const m of finalMonsters)if(m.alive&&overlap(player,m))hitFinalMonster(m);
     if(i%3===0)burst(player.x+21-t.dx*25,player.y+29-t.dy*25,'#a8fff0',1);
   }
   if(t.dash>0){t.dash=Math.max(0,t.dash-travel);if(t.dash===0){player.vx=t.dx*130;player.vy=t.dy*130;if(t.shot)t.shot.returning=true;}}
