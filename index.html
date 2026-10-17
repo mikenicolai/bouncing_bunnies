@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.30',build:2026101701,builtAt:'2026-10-17',builtLabel:'17 October 2026',deployment:'Comic fireballs, spinning Lava King and solid knight'});
+const BUILD_INFO=Object.freeze({version:'0.21.31',build:2026101702,builtAt:'2026-10-17',builtLabel:'17 October 2026',deployment:'Air return path and dropper checkpoint fixes'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -2321,6 +2321,11 @@ function beginDescent(){
   bossAwake=false;player.airCloud=airPlatforms[19];
 }
 function updateDescent(){
+  // Crossing back onto the summit leaves the shaft controls and retry checkpoint.
+  if(descentStarted&&player.x+player.w<5910&&player.y+player.h<=airPlatforms[19].y+85){
+    descentStarted=false;descentBlueReached=false;
+    checkpoint={x:airPlatforms[19].x+25,y:airPlatforms[19].y-58};
+  }
   if(!descentStarted&&player.x>5910&&Math.abs(player.y+player.h-airPlatforms[19].y)<85){
     if(tempest.hp<=0)beginDescent();
     else{player.x=5910;player.vx=Math.min(0,player.vx);}
@@ -4042,7 +4047,8 @@ function updateWorld(dt) {
        if(level==='air')player.airCloud=p;
       if(p.kind==='turtle')player.ridingTurtle=true;
       if(p.kind==='blue')player.blueContact={platform:p,age:0};
-      if(level==='air'&&!descentStarted&&!p.secret&&p.kind==='white'&&p.x>checkpoint.x){checkpoint={x:p.x+25,y:p.y-58};}
+      // Save the last safe cloud in either direction, including the route back down.
+      if(level==='air'&&!descentStarted&&!p.secret&&p.kind==='white'&&(checkpoint.x!==p.x+25||checkpoint.y!==p.y-58)){checkpoint={x:p.x+25,y:p.y-58};}
        if(level==='fire'&&p.stage>=0&&p.stage>(checkpoint.stage??0)){checkpoint={x:p.x+25,y:p.y-58,stage:p.stage,mode:'surface'};}
        if(onTrampoline(p)){
          player.vy=-850;player.onGround=false;player.jumpAge=0;p.spring=.4;
