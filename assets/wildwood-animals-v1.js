@@ -1,5 +1,7 @@
 // Painted friendly wildlife and a rideable turtle. Embedded verbatim in index.html.
 const earthGroundBirds=[460,810,1750,2630,4740];
+let earthBirds=[];
+const EARTH_BIRD_FLIGHT={nearX:110,nearY:100,takeoff:.18,speed:180,rise:-85};
 const earthTurtle={x:650,w:144,min:500,max:970,speed:48,facing:1,shellHeight:63,cycle:0};
 const EARTH_ANIMAL_ART={
   turtle:{asset:'assets/wildwood-turtle-v1.png',sx:86,sy:201,sw:1402,sh:636},
@@ -7,6 +9,43 @@ const EARTH_ANIMAL_ART={
 };
 for(const art of Object.values(EARTH_ANIMAL_ART)){art.image=new Image();art.image.src=art.asset;}
 function resetEarthTurtle(){earthTurtle.x=650;earthTurtle.facing=1;earthTurtle.cycle=0;}
+function resetEarthBirds(){
+  earthBirds=earthGroundBirds.map((x,i)=>({x,y:earthGroundAt(x)+1,homeX:x,facing:i%2?-1:1,mode:'perched',age:0,vx:0,vy:0,phase:i*.7}));
+}
+function updateEarthBirds(dt){
+  if(level!=='earth'||state!=='playing')return;
+  const px=player.x+player.w/2,py=player.y+player.h/2;
+  for(const bird of earthBirds){
+    const close=Math.abs(px-bird.x)<EARTH_BIRD_FLIGHT.nearX&&Math.abs(py-(bird.y-18))<EARTH_BIRD_FLIGHT.nearY;
+    if(bird.mode==='perched'){
+      if(!close)continue;
+      bird.facing=Math.sign(bird.x-px)||player.facing;bird.mode='takeoff';bird.age=0;
+      bird.vx=bird.facing*60;bird.vy=-165;
+    }else if(close&&Math.abs(bird.x-px)>12)bird.facing=Math.sign(bird.x-px);
+    // Integrate eased flight exactly so lift-off travels the same distance at any frame rate.
+    const targetX=bird.facing*EARTH_BIRD_FLIGHT.speed,targetY=EARTH_BIRD_FLIGHT.rise;
+    const ex=Math.exp(-4*dt),ey=Math.exp(-3*dt);
+    bird.x+=targetX*dt+(bird.vx-targetX)*(1-ex)/4;
+    bird.y+=targetY*dt+(bird.vy-targetY)*(1-ey)/3;
+    bird.vx=targetX+(bird.vx-targetX)*ex;bird.vy=targetY+(bird.vy-targetY)*ey;
+    bird.age+=dt;if(bird.age>=EARTH_BIRD_FLIGHT.takeoff)bird.mode='flying';
+  }
+}
+function drawEarthGroundBird(bird,i){
+  const airborne=bird.mode!=='perched',ready=skyBirdSheet.complete&&skyBirdSheet.naturalWidth;
+  const mix=airborne&&ready?Math.min(1,bird.age/EARTH_BIRD_FLIGHT.takeoff):0;
+  const facing=Math.abs(bird.vx)>8?Math.sign(bird.vx):bird.facing;
+  if(mix<1){
+    ctx.save();ctx.globalAlpha*=1-mix;
+    drawEarthAnimal('bird',bird.x,bird.y,40,facing,1+Math.sin(earthTime*2.4+i*2)*.015);ctx.restore();
+  }
+  if(mix>0){
+    const phase=((bird.age*11+bird.phase)/(Math.PI*2)*6%6+6)%6,slot=Math.floor(phase),step=Math.floor((phase-slot)*6);
+    const scale=40/SKY_BIRD_ART.bodyWidth/.09;
+    ctx.save();ctx.translate(bird.x-cameraX,bird.y-18);ctx.scale(facing,1);ctx.globalAlpha*=mix;
+    ctx.drawImage(skyBirdPainting(slot,step),-48*scale,-64*scale,96*scale,96*scale);ctx.restore();
+  }
+}
 function earthTurtlePlatform(){
   const t=earthTurtle;
   return {x:t.x+43,y:earthGroundAt(t.x+t.w/2)-t.shellHeight,w:58,h:8,kind:'turtle',oneWay:true};
@@ -49,9 +88,9 @@ function drawEarthAnimal(name,x,floor,width,facing=1,stretch=1){
   ctx.drawImage(a.image,a.sx,a.sy,a.sw,a.sh,-width/2,-height,width,height);ctx.restore();
 }
 function drawEarthAnimals(){
-  for(const [i,x] of earthGroundBirds.entries()){
-    if(x<cameraX-50||x>cameraX+W+50)continue;
-    drawEarthAnimal('bird',x,earthGroundAt(x)+1,40,i%2?-1:1,1+Math.sin(earthTime*2.4+i*2)*.015);
+  for(const [i,bird] of earthBirds.entries()){
+    if(bird.x<cameraX-80||bird.x>cameraX+W+80||bird.y<cameraY-100||bird.y>cameraY+playfieldHeight()+100)continue;
+    drawEarthGroundBird(bird,i);
   }
   const t=earthTurtle,x=t.x-cameraX,y=earthGroundAt(t.x+t.w/2);
   if(x<W+180&&x+t.w>-180){

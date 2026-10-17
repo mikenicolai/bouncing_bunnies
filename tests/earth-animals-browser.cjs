@@ -1,6 +1,6 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
 (async()=>{
- const browser=await chromium.launch({headless:true,executablePath:process.env.BOSS_BROWSER||'/Users/mike/Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'});
+ const browser=await chromium.launch({headless:true,executablePath:process.env.BOSS_BROWSER||chromium.executablePath()});
  try{
   const errors=[],page=await browser.newPage({viewport:{width:1100,height:750}});page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:8772/index.html');
@@ -17,7 +17,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await page.evaluate(()=>state='playing');await page.keyboard.press('Space');assert(await page.evaluate(()=>!player.ridingTurtle&&player.vy<0));
   // Portrait and landscape use the ordinary on-canvas touch Jump action.
   for(const viewport of [{width:390,height:844},{width:844,height:390}]){
-   await page.setViewportSize(viewport);await page.waitForFunction(()=>canvas.getBoundingClientRect().width<=innerWidth);await reset();await page.evaluate(()=>{render(0);window.scrollTo(0,document.documentElement.scrollHeight);});
+   await page.setViewportSize(viewport);await page.waitForTimeout(150);await page.waitForFunction(()=>canvas.getBoundingClientRect().width<=innerWidth);await reset();await page.evaluate(async()=>{render(0);window.scrollTo(0,document.documentElement.scrollHeight);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));fitTouchControls();});
    const point=await page.evaluate(()=>{const r=canvas.getBoundingClientRect(),b=ACTIONS.jump;return{x:r.left+b.x*r.width/W,y:r.top+b.y*r.height/H};});
    await page.mouse.click(point.x,point.y);try{await page.waitForFunction(()=>player.ridingTurtle,{},{timeout:2500});}catch(e){console.error(viewport,point,await page.evaluate(()=>({W,H,touchDockHeight,jump:ACTIONS.jump,state,x:player.x,y:player.y,vy:player.vy,t:earthTurtle})));throw e;}
    const start=await page.evaluate(()=>({x:player.x,t:earthTurtle.x}));await page.waitForTimeout(700);const end=await page.evaluate(()=>({x:player.x,t:earthTurtle.x}));assert(Math.abs((end.x-start.x)-(end.t-start.t))<1,'touch rider travels with shell');
