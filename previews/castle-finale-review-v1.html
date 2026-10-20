@@ -1,6 +1,26 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Castle finale review</title>
-<style>body{margin:0;background:#141822;color:#f7e5be;font:16px system-ui}header{padding:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}button,a{background:#334451;color:#ffe1a1;border:1px solid #8db9b4;border-radius:8px;padding:10px;font:inherit}iframe{width:100%;height:calc(100dvh - 110px);border:0}small{display:block;padding:0 16px 8px}</style>
-<header><b>The castle finale · v0.21.20</b><button onclick="scene('knight')">Play the knight fight</button><button onclick="scene('throne')">Watch the throne reveal</button><a href="../index.html">Play the full game</a></header>
-<small>Practice preview: isolated developer progress. O selects a weapon, Z equips or switches its mode, X/F attacks. Jump with the bow equipped; Z stows it for punches.</small>
-<iframe id="game" src="../index.html?finale-review=1" title="Castle finale game preview"></iframe>
-<script>function scene(which){const w=document.querySelector('iframe').contentWindow;w.eval("beginDeveloperSession();level='final';start();soundOn=false;enterFinalKnightRoom();");if(which==='throne')w.eval("finalKnight.defeated=true;finalKnight.hp=0;enterFinalThroneRoom();");document.querySelector('iframe').focus();}</script></html>
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Castle finale · throne-room proportions</title>
+<style>body{margin:0;background:#141822;color:#f7e5be;font:16px system-ui}header{padding:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}button,a{background:#334451;color:#ffe1a1;border:1px solid #8db9b4;border-radius:8px;padding:10px;font:inherit}button{cursor:pointer}button:disabled{opacity:.4}iframe{display:block;width:100%;height:calc(100dvh - 160px);min-height:320px;border:0}p{margin:0;padding:0 16px 14px;line-height:1.4}</style>
+<header><b>Castle finale</b><button disabled id="proportions">View throne-room proportions</button><button disabled id="knight">Play the knight fight</button><button disabled id="throne">Watch the throne reveal</button><a href="../index.html">Play the full game</a></header>
+<p id="status">Loading the throne room and its cast…</p>
+<iframe id="game" src="../index.html?finale-review=2026102002" title="Castle finale game preview"></iframe>
+<script>
+const frame=document.querySelector('iframe'),status=document.querySelector('#status');let ready=false,holdCourt=false,last=0;
+function scene(which){
+ if(!ready)return;holdCourt=which==='proportions';
+ const w=frame.contentWindow;
+ w.eval("beginDeveloperSession();level='final';start();soundOn=false;fallbackFullscreen=true;syncFullscreen();enterFinalKnightRoom();");
+ if(which!=='knight')w.eval("finalKnight.defeated=true;finalKnight.hp=0;enterFinalThroneRoom();");
+ if(holdCourt)w.eval("state='review';finalRevealTime=7;render(0);");
+ status.textContent=holdCourt?'The bosses and Benny share one scale based on their gameplay artwork. Larger bosses stand behind their smaller allies. This view stays open so you can inspect the full cast.':'Practice preview with isolated developer progress. O selects a weapon, Z equips or switches its mode, X/F attacks.';
+ frame.contentWindow.focus();
+}
+frame.addEventListener('load',async()=>{
+ const style=frame.contentDocument.createElement('style');style.textContent='html,body{margin:0;padding:0;background:#141822}.game-shell,main{width:100%;max-width:none;margin:0;padding:0}header,footer{display:none}.game-frame{border:0;border-radius:0;box-shadow:none}';frame.contentDocument.head.append(style);
+ try{
+  await frame.contentWindow.eval('Promise.all([throneRoomSheet,crownedBunnySheet,meadowZombieSheet,earthGoblinSheet,pirateSheet,neptunusSheet,tempestSheet,lavaKingSheet,finalKnightSheet,airMonsterSheet,fireZombieSheet,PAINTED_BUNNY.actions.plain,...Object.values(woodBossImages)].map(i=>i.decode()))');
+  ready=true;document.querySelectorAll('button').forEach(b=>b.disabled=false);scene('proportions');
+ }catch(e){status.textContent='Artwork could not load. Reload to try again.';console.error(e);}
+});
+for(const id of ['proportions','knight','throne'])document.querySelector('#'+id).onclick=()=>scene(id);
+function animate(ms){const dt=Math.min(.033,(ms-last)/1000||0);last=ms;if(ready&&holdCourt)frame.contentWindow.eval(`finalRevealTime+=${dt}`);requestAnimationFrame(animate);}requestAnimationFrame(animate);
+</script></html>

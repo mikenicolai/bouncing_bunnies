@@ -9,9 +9,11 @@ function freshMeadowZombie([x,oldY,min,max],i){
 }
 function hitMeadowZombie(e){
   if(!e.alive||e.dizzy>0)return false;
+  rememberMonsterHearts(e);
   e.hurtFrom=Math.floor(e.phase)%4;e.hp=Math.max(0,e.hp-1);
   e.alive=e.hp>0;e.dizzy=e.alive?1:0;e.deathAge=0;
   burst(e.x+e.w/2,e.y+e.h/2,e.alive?'#d9e8ae':'#a1b87b',e.alive?12:22);
+  if(!e.alive)dropMonsterReward(e);
   tone(e.alive?220:150,.12,'triangle',.035);return true;
 }
 function updateMeadowZombies(dt){

@@ -3,7 +3,7 @@ const DEVELOPER_TOOLS_ENABLED=true;
 let developerRun=false,developerWalletBefore=null,developerStartedLevel=false;
 function beginDeveloperSession(){
   if(!DEVELOPER_TOOLS_ENABLED)return false;
-  if(!developerRun){developerWalletBefore=coinWallet;developerStartedLevel=false;developerRun=true;}
+  if(!developerRun){bankMonsterRewards();developerWalletBefore=coinWallet;developerStartedLevel=false;developerRun=true;}
   return true;
 }
 function openDeveloperMenu(){

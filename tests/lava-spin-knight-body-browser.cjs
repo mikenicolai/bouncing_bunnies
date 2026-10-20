@@ -18,7 +18,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
   const cdp=await page.context().newCDPSession(page);
   async function knight(direction){
    await page.evaluate(direction=>{
-    beginDeveloperSession();level='final';start();soundOn=false;fallbackFullscreen=true;syncFullscreen();enterFinalKnightRoom();finalKnight.x=600;finalKnight.phase='hurt';finalKnight.dizzy=99;finalKnight.cooldown=999;finalRoomFade=0;player.x=600+(direction>0?-player.w-10:finalKnight.w+10);player.invincible=99;fitTouchControls();
+    beginDeveloperSession();level='final';start();soundOn=false;fallbackFullscreen=true;syncFullscreen();enterFinalKnightRoom();finalKnight.defenseChance=0;finalKnight.x=600;finalKnight.phase='hurt';finalKnight.dizzy=99;finalKnight.cooldown=999;finalRoomFade=0;player.x=600+(direction>0?-player.w-10:finalKnight.w+10);player.invincible=99;fitTouchControls();
    },direction);await page.waitForTimeout(150);await page.locator('#game').focus();
   }
   async function point(id,control,direction=0){return page.evaluate(({id,control,direction})=>{

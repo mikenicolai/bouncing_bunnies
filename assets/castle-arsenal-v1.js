@@ -86,7 +86,7 @@ function drawFinalWeaponInventory(){
     const selected=finalWeapon===b.name;ctx.fillStyle=selected?'#4a665b':'#293444';roundRect(b.x,b.y,b.w,b.h,8);
     if(selected){ctx.strokeStyle='#ffe3a0';ctx.lineWidth=2;ctx.strokeRect(b.x+2,b.y+2,b.w-4,b.h-4);}
     const x=b.x+30,y=b.y+23;
-    if(b.name==='bow')drawArrowIcon(x,y,45,0,'normal');else if(b.name==='trident')drawWaterTrident(x+cameraX,y,50,-.4);else if(b.name==='knives')drawEarthKnife(x,y,34,-.4);else drawWindStar(x,y,30,.2);
+    if(b.name==='bow')drawWoodlandBow(x,y,45);else if(b.name==='trident')drawWaterTrident(x+cameraX,y,50,-.4);else if(b.name==='knives')drawEarthKnife(x,y,34,-.4);else drawWindStar(x,y,30,.2);
     ctx.fillStyle='#fff2ce';ctx.font='bold 9px system-ui';ctx.textAlign='center';ctx.fillText(b.name.toUpperCase(),x,b.y+52);
   }
   const status=finalWeapon==='bow'?`ARROWS ${fireArrow.ammo.filter(Boolean).length}/5 · Z ${fireArrow.aiming?'STOW':'EQUIP'}`:finalWeapon==='trident'?`Z ${waterTrident.mode==='dash'?'THROW':'DASH'} · X ${waterTrident.mode.toUpperCase()}`:finalWeapon==='knives'?`${earthKnives.slots.filter(k=>k.state==='ready').length}/3 · X ${earthKnives.equipped?'THROW':'HIT'} · Z ${earthKnives.equipped?'STOW':'EQUIP'}`:`${windStars.slots.filter(k=>k.state==='ready').length}/${windStars.slots.length} · X ${windStars.equipped?'THROW':'HIT'} · Z ${windStars.equipped?'STOW':'EQUIP'}`;

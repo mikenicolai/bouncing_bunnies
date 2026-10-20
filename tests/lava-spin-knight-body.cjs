@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),{run}=require('./air.cjs');
 const html=fs.readFileSync('index.html','utf8');assert.equal(html.split('// LAVA_KING_EFFECTS_BEGIN\n')[1].split('\n// LAVA_KING_EFFECTS_END')[0],fs.readFileSync('assets/lava-king-effects-v1.js','utf8'));
 const king=()=>run("keys.clear();level='fire';resetGame();soundOn=false;fireArrow.owned=true;player.x=10340;player.y=-558;player.invincible=999;beginLavaKing();fireArrow.ammo.fill('normal')");
-const knight=()=>run("beginDeveloperSession();level='final';resetGame();soundOn=false;enterFinalKnightRoom();finalKnight.x=600;finalKnight.cooldown=999;player.invincible=999;fireArrow.ammo.fill('normal')");
+const knight=()=>run("beginDeveloperSession();level='final';resetGame();soundOn=false;enterFinalKnightRoom();finalKnight.defenseChance=0;finalKnight.x=600;finalKnight.cooldown=999;player.invincible=999;fireArrow.ammo.fill('normal')");
 for(const fps of [30,60,120]){
  const tick=(fn,seconds)=>{for(let i=0;i<Math.round(fps*seconds);i++)run(`${fn}(1/${fps})`);};
  king();let naturalSpin=false;for(let i=0;i<fps*35;i++){run(`updateLavaKing(1/${fps})`);if(run("lavaKing.phase==='spin'")){naturalSpin=true;break;}}assert(naturalSpin,'an untouched real encounter reaches the spin without forcing its phase or turn');

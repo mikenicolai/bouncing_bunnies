@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),{run}=require('./air.cjs');
-const reset=()=>run("beginDeveloperSession();level='final';start();soundOn=false;enterFinalKnightRoom();player.invincible=99;finalKnight.dizzy=99;");
+const reset=()=>run("beginDeveloperSession();level='final';start();soundOn=false;enterFinalKnightRoom();finalKnight.defenseChance=0;player.invincible=99;finalKnight.dizzy=99;");
 for(const fps of [30,60,120]){
  reset();run("selectFinalWeapon('bow');jump();jump();jump();jump();");assert.equal(run('player.boosts'),2);assert(run('fireArrow.aiming'));assert(run('fireBunnyArrow()'));assert.equal(run('archeryBunnyFrame()'),3);
  for(let i=0;i<fps*1.5;i++)run(`update(1/${fps})`);assert(run('player.onGround'));assert(run('fireArrow.aiming'));assert.equal(run('player.boosts'),0);

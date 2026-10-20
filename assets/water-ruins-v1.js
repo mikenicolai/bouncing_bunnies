@@ -86,7 +86,8 @@ function moveWaterDash(dt,solids){
 }
 function hitWaterEnemy(enemy){
   if(enemy.hp<=0||enemy.dizzy>0)return false;
-  enemy.hp--;enemy.dizzy=.9;if('swing'in enemy)enemy.swing=0;
+  rememberMonsterHearts(enemy);enemy.hp--;enemy.dizzy=.9;if('swing'in enemy)enemy.swing=0;
+  if(enemy.hp<=0)dropMonsterReward(enemy);
   burst(enemy.x+enemy.w/2,enemy.y+enemy.h/2,'#d2fff1',12);tone(310,.1,'triangle',.025);return true;
 }
 function hitNeptunus(){
@@ -97,7 +98,7 @@ function hitNeptunus(){
     if(waterTrident.dash>0){stopWaterDash();player.vx=(player.x+player.w/2<b.x+b.w/2?-1:1)*220;}
     return false;
   }
-  b.hp--;b.dizzy=NEPTUNUS_COMBAT.hurt;b.guard=b.hp>0?NEPTUNUS_COMBAT.guard:0;
+  rememberMonsterHearts(b);b.hp--;b.dizzy=NEPTUNUS_COMBAT.hurt;b.guard=b.hp>0?NEPTUNUS_COMBAT.guard:0;
   b.flash=.3;b.mode=b.hp>0?'hurt':'defeated';b.age=0;b.cooldown=.05;
   // A hit interrupts the whole attack, including any water already summoned.
   neptunusShots=[];
@@ -105,7 +106,7 @@ function hitNeptunus(){
     waterTrident.cyber=true;burst(player.x+21,player.y+29,'#67f7ff',32);tone(980,.25,'sine',.04);
   }
   burst(b.x+b.w/2,b.y+90,b.hp?'#ffde87':'#a5fff1',b.hp?18:48);tone(b.hp?260:145,.18,'triangle',.04);
-  if(b.hp===0){neptunusShots=[];stopWaterDash();}
+  if(b.hp===0){dropMonsterReward(b);neptunusShots=[];stopWaterDash();}
   return true;
 }
 function updateWaterTrident(dt,solids){

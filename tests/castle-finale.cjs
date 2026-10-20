@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),{run}=require('./air.cjs');
 const html=fs.readFileSync('index.html','utf8');assert.equal(html.split('// CASTLE_FINALE_BEGIN\n')[1].split('\n// CASTLE_FINALE_END')[0],fs.readFileSync('assets/castle-finale-v1.js','utf8'));
-function reset(){run("beginDeveloperSession();level='final';resetGame(true);soundOn=false;enterFinalKnightRoom();");}
+function reset(){run("beginDeveloperSession();level='final';resetGame(true);soundOn=false;enterFinalKnightRoom();finalKnight.defenseChance=0;");}
 for(const fps of [30,60,120]){
  reset();assert.equal(run('finalChapter'),'knight');assert.equal(run('state'),'playing');assert.equal(run('finalKnight.hp'),10);assert.equal(run('checkpoint.castleRoom'),'knight');
  run("player.x=1260;player.onGround=true;keys.add('ArrowRight')");for(let i=0;i<fps;i++)run(`update(1/${fps})`);assert(run('player.x+player.w<=1280'));assert(!run('enterFinalThroneRoom()'));

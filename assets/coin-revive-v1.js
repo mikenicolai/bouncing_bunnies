@@ -1,9 +1,9 @@
 // Shared earned-coin wallet and local-only five-second reward simulation.
 // Embedded verbatim in index.html; no advertising SDK is loaded.
 const COIN_WALLET_KEY='bouncing-bunnies-coin-wallet-v1',REVIVE_PRICE=20,REVIVE_AD_SECONDS=5;
-let walletRunStart=0,runCoinsSpent=0;
-function resetRunWallet(){walletRunStart=coinWallet;runCoinsSpent=0;}
-function walletRunSummary(){return `Start ${walletRunStart} + ${score} − ${runCoinsSpent} spent = ${coinWallet}`;}
+let walletRunStart=0,runCoinsSpent=0,runMonsterCoins=0;
+function resetRunWallet(){walletRunStart=coinWallet;runCoinsSpent=0;runMonsterCoins=0;}
+function walletRunSummary(){return `Start ${walletRunStart} + ${score}${runMonsterCoins?` + ${runMonsterCoins} rewards`:``} − ${runCoinsSpent} spent = ${coinWallet}`;}
 let coinWallet=0,revivePending=false,reviveLevel=null,reviveAdEndsAt=0,reviveAdToken=0,reviveAdTimer=null;
 function refreshWallet(){document.querySelector('#walletBalance').textContent=`Wallet: ${coinWallet} coins`;}
 function restoreCoinWallet(){

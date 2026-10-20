@@ -34,7 +34,7 @@ function hitEarthBoss(source='punch'){
   tone(b.hp?210:125,.15,'triangle',.035);
   if(earthBossVine?.grabbed)releaseEarthVine();
   clearEarthBossHazards();
-  if(!b.hp){b.stage=b.stage==='small'?'shatter':'defeat';b.age=0;b.phase='idle';clearEarthBossHazards();}
+  if(!b.hp){dropMonsterReward(b,{hearts:b.stage==='small'?5:EARTH_GIANT_HP,key:b.stage,x:b.x,y:EARTH_ARENA.floor-75});b.stage=b.stage==='small'?'shatter':'defeat';b.age=0;b.phase='idle';clearEarthBossHazards();}
   return true;
 }
 function launchEarthBossRock(){

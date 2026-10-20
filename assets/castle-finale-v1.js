@@ -1,4 +1,5 @@
 // The tower opens onto a sword fight, then an untouchable story reveal.
+const FINAL_KNIGHT_DEFENSE_CHANCE=.4;
 const FINAL_KNIGHT_ROOM={width:1400,floor:470,door:1280};
 const finalKnightPlatforms=[{x:0,y:470,w:1400,h:1800,kind:'castle'},
   {x:-30,y:-800,w:30,h:1270,kind:'castle'},{x:1400,y:-800,w:30,h:1270,kind:'castle'}];
@@ -9,7 +10,7 @@ const throneRoomSheet=new Image();throneRoomSheet.src='assets/castle-throne-room
 let finalChapter='castle',finalKnight,finalRevealTime=0,finalRoomFade=0;
 function resetFinalChapter(){
   finalChapter='castle';finalRevealTime=0;finalRoomFade=0;
-  finalKnight={x:850,y:354,w:72,h:116,hp:10,maxHP:10,facing:-1,phase:'guard',age:0,dizzy:0,cooldown:1.3,turn:0,sword:null,defeated:false,deathAge:0};
+  finalKnight={x:850,y:354,w:72,h:116,hp:10,maxHP:10,defenseChance:FINAL_KNIGHT_DEFENSE_CHANCE,defending:0,facing:-1,phase:'guard',age:0,dizzy:0,cooldown:1.3,turn:0,sword:null,defeated:false,deathAge:0};
 }
 function enterFinalKnightRoom(){
   if(finalChapter!=='castle')return;
@@ -22,13 +23,17 @@ function enterFinalKnightRoom(){
 }
 function calmFinalKnight(){
   if(finalChapter!=='knight'||finalKnight.defeated)return;
-  Object.assign(finalKnight,{phase:'guard',age:0,dizzy:1.2,cooldown:1.8,sword:null});
+  Object.assign(finalKnight,{phase:'guard',age:0,defending:0,dizzy:1.2,cooldown:1.8,sword:null});
 }
 function hitFinalKnight(){
-  const b=finalKnight;if(finalChapter!=='knight'||b.defeated||b.dizzy>0)return false;
+  const b=finalKnight;if(finalChapter!=='knight'||b.defeated||b.dizzy>0||b.defending>0)return false;
+  if(Math.random()<b.defenseChance){
+    b.defending=.38;b.phase='defend';b.age=0;b.cooldown=.45;b.sword=null;
+    burst(b.x+b.w/2+b.facing*32,b.y+55,'#a8e9ed',9);tone(650,.09,'triangle',.03);return false;
+  }
   b.hp=Math.max(0,b.hp-1);b.dizzy=.8;b.phase='hurt';b.age=0;b.cooldown=1.1;b.sword=null;
   burst(b.x+b.w/2,b.y+55,'#e2d2ae',14);tone(180,.12,'triangle',.035);
-  if(b.hp===0){b.defeated=true;b.phase='defeated';b.deathAge=0;clearFinalWeaponHazards();bunnyArrows=[];tone(440,.35,'triangle',.04);}
+  if(b.hp===0){dropMonsterReward(b);b.defeated=true;b.phase='defeated';b.deathAge=0;clearFinalWeaponHazards();bunnyArrows=[];tone(440,.35,'triangle',.04);}
   return true;
 }
 // A stunned knight still has a body. Resolve relative sweeps so neither running
@@ -78,6 +83,7 @@ function updateFinalKnightRoom(dt,previousX=player.x){
   // The inner doorway stays shut until the knight is defeated, even while dashing.
   if(player.x+player.w>FINAL_KNIGHT_ROOM.door){player.x=FINAL_KNIGHT_ROOM.door-player.w;player.vx=0;}
   updateFinalKnightSword(dt);
+  if(b.defending>0){b.defending=Math.max(0,b.defending-dt);if(!b.defending){b.phase='guard';b.age=0;}blockFinalKnight(previousX,previousKnightX);return;}
   if(b.dizzy>0){blockFinalKnight(previousX,previousKnightX);b.dizzy=Math.max(0,b.dizzy-dt);return;}
   const distance=player.x+21-(b.x+b.w/2);b.age+=dt;b.cooldown=Math.max(0,b.cooldown-dt);
   if(b.phase==='hurt'){b.phase='guard';b.age=0;}
@@ -97,7 +103,7 @@ function updateFinalKnightRoom(dt,previousX=player.x){
 }
 function enterFinalThroneRoom(){
   if(finalChapter!=='knight'||!finalKnight.defeated)return false;
-  clearInputs();clearFinalWeaponHazards();bunnyArrows=[];particles=[];
+  bankMonsterRewards();clearInputs();clearFinalWeaponHazards();bunnyArrows=[];particles=[];
   finalChapter='throne';finalRevealTime=0;state='finalReveal';cameraX=0;cameraY=0;
   tone(165,.4,'triangle',.04);return true;
 }
@@ -129,11 +135,17 @@ function drawFinalKnightSword(){
   ctx.save();ctx.translate(s.x-cameraX,s.y);ctx.rotate(s.spin);ctx.drawImage(finalKnightSheet,1300,234,236,84,-43,-15,86,30);ctx.restore();
 }
 function drawFinalKnight(){
-  const b=finalKnight,frame=b.defeated?5:b.dizzy>0?4:['windup','throwWindup'].includes(b.phase)?1:b.phase==='slash'?2:b.phase==='recover'?3:0;
+  const b=finalKnight,frame=b.defeated?5:b.defending>0?0:b.dizzy>0?4:['windup','throwWindup'].includes(b.phase)?1:b.phase==='slash'?2:b.phase==='recover'?3:0;
   ctx.save();ctx.translate(b.x+b.w/2-cameraX,FINAL_FLOOR);
   if(!b.defeated)ctx.scale(1,1+Math.sin(finalTime*2)*.007);
   if(b.sword)drawKnightThrowPose(b.age<.22?1:0,0,0,b.facing);else drawKnightPose(frame,0,0,b.facing);ctx.restore();
   drawFinalKnightSword();
+  if(b.defending>0){
+    const x=b.x+b.w/2-cameraX+b.facing*48,y=b.y+45;
+    ctx.save();ctx.strokeStyle='#b5fff2';ctx.lineWidth=4;ctx.shadowColor='#70d6e3';ctx.shadowBlur=10;
+    ctx.beginPath();ctx.arc(x,y,34,b.facing>0?-1.2:Math.PI-1.2,b.facing>0?1.2:Math.PI+1.2);ctx.stroke();
+    ctx.fillStyle='#e8fff9';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText('PARRY',b.x+b.w/2-cameraX,b.y-38);ctx.restore();
+  }
   if(['windup','throwWindup'].includes(b.phase)&&!b.defeated&&b.dizzy===0){
     const r=finalKnightSwordBox();ctx.save();ctx.fillStyle=`rgba(255,185,87,${.13+.15*Math.sin(finalTime*18)**2})`;roundRect(r.x-cameraX,FINAL_FLOOR-8,r.w,8,4);
     ctx.font='bold 19px system-ui';ctx.textAlign='center';ctx.fillStyle='#ffd695';ctx.fillText('!',b.x+b.w/2-cameraX,b.y-55);ctx.restore();
@@ -152,7 +164,7 @@ function renderFinalKnightRoom(){
   // A dark closed door receives the same upward-opening motion as the main castle.
   if(!finalKnight.defeated){ctx.fillStyle='rgba(15,17,28,.68)';roundRect(1280-cameraX,75,120,395,6);}
   else{ctx.fillStyle='rgba(240,197,114,.1)';ctx.fillRect(1280-cameraX,75,120,395);}
-  drawFinalKnight();drawFireAimPath();drawBunnyArrows();drawBunny();drawFinalWeapons();
+  drawFinalKnight();drawMonsterRewards();drawFireAimPath();drawBunnyArrows();drawBunny();drawFinalWeapons();
   particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;
   if(finalRoomFade>0){ctx.fillStyle=`rgba(12,14,26,${finalRoomFade/.7})`;ctx.fillRect(0,cameraY,W,field);}
   ctx.restore();drawHUD();drawFinalKnightHUD();drawFinalWeaponInventory();drawTouchControls();
@@ -162,19 +174,55 @@ function drawCourtCell(sheet,cols,rows,frame,x,floor,height,facing=1){
   const sw=sheet.naturalWidth/cols,sh=sheet.naturalHeight/rows;
   ctx.save();ctx.translate(x,floor);ctx.scale(facing,1);ctx.drawImage(sheet,frame%cols*sw,Math.floor(frame/cols)*sh,sw,sh,-height*sw/sh/2,-height,height*sw/sh,height);ctx.restore();
 }
-function drawFinalCourt(t){
-  const idle=Math.floor(t*.8)%2,floor=800;
-  // Every familiar enemy stands at floor level, five on either side of the throne.
-  if(meadowZombieSheet.complete&&meadowZombieSheet.naturalWidth){meadowZombiePaint ||=new WoodBossAnimation.PaintedPoseBlend(meadowZombieSheet,measureMeadowZombieAtlas(meadowZombieSheet),false);meadowZombiePaint.draw(ctx,4,4,0,90,floor,130,-1,1);}
-  drawCourtCell(earthGoblinSheet,4,3,idle,215,floor,140,1);
-  drawCourtCell(pirateSheet,4,2,idle,335,floor,150,1);
-  if(neptunusSheet.complete&&neptunusSheet.naturalWidth){neptunusPaint ||=makeNeptunusPainter();neptunusPaint.draw(ctx,0,0,0,470,floor,190,1,1);}
-  drawCourtCell(tempestSheet,4,2,0,585,floor+5+Math.sin(t)*2,135,1);
-  if(airMonsterSprites.length)ctx.drawImage(airMonsterSprites[idle],910,660+Math.sin(t*2)*1.5,112,140);
-  woodBossRenderer.pose(ctx,'giant','giantIdle',t,1085,floor,180,-1);
-  if(lavaKingSheet.complete&&lavaKingSheet.naturalWidth){const [ax,ay]=LAVA_KING_ART.anchors[0],s=.40;ctx.save();ctx.translate(1220,floor+Math.sin(t*1.4)*1.5);ctx.scale(-1,1);ctx.drawImage(lavaKingSheet,0,0,lavaKingSheet.naturalWidth/4,lavaKingSheet.naturalHeight/2,-ax*s,-ay*s,lavaKingSheet.naturalWidth/4*s,lavaKingSheet.naturalHeight/2*s);ctx.restore();}
-  if(fireZombieSprites.length)ctx.drawImage(fireZombieSprites[idle],1285,660+Math.sin(t*2+1)*1.5,105,140);
-  drawKnightPose(0,1435,floor,-1,140);
+// A single enlargement of gameplay artwork preserves every enemy's relative size.
+// Larger bosses stand behind the small enemies, leaving the crowned bunny visible.
+const FINAL_COURT_SCALE=1.3;
+const FINAL_COURT_ACTORS=[
+  {kind:'neptunus',x:215,floor:780},{kind:'tempest',x:500,floor:780},
+  {kind:'giant',x:1080,floor:780},{kind:'lavaKing',x:1360,floor:780},
+  {kind:'meadow',x:100,floor:850},{kind:'goblin',x:310,floor:850},
+  {kind:'pirate',x:530,floor:850},{kind:'air',x:980,floor:850},
+  {kind:'fire',x:1100,floor:850},{kind:'knight',x:1220,floor:850}
+];
+function drawFinalCourtActor(actor,t){
+  const idle=Math.floor(t*.8)%2;
+  ctx.save();ctx.translate(actor.x,actor.floor);ctx.scale(FINAL_COURT_SCALE,FINAL_COURT_SCALE);
+  switch(actor.kind){
+    case 'meadow':
+      if(meadowZombieSheet.complete&&meadowZombieSheet.naturalWidth){
+        meadowZombiePaint ||=new WoodBossAnimation.PaintedPoseBlend(meadowZombieSheet,measureMeadowZombieAtlas(meadowZombieSheet),false);
+        meadowZombiePaint.draw(ctx,4,4,0,0,0,54,-1,1);
+      }break;
+    case 'goblin':
+      if(earthGoblinSheet.naturalWidth){const sw=earthGoblinSheet.naturalWidth/4,sh=earthGoblinSheet.naturalHeight/3;ctx.drawImage(earthGoblinSheet,idle*sw,0,sw,sh,-48,-87,96,87);}break;
+    case 'pirate':
+      if(pirateSheet.naturalWidth)ctx.drawImage(pirateSheet,idle*384,0,384,512,-48,-458*.25,96,128);break;
+    case 'neptunus':
+      if(neptunusSheet.complete&&neptunusSheet.naturalWidth){neptunusPaint ||=makeNeptunusPainter();neptunusPaint.draw(ctx,0,0,0,0,Math.sin(t)*1.5,300,1,1);}break;
+    case 'tempest':
+      ctx.scale(270/(384*235/512),1);drawCourtCell(tempestSheet,4,2,0,0,Math.sin(t)*2,235,1);break;
+    case 'air':
+      if(airMonsterSprites.length)ctx.drawImage(airMonsterSprites[idle],-33,-71+Math.sin(t*2)*1.5,66,74);break;
+    case 'giant':woodBossRenderer.pose(ctx,'giant','giantIdle',t,0,0,336,-1);break;
+    case 'lavaKing':
+      if(lavaKingSheet.complete&&lavaKingSheet.naturalWidth){
+        const [ax,ay]=LAVA_KING_ART.anchors[0],s=LAVA_KING_ART.scale;
+        ctx.translate(0,-6+Math.sin(t*1.4)*1.5);ctx.scale(-1,1);
+        ctx.drawImage(lavaKingSheet,0,0,lavaKingSheet.naturalWidth/4,lavaKingSheet.naturalHeight/2,-ax*s,-ay*s,lavaKingSheet.naturalWidth/4*s,lavaKingSheet.naturalHeight/2*s);
+      }break;
+    case 'fire':
+      if(fireZombieSprites.length)ctx.drawImage(fireZombieSprites[idle],-32.6,-76.5+Math.sin(t*2+1)*1.5,65.3,87);break;
+    case 'knight':drawKnightPose(0,0,0,-1,154);break;
+  }
+  ctx.restore();
+}
+function drawFinalCourt(t){for(const actor of FINAL_COURT_ACTORS)drawFinalCourtActor(actor,t);}
+function drawFinalCourtHero(){
+  // Use Benny's current gameplay painting at exactly the same scale as the court.
+  const sheet=PAINTED_BUNNY.actions,image=sheet.plain;
+  if(!image.complete||!image.naturalWidth)return;
+  const sw=image.naturalWidth/4,sh=image.naturalHeight/2,k=sheet.scale*BUNNY_ART_SCALE*FINAL_COURT_SCALE;
+  ctx.drawImage(image,0,0,sw,sh,690-sheet.anchorX[0]*k,925-sheet.anchorY[0]*k,sw*k,sh*k);
 }
 function renderFinalReveal(){
   const field=playfieldHeight(),t=finalRevealTime,scale=Math.min(W/1536,field/1024),x=(W-1536*scale)/2,y=(field-1024*scale)/2;
@@ -193,7 +241,7 @@ function renderFinalReveal(){
     for(const [f,alpha] of layers){const ay=f<2?612:602;ctx.globalAlpha=alpha;ctx.drawImage(crownedBunnySheet,f%2*sw,Math.floor(f/2)*sh,sw,sh,-370*s,-ay*s,sw*s,sh*s);}ctx.restore();
   }
   // Benny stops at the foot of the throne: recognizable small hero versus rounder ruler.
-  if(characterSprites.length){const s=characterSprites[0],a=CHARACTER_ANCHORS[0],k=.28;ctx.drawImage(s,-a[0]*k+690,-a[1]*k+915,s.width*k,s.height*k);}
+  drawFinalCourtHero();
   ctx.fillStyle=`rgba(9,11,20,${Math.max(0,1-t/.9)})`;ctx.fillRect(0,0,1536,1024);ctx.restore();
   ctx.save();ctx.textAlign='center';
   if(t>5){ctx.globalAlpha=Math.min(1,(t-5)/2);ctx.fillStyle='#ffe4ad';ctx.shadowColor='#080912';ctx.shadowBlur=10;ctx.font=`bold ${Math.min(36,W*.064)}px Georgia`;ctx.fillText('To be continued',W/2,field-25);}

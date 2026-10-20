@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bouncing Bunnies · game upgrades</title>
+<style>body{margin:0;background:#142731;color:#f7efd3;font:16px system-ui}main{max-width:1150px;margin:auto;padding:16px}h1{font-size:24px;margin:0 0 10px}nav{display:flex;flex-wrap:wrap;gap:8px}button,a{font:inherit;border:1px solid #b4b791;background:#ffe0a0;color:#263c39;border-radius:8px;padding:9px 12px;cursor:pointer}button:disabled{opacity:.4}iframe{display:block;width:100%;height:clamp(380px,calc(100dvh - 205px),800px);border:0;border-radius:12px}p{line-height:1.4}#status{min-height:24px}</style>
+<main><h1>Bouncing Bunnies · painted weapons, lava and rewards</h1><nav><button disabled data-scene="lava">Painted lava</button><button disabled data-scene="bow">Woodland bow</button><button disabled data-scene="rewards">Monster coin drop</button><button disabled data-scene="map">Replay map</button><button disabled data-scene="knight">Knight parry</button><button disabled id="live">Live play</button><a href="../index.html">Full game</a></nav><p id="status">Loading artwork…</p><iframe src="../index.html?upgrades=2026102003" title="Game upgrades practice preview"></iframe></main>
+<script>
+const frame=document.querySelector('iframe'),status=document.querySelector('#status');let ready=false,sceneName='lava';
+function show(name){if(!ready)return;sceneName=name;const w=frame.contentWindow;
+ w.eval("beginDeveloperSession();level='final';start();soundOn=false;fallbackFullscreen=true;syncFullscreen();finalMonsters=[];player.invincible=0;state='review';");
+ if(name==='lava')w.eval("enterFinalTower();player.x=FINAL_TOWER.entryX;player.y=412;player.onGround=true;cameraX=8400;cameraY=150;render(0);");
+ if(name==='bow')w.eval("level='meadow';start();state='review';player.x=4940;player.y=412;player.onGround=true;fireArrow.owned=true;fireArrow.aiming=true;fireArrow.angle=.25;meadowLesson.bowTaken=true;cameraX=4710;cameraY=0;render(0);");
+ if(name==='rewards')w.eval("setDeveloperCoins(0);resetRunWallet();player.x=3600;player.y=412;player.onGround=true;cameraX=3330;cameraY=0;const enemy={kind:'air',x:3750,y:406,w:52,h:64,hp:3,maxHP:3,alive:true,dizzy:0,phase:0};while(enemy.alive){enemy.dizzy=0;hitFinalMonster(enemy)}state='playing';render(0);");
+ if(name==='map')w.eval("meadowFinished=airFinished=true;waterFinished=earthFinished=fireFinished=false;const open=openDeveloperMenu;openDeveloperMenu=()=>false;openWorldMap();openDeveloperMenu=open;");
+ if(name==='knight')w.eval("enterFinalKnightRoom();finalRoomFade=0;player.invincible=0;player.x=650;player.y=412;player.facing=1;player.onGround=true;finalKnight.x=850;cameraX=440;cameraY=0;const random=Math.random;Math.random=()=>0;hitFinalKnight();Math.random=random;state='review';render(0);");
+ status.textContent={lava:'The lava flows gently, with small surface waves and bubbles. It meets both tower walls without gaps.',bow:'One painted woodland bow is used in Benny’s hands, at the Meadow pickup and rack, and in Castle’s weapon selector.',rewards:'A three-heart monster drops three coins. They fly to Benny’s wallet without changing the level collectible count.',map:'Meadow and Air are complete in this isolated preview. Replay either, or continue into Water; the later worlds stay locked.',knight:'The Knight can parry any incoming attack with a 40% chance. Blocked attacks leave his health unchanged and show a visible sword parry.'}[name];
+ document.querySelector('#live').textContent='Live play';frame.contentWindow.focus();
+}
+frame.addEventListener('load',async()=>{
+ const style=frame.contentDocument.createElement('style');style.textContent='html,body{margin:0;padding:0;background:#142731}.game-shell,main{width:100%;max-width:none;margin:0;padding:0}header,footer{display:none}.game-frame{border:0;border-radius:0;box-shadow:none}';frame.contentDocument.head.append(style);
+ try{await frame.contentWindow.eval('Promise.all([paintedLavaSheet,fireWeaponSheet,fireArcherySheet,finalKnightSheet,finalHallSheet,PAINTED_COIN.image,earthGroundSheet,PAINTED_BUNNY.actions.plain,PAINTED_BUNNY.actions.quiver].map(i=>i.decode()))');ready=true;document.querySelectorAll('button').forEach(b=>b.disabled=false);show('lava');}catch(e){status.textContent='Artwork could not load. Reload to try again.';console.error(e);}
+});
+let lastLavaFrame=0;
+function animateLava(ms){const dt=lastLavaFrame?Math.min(.033,(ms-lastLavaFrame)/1000):0;lastLavaFrame=ms;if(ready&&sceneName==='lava')frame.contentWindow.eval(`if(state==='review')finalTime+=${dt}`);requestAnimationFrame(animateLava);}
+requestAnimationFrame(animateLava);
+document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>show(b.dataset.scene));document.querySelector('#live').onclick=()=>{frame.contentWindow.eval("state='playing';clearInputs()");frame.contentWindow.focus();};
+</script></html>
