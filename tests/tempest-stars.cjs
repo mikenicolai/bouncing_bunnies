@@ -14,7 +14,7 @@ for(const width of [480,960])for(const fps of [30,60,120]){
   assert(landed,`nook reachable at ${fps}`);assert.equal(run('lives'),3);
   run("keys.clear();keys.add('ArrowRight')");
   for(let i=0;i<fps*3&&!run('windStars.owned');i++)run(`update(1/${fps})`);
-  assert(run('windStars.owned&&windStars.equipped'));assert.equal(run("windStars.slots.filter(s=>s.state==='ready').length"),8);
+  assert(run('windStars.owned&&windStars.equipped'));assert.equal(run("windStars.slots.filter(s=>s.state==='ready').length"),2);
   assert.equal(run('checkpoint.y'),-1748,'hidden nook preserves the summit checkpoint');
   // Walk back out from below the overhanging cloud; jump onto the blue cloud.
   run("keys.clear();keys.add('ArrowLeft')");
@@ -39,26 +39,26 @@ for(const width of [480,960])for(const fps of [30,60,120]){
   reset();run('windStars.owned=true;windStars.equipped=true;bossAwake=true;player.invincible=1000;player.x=4950;player.y=-1748;player.facing=1');
   const expected=[7,7,4,1,0];
   for(let hit=0;hit<5;hit++){
-    run('player.attackCooldown=0;attack()');tick(2,'updateAir');
+    run('player.attackCooldown=0;attack()');tick(5.1,'updateAir');
     assert.equal(run('tempest.hp'),expected[hit],`star ${hit+1} at ${fps}`);
-    assert.equal(run('tempest.lodged'),hit+1);assert.equal(run("windStars.slots.filter(s=>s.state==='lodged').length"),hit+1);
+    assert(run("windStars.slots.every(s=>s.state==='ready')"),'both stars return after each throw');
     if(hit===1)assert(run('tempest.enraged&&tempest.regenerated'));
   }
-  assert.equal(run("windStars.slots.filter(s=>s.state==='ready').length"),3,'five accurate hits leave three spare stars');
+  assert.equal(run("windStars.slots.filter(s=>s.state==='ready').length"),2,'the same pair survives all five successful hits');
   assert.equal(run('tempestWinds.length'),0);assert.equal(run('airMonsters.length'),1,'only the first island guardian remains');
   run('player.x=5950;player.y=-1748;updateDescent()');assert(run('descentStarted'),'victory opens downdraft');
   reset();run('windStars.owned=true;windStars.equipped=true;player.x=4950;player.y=-1748');
-  for(let i=0;i<8;i++){run('player.attackCooldown=0');assert(run('throwWindStar()'));}
-  run('player.attackCooldown=0');assert(!run('throwWindStar()'),'eight-star inventory cannot fire a ninth');
-  assert.equal(run("windStars.slots.filter(s=>s.state==='flying').length"),8);
-  // A miss settles on a solid cloud and can be physically collected and thrown again.
+  for(let i=0;i<2;i++){run('player.attackCooldown=0');assert(run('throwWindStar()'));}
+  run('player.attackCooldown=0');assert(!run('throwWindStar()'),'two-star inventory cannot fire a third');
+  assert.equal(run("windStars.slots.filter(s=>s.state==='flying').length"),2);
+  // Misses and recharge-shield deflections return automatically after five seconds.
   reset();run('windStars.owned=true;windStars.equipped=true;player.x=4860;player.y=-1748;player.facing=1;attack()');tick(1.1,'updateWindStars');
-  assert.equal(run('windStars.slots[0].state'),'dropped');
-  run('player.x=windStars.slots[0].x-21;player.y=windStars.slots[0].y-29;updateWindStars(0)');
+  assert.equal(run('windStars.slots[0].state'),'returning');tick(3.8,'updateWindStars');
+  assert.notEqual(run('windStars.slots[0].state'),'ready');tick(.1,'updateWindStars');
   assert.equal(run('windStars.slots[0].state'),'ready');
-  // A star hitting the recharge shield is recoverable, never spent or lodged.
   run("bossAwake=true;tempest.regen=.7;tempest.regenerated=true;tempest.hp=5;player.x=tempest.x-150;player.y=-1748;player.facing=1;player.attackCooldown=0;attack()");tick(.4,'updateWindStars');
-  assert.equal(run('windStars.slots[0].state'),'dropped');assert.equal(run('tempest.lodged'),0);assert.equal(run('tempest.hp'),5);
+  assert.equal(run('windStars.slots[0].state'),'returning');assert.equal(run('tempest.hp'),5);
+  tick(4.6,'updateWindStars');assert.equal(run('windStars.slots[0].state'),'ready');
   // Gusts use their drawn vertical lanes: standing hurts, ducking and jumping clear.
   for(const mode of ['stand','duck','jump']){
     reset();run(`bossAwake=true;tempest.enraged=true;player.x=5000;player.y=${mode==='jump'?-1870:-1748};player.vy=0;player.onGround=${mode==='jump'?'false':'true'};`);
@@ -89,4 +89,4 @@ for(const width of [480,960])for(const fps of [30,60,120]){
   run('player.onGround=true;jump()');assert(run('player.vy<0'),'stowed stars preserve jumping');
   reset();assert.equal(run('windStars.owned'),false);assert.equal(run('tempest.hp'),10);assert.equal(run('tempest.regenerated'),false);
 }
-console.log('PASS Tempest: reachable detour and return, five actual star hits, one recovery at five to seven, faster paired gusts, duck/jump avoidance, solo boss arena, miss/shield recovery, stow/jump, reset and victory gate at 30/60/120 FPS.');
+console.log('PASS Tempest: reachable detour and return, five actual hits with the returning pair, one recovery at five to seven, faster paired gusts, duck/jump avoidance, solo boss arena, five-second miss/shield returns, stow/jump, reset and victory gate at 30/60/120 FPS.');

@@ -3,8 +3,8 @@
 const meadowZombieSheet=new Image();meadowZombieSheet.src='assets/meadow-zombie-sprites-v1.png';
 let meadowZombiePaint=null;
 function freshMeadowZombie([x,oldY,min,max],i){
-  const hp=1,vx=i%2?-55:55;
-  return{x,y:oldY+44-60,w:44,h:60,min,max,vx,facing:Math.sign(vx),alive:true,
+  const hp=1,vx=i%2?-55:55,scale=.9,h=60*scale;
+  return{x,y:oldY+44-h,w:44*scale,h,paintHeight:h,min,max,vx,facing:Math.sign(vx),alive:true,
     hp,maxHP:hp,dizzy:0,deathAge:0,phase:i*.7,hurtFrom:4};
 }
 function hitMeadowZombie(e){
@@ -61,10 +61,11 @@ function drawMeadowZombie(e){
     if(!meadowZombiePaint)meadowZombiePaint=new window.WoodBossAnimation.PaintedPoseBlend(meadowZombieSheet,measureMeadowZombieAtlas(meadowZombieSheet),false);
     const pose=meadowZombiePose(e),t=pose.t*pose.t*(3-2*pose.t);
     ctx.save();if(e.dizzy>0){ctx.translate(cx,floor);ctx.rotate(Math.sin(e.phase*6)*.045);ctx.translate(-cx,-floor);}
-    meadowZombiePaint.draw(ctx,pose.from,pose.next,t,cx,floor,60,-e.facing,alpha);ctx.restore();
+    meadowZombiePaint.draw(ctx,pose.from,pose.next,t,cx,floor,e.paintHeight??60,-e.facing,alpha);ctx.restore();
   }else{
     // Small readable fallback while the painted sheet is loading.
-    ctx.save();ctx.globalAlpha=alpha;ctx.translate(cx,floor);ctx.scale(e.facing,1);
+    const scale=(e.paintHeight??60)/60;
+    ctx.save();ctx.globalAlpha=alpha;ctx.translate(cx,floor);ctx.scale(e.facing*scale,scale);
     ctx.fillStyle='#394d32';ctx.strokeStyle='#263b2d';ctx.lineWidth=2;
     ctx.beginPath();ctx.roundRect(-14,-31,28,26,6);ctx.fill();ctx.stroke();
     ctx.fillStyle='#748b51';ctx.beginPath();ctx.ellipse(0,-42,20,17,0,0,7);ctx.fill();ctx.stroke();

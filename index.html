@@ -696,7 +696,7 @@ for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(even
 const fullscreenButton = document.querySelector('#fullscreenButton');
 const fullscreenStatus = document.querySelector('#fullscreenStatus');
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.32',build:2026101703,builtAt:'2026-10-17',builtLabel:'17 October 2026',deployment:'Earth birds take flight'});
+const BUILD_INFO=Object.freeze({version:'0.21.34',build:2026102001,builtAt:'2026-10-20',builtLabel:'20 October 2026',deployment:'Two returning ninja stars'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -796,7 +796,7 @@ function fitGameViewport(){
 }
 let WORLD_W=4800, level='meadow', airTime=0, fireTime=0, waterTime=0, earthTime=0, fireUnderground=false, bossTime=0, bossAwake=false, airFinished=false, fireFinished=false, waterFinished=false, earthFinished=false, selectedWorld='air', duckPointer=null;
 const TEMPEST_MAX_HP=10;
-function freshTempest(){return{x:5330,y:-1865,w:120,h:175,hp:TEMPEST_MAX_HP,dizzy:0,flash:0,regenerated:false,regen:0,enraged:false,shotCooldown:2.4,lodged:0};}
+function freshTempest(){return{x:5330,y:-1865,w:120,h:175,hp:TEMPEST_MAX_HP,dizzy:0,flash:0,regenerated:false,regen:0,enraged:false,shotCooldown:2.4};}
 let tempest=freshTempest(),tempestWinds=[];
 const keys = new Set();
 let state = "title", cameraX = 0, cameraY = 0, lastTime = 0, soundOn = true, audioCtx;
@@ -974,14 +974,14 @@ function drawMeadowSign(x,y,title,detail){
   ctx.fillStyle='#eedbb0';ctx.strokeStyle='#705537';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(x,y,205,48,7);ctx.fill();ctx.stroke();
   ctx.fillStyle='#344e49';ctx.font='800 12px system-ui';ctx.textAlign='center';ctx.fillText(title,x+102,y+19);ctx.font='600 10px system-ui';ctx.fillText(detail,x+102,y+36);ctx.restore();
 }
-function drawMeadowLessons(){
-  const m=meadowLesson,p=MEADOW_POOL,t=m.time;
-  drawMeadowPondGround();ctx.save();
-  // A painted timber doorway; arrows and the bunny collide with its moving leaf.
+function drawMeadowGateForeground(){
+  const m=meadowLesson;ctx.save();
+  // Draw the frame and lifting leaf over Benny so he passes behind the doorway.
   const gate={...MEADOW_GATE,y:MEADOW_GATE.y-MEADOW_GATE.h*m.lift},gx=MEADOW_GATE.x-cameraX;
   if(gx>-160&&gx<W+160){
     for(const beam of [{x:MEADOW_GATE.x-20,y:30,w:20,h:440},{x:MEADOW_GATE.x+90,y:30,w:20,h:440},{x:MEADOW_GATE.x-32,y:20,w:154,h:28}]){
-      if(waterCabinSheet.naturalWidth)drawShipTimber(beam);else{ctx.fillStyle='#81603b';ctx.fillRect(beam.x-cameraX,beam.y,beam.w,beam.h);}
+      ctx.fillStyle='#81603b';ctx.fillRect(beam.x-cameraX,beam.y,beam.w,beam.h);
+      if(waterCabinSheet.naturalWidth)drawShipTimber(beam);
     }
     ctx.save();ctx.beginPath();ctx.rect(gx,MEADOW_GATE.y,MEADOW_GATE.w,MEADOW_GATE.h);ctx.clip();
     ctx.fillStyle='#715436';ctx.fillRect(gx,gate.y,gate.w,gate.h);
@@ -994,6 +994,11 @@ function drawMeadowLessons(){
     ctx.restore();ctx.fillStyle='#304d45';roundRect(gx-5,95,100,45,8);ctx.font='800 13px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff1be';ctx.fillText(m.lift===1?'OPEN':`${meadowBalloonsPopped()} / 3`,gx+45,114);
     for(let i=0;i<3;i++){ctx.fillStyle=m.balloons[i].popped?'#a6e5a0':'#c3a36b';ctx.beginPath();ctx.arc(gx+22+i*23,129,5,0,7);ctx.fill();}
   }
+  ctx.restore();
+}
+function drawMeadowLessons(){
+  const m=meadowLesson,p=MEADOW_POOL,t=m.time;
+  drawMeadowPondGround();ctx.save();
   for(const b of m.balloons){if(b.popped)continue;const x=b.x-cameraX;if(x<-70||x>W+70)continue;
     ctx.strokeStyle='#6e735b';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,b.y+34);ctx.bezierCurveTo(x-9,b.y+55,x+8,b.y+80,x,466);ctx.stroke();
     const color=ctx.createRadialGradient(x-9,b.y-11,2,x,b.y,38);color.addColorStop(0,'#fff3d7');color.addColorStop(.3,b.color);color.addColorStop(1,'#785668');
@@ -2116,12 +2121,19 @@ function updateFinalWeapons(dt){
     else if(shot.dash){shot.x=player.x+21+t.dx*40;shot.y=player.y+29+t.dy*40;}
     else{const old={x:shot.x,y:shot.y};shot.x+=shot.vx*dt;shot.y+=shot.vy*dt;if(finalProjectileHit(old,shot)||shot.age>=.7)shot.returning=true;}
   }
-  for(const k of [...earthKnives.slots,...windStars.slots]){
+  for(const k of earthKnives.slots){
     if(k.state==='ready'||k.state==='hidden')continue;
     k.spin+=dt*12;k.age+=dt;
     if(k.state==='returning'){if(returnFinalProjectile(k,dt)){k.state='ready';k.remaining=0;}continue;}
     const old={x:k.x,y:k.y};k.x+=k.vx*dt;
     if(finalProjectileHit(old,k)||k.age>=.8)k.state='returning';
+  }
+  for(const star of windStars.slots){
+    if(star.state==='ready')continue;
+    star.spin+=dt*12;star.age+=dt;
+    if(star.state==='returning'){returnWindStar(star,dt);continue;}
+    const old={x:star.x,y:star.y};star.x+=star.vx*dt;
+    if(finalProjectileHit(old,star)||star.age>=.8)star.state='returning';
   }
 }
 function finalWeaponButtons(){const x=W<650?12:75,y=W<650?152:94;return FINAL_WEAPONS.map((name,i)=>({name,x:x+i*62,y,w:60,h:60}));}
@@ -2269,7 +2281,7 @@ airPlatforms[DESCENT.finish].oneWay=true;
 // A visible nook under the summit: double back off its left lip to reach it.
 const windStarLedge={x:4600,y:-1510,w:240,h:28,kind:'white',island:2,oneWay:true,secret:true,spring:0};
 airPlatforms.push(windStarLedge);
-const WIND_STAR_COUNT=8;
+const WIND_STAR_COUNT=2,WIND_STAR_RETURN_TIME=5;
 const WIND_STAR_PICKUP={x:4770,y:-1543,w:46,h:46};
 let windStars={owned:false,equipped:false,slots:[]};
 function resetWindStars(){windStars={owned:false,equipped:false,slots:Array.from({length:WIND_STAR_COUNT},()=>({state:'ready',x:0,y:0,vx:0,age:0,spin:0}))};}
@@ -2285,34 +2297,32 @@ function throwWindStar(){
   Object.assign(star,{state:'flying',x:player.x+player.w/2+player.facing*30,y:player.y+player.h*.48,vx:player.facing*640,age:0,spin:0});
   player.attack=.25;player.attackCooldown=.45;tone(650,.1,'triangle',.025);return true;
 }
-function dropWindStar(star){
-  star.state='dropped';star.vx=0;star.age=0;
-  // Wind carries a missed star to a nearby solid landing, never into the void.
-  const surfaces=airPlatforms.filter(p=>!p.removed&&p.kind!=='blue'&&p.kind!=='green');
-  const p=surfaces.reduce((best,p)=>{
-    const x=Math.max(p.x+18,Math.min(p.x+p.w-18,star.x));
-    const distance=Math.hypot(x-star.x,p.y-24-star.y);
-    return !best||distance<best.distance?{p,x,distance}:best;
-  },null);
-  star.x=p.x;star.y=p.p.y-24;
+// Both Air and Castle use a five-second flight, including the trip home.
+function returnWindStar(star,dt){
+  const x=player.x+player.w/2+player.facing*18,y=player.y+player.h*.62;
+  const remaining=WIND_STAR_RETURN_TIME-star.age;
+  if(remaining<=1e-8){
+    Object.assign(star,{state:'ready',x,y,age:0});burst(x,y,'#bbfff6',5);return;
+  }
+  // Re-aim every frame so moving, jumping or dashing never loses a star.
+  const blend=Math.min(1,dt/(remaining+dt));
+  star.x+=(x-star.x)*blend;star.y+=(y-star.y)*blend;
 }
 function updateWindStars(dt){
   collectWindStars();
   for(const star of windStars.slots){
-    star.spin+=dt*12;
-    if(star.state==='dropped'){
-      if(Math.hypot(player.x+player.w/2-star.x,player.y+player.h*.5-star.y)<38){star.state='ready';burst(star.x,star.y,'#bbfff6',6);tone(760,.07,'sine',.02);}continue;
-    }
-    if(star.state!=='flying')continue;
-    const oldX=star.x;star.x+=star.vx*dt;star.age+=dt;
+    if(star.state==='ready')continue;
+    star.spin+=dt*12;star.age+=dt;
+    if(star.state==='returning'){returnWindStar(star,dt);continue;}
+    const oldX=star.x;star.x+=star.vx*dt;
     const path={x:Math.min(oldX,star.x)-10,y:star.y-10,w:Math.abs(star.x-oldX)+20,h:20};
     if(bossAwake&&tempest.hp>0&&overlap(path,tempest)){
-      if(hitTempest('star')){star.state='lodged';tempest.lodged++;}
-      else{star.x=star.vx>0?tempest.x-46:tempest.x+tempest.w+46;dropWindStar(star);}continue;
+      hitTempest('star');star.x=star.vx>0?tempest.x-12:tempest.x+tempest.w+12;
+      star.state='returning';continue;
     }
     const monster=airMonsters.find(m=>m.hp>0&&overlap(path,m));
-    if(monster){hitAirMonster(monster);dropWindStar(star);continue;}
-    if(star.age>=1||star.x<0||star.x>WORLD_W||platforms.some(p=>p.kind!=='blue'&&overlap(path,p)))dropWindStar(star);
+    if(monster){hitAirMonster(monster);star.state='returning';continue;}
+    if(star.age>=1||star.x<0||star.x>WORLD_W||platforms.some(p=>p.kind!=='blue'&&overlap(path,p)))star.state='returning';
   }
 }
 const descentObstacles=[
@@ -3301,8 +3311,8 @@ function drawNeptunus(){
 const meadowZombieSheet=new Image();meadowZombieSheet.src='assets/meadow-zombie-sprites-v1.png';
 let meadowZombiePaint=null;
 function freshMeadowZombie([x,oldY,min,max],i){
-  const hp=1,vx=i%2?-55:55;
-  return{x,y:oldY+44-60,w:44,h:60,min,max,vx,facing:Math.sign(vx),alive:true,
+  const hp=1,vx=i%2?-55:55,scale=.9,h=60*scale;
+  return{x,y:oldY+44-h,w:44*scale,h,paintHeight:h,min,max,vx,facing:Math.sign(vx),alive:true,
     hp,maxHP:hp,dizzy:0,deathAge:0,phase:i*.7,hurtFrom:4};
 }
 function hitMeadowZombie(e){
@@ -3359,10 +3369,11 @@ function drawMeadowZombie(e){
     if(!meadowZombiePaint)meadowZombiePaint=new window.WoodBossAnimation.PaintedPoseBlend(meadowZombieSheet,measureMeadowZombieAtlas(meadowZombieSheet),false);
     const pose=meadowZombiePose(e),t=pose.t*pose.t*(3-2*pose.t);
     ctx.save();if(e.dizzy>0){ctx.translate(cx,floor);ctx.rotate(Math.sin(e.phase*6)*.045);ctx.translate(-cx,-floor);}
-    meadowZombiePaint.draw(ctx,pose.from,pose.next,t,cx,floor,60,-e.facing,alpha);ctx.restore();
+    meadowZombiePaint.draw(ctx,pose.from,pose.next,t,cx,floor,e.paintHeight??60,-e.facing,alpha);ctx.restore();
   }else{
     // Small readable fallback while the painted sheet is loading.
-    ctx.save();ctx.globalAlpha=alpha;ctx.translate(cx,floor);ctx.scale(e.facing,1);
+    const scale=(e.paintHeight??60)/60;
+    ctx.save();ctx.globalAlpha=alpha;ctx.translate(cx,floor);ctx.scale(e.facing*scale,scale);
     ctx.fillStyle='#394d32';ctx.strokeStyle='#263b2d';ctx.lineWidth=2;
     ctx.beginPath();ctx.roundRect(-14,-31,28,26,6);ctx.fill();ctx.stroke();
     ctx.fillStyle='#748b51';ctx.beginPath();ctx.ellipse(0,-42,20,17,0,0,7);ctx.fill();ctx.stroke();
@@ -3740,7 +3751,7 @@ function touchesStormCloud(s){
 function stormPhase(s){const frame=stormFrame(s);return frame===0?'off':frame<5?'warn':frame<7?'on':'fade';}
 function hitTempest(source='punch'){
   if(!bossAwake||descentStarted||tempest.hp<=0||tempest.dizzy>0||tempest.regen>0)return false;
-  // Punches interrupt the wind; five lodged hits break its core. The bundle has eight stars.
+  // Punches interrupt the wind; five accurate hits from the returning pair break its core.
   if(source==='star'){
     const next=Math.max(0,tempest.hp-3);
     if(!tempest.regenerated&&next<=5){tempest.hp=5;tempest.regenerated=true;tempest.regen=.9;}
@@ -4281,13 +4292,7 @@ function drawFinalBackground(){
       for(let y=top-160;y>-160;y-=160)for(let x=hallX;x<W;x+=450)ctx.drawImage(finalHallSheet,320,0,600,180,x,y,450,160);
       // Repeat only masonry/window bays; the painted exterior opening and door are endpoints.
       for(let x=hallX;x<Math.min(W,FINAL_HALL.end-cameraX);x+=FINAL_HALL_TILE_W)ctx.drawImage(finalHallSheet,FINAL_HALL.bodyX,0,FINAL_HALL.bodyWidth,1024,x,top,FINAL_HALL_TILE_W,FINAL_HALL.height);
-      const doorX=FINAL_INNER_DOOR_X-cameraX;
-      if(doorX<W&&doorX+FINAL_INNER_DOOR_HALF_W*2>0){
-        // The source ends halfway across its door; mirror the leaf and jamb to close the full arch.
-        ctx.drawImage(finalHallSheet,FINAL_HALL.doorX,0,1536-FINAL_HALL.doorX,1024,doorX,top,FINAL_INNER_DOOR_HALF_W,FINAL_HALL.height);
-        ctx.save();ctx.translate(doorX+FINAL_INNER_DOOR_HALF_W*2,0);ctx.scale(-1,1);
-        ctx.drawImage(finalHallSheet,FINAL_HALL.doorX,0,1536-FINAL_HALL.doorX,1024,0,top,FINAL_INNER_DOOR_HALF_W,FINAL_HALL.height);ctx.restore();
-      }
+      drawFinalTowerDoorFrame(top);
     }
     drawFinalTowerDoor();ctx.restore();
   }
@@ -4299,16 +4304,36 @@ function drawFinalTowerBackground(){
   const t=FINAL_TOWER,x=t.left-cameraX,width=t.right-t.left;
   if(x>W||x+width<0)return;
   ctx.save();ctx.beginPath();ctx.rect(x,0,width,H);ctx.clip();ctx.fillStyle='#242734';ctx.fillRect(x,0,width,H);
-  if(finalHallSheet.complete&&finalHallSheet.naturalWidth){
-    for(let floor=FINAL_FLOOR;floor>=t.top-540;floor-=540){
-      const y=floor-540-cameraY;if(y>H||y+540<0)continue;
-      ctx.drawImage(finalHallSheet,FINAL_HALL.bodyX,0,FINAL_HALL.bodyWidth,800,x,y,width,540);
-      ctx.fillStyle='rgba(13,16,26,.3)';ctx.fillRect(x,floor-12-cameraY,width,12);
-    }
-  }
+  drawFinalTowerMasonry(t.left,t.right);
   const heat=ctx.createLinearGradient(0,t.lavaY-300-cameraY,0,t.lavaY-cameraY);heat.addColorStop(0,'rgba(245,76,26,0)');heat.addColorStop(1,'rgba(255,101,28,.32)');
   ctx.fillStyle=heat;ctx.fillRect(x,t.lavaY-300-cameraY,width,420);
   ctx.restore();
+}
+// Shared world coordinates keep the doorway view registered to the tower walls.
+function drawFinalTowerMasonry(left,right){
+  const t=FINAL_TOWER,width=t.right-t.left;
+  if(!finalHallSheet.complete||!finalHallSheet.naturalWidth)return;
+  for(let floor=FINAL_FLOOR;floor>=t.top-540;floor-=540){
+    const y=floor-540-cameraY;if(y>H||y+540<0)continue;
+    for(let x=t.left-Math.ceil((t.left-left)/width)*width;x<right;x+=width){
+      ctx.drawImage(finalHallSheet,FINAL_HALL.bodyX,0,FINAL_HALL.bodyWidth,800,x-cameraX,y,width,540);
+      ctx.fillStyle='rgba(13,16,26,.3)';ctx.fillRect(x-cameraX,floor-12-cameraY,width,12);
+    }
+  }
+}
+function drawFinalTowerDoorFrame(top=FINAL_HALL.top){
+  const x=FINAL_INNER_DOOR_X-cameraX,w=FINAL_INNER_DOOR_HALF_W;
+  if(x>W||x+2*w<0||!finalHallSheet.complete||!finalHallSheet.naturalWidth)return;
+  ctx.drawImage(finalHallSheet,FINAL_HALL.doorX,0,1536-FINAL_HALL.doorX,1024,x,top,w,FINAL_HALL.height);
+  ctx.save();ctx.translate(x+2*w,0);ctx.scale(-1,1);
+  ctx.drawImage(finalHallSheet,FINAL_HALL.doorX,0,1536-FINAL_HALL.doorX,1024,0,top,w,FINAL_HALL.height);ctx.restore();
+}
+function finalTowerDoorAperture(offsetY=0){
+  const left=FINAL_END_X-117-cameraX,center=FINAL_END_X-cameraX,right=FINAL_END_X+117-cameraX;
+  ctx.moveTo(left,FINAL_FLOOR-offsetY);ctx.lineTo(left,315-offsetY);
+  ctx.bezierCurveTo(left,265-offsetY,center-60,208-offsetY,center,191-offsetY);
+  ctx.bezierCurveTo(center+60,208-offsetY,right,265-offsetY,right,315-offsetY);
+  ctx.lineTo(right,FINAL_FLOOR-offsetY);ctx.closePath();
 }
 function drawFinalTower(){
   const t=FINAL_TOWER,left=t.left+30-cameraX,right=t.right-30-cameraX,y=t.lavaY;
@@ -4335,15 +4360,27 @@ function drawFinalTower(){
 }
 function drawFinalTowerDoor(){
   if(finalTowerDoorLift<=0)return;
-  const left=FINAL_END_X-117-cameraX,center=FINAL_END_X-cameraX,right=FINAL_END_X+117-cameraX;
-  function aperture(){ctx.beginPath();ctx.moveTo(left,FINAL_FLOOR);ctx.lineTo(left,315);ctx.bezierCurveTo(left,265,center-60,208,center,191);ctx.bezierCurveTo(center+60,208,right,265,right,315);ctx.lineTo(right,FINAL_FLOOR);ctx.closePath();}
-  ctx.save();aperture();ctx.clip();ctx.fillStyle='#181d2b';ctx.fillRect(left,191,right-left,FINAL_FLOOR-191);
+  const left=FINAL_END_X-117-cameraX;
+  ctx.save();ctx.beginPath();finalTowerDoorAperture(cameraY);ctx.clip();
+  ctx.fillStyle='#242734';ctx.fillRect(left,191-cameraY,234,FINAL_FLOOR-191);
+  drawFinalTowerMasonry(FINAL_END_X-117,FINAL_END_X+117);
+  const shade=ctx.createLinearGradient(left,0,left+234,0);
+  shade.addColorStop(0,'rgba(9,12,22,.5)');shade.addColorStop(1,'rgba(9,12,22,.12)');
+  ctx.fillStyle=shade;ctx.fillRect(left,191-cameraY,234,FINAL_FLOOR-191);ctx.restore();
+}
+function drawFinalTowerDoorForeground(){
+  const x=FINAL_INNER_DOOR_X-cameraX,w=FINAL_INNER_DOOR_HALF_W;
+  if(x>W||x+2*w<0)return;
+  // Keep the stone jambs in front while leaving the passage itself visible.
+  ctx.save();ctx.beginPath();ctx.rect(x,FINAL_HALL.top,2*w,FINAL_FLOOR-FINAL_HALL.top);
+  finalTowerDoorAperture();ctx.clip('evenodd');drawFinalTowerDoorFrame();
+  ctx.fillStyle=`rgba(8,10,25,${Math.min(.27,cameraX/6000)})`;ctx.fillRect(x,FINAL_HALL.top,2*w,FINAL_HALL.height);ctx.restore();
   const width=117*(1-finalTowerDoorLift);
-  if(width>.5&&finalHallSheet.naturalWidth){
-    ctx.drawImage(finalHallSheet,1365,310,171,434,left,FINAL_HALL.top+310*660/1024,width,434*660/1024);
-    ctx.translate(right,0);ctx.scale(-1,1);ctx.drawImage(finalHallSheet,1365,310,171,434,0,FINAL_HALL.top+310*660/1024,width,434*660/1024);
-  }
-  ctx.restore();
+  if(width<=.5||!finalHallSheet.naturalWidth)return;
+  ctx.save();ctx.beginPath();finalTowerDoorAperture();ctx.clip();
+  const left=FINAL_END_X-117-cameraX,right=FINAL_END_X+117-cameraX,y=FINAL_HALL.top+310*660/1024;
+  ctx.drawImage(finalHallSheet,1365,310,171,434,left,y,width,434*660/1024);
+  ctx.translate(right,0);ctx.scale(-1,1);ctx.drawImage(finalHallSheet,1365,310,171,434,0,y,width,434*660/1024);ctx.restore();
 }
 function drawFinalPlatform(p,foreground=false){
   if(finalHallBlock(p)&&!foreground)return;
@@ -5462,9 +5499,9 @@ function drawWindStar(x,y,size,angle=0){
 }
 function drawWindStarWorld(){
   if(!windStars.owned){
-    for(let i=0;i<3;i++)drawWindStar(WIND_STAR_PICKUP.x-cameraX+(i-1)*16,WIND_STAR_PICKUP.y+(i===1?-5:3)+Math.sin(airTime*2)*3,49,airTime*.25+i*.4);
+    for(let i=0;i<WIND_STAR_COUNT;i++)drawWindStar(WIND_STAR_PICKUP.x-cameraX+(i-.5)*26,WIND_STAR_PICKUP.y+Math.sin(airTime*2+i)*3,49,airTime*.25+i*.4);
   }
-  for(const star of windStars.slots)if(star.state==='flying'||star.state==='dropped')drawWindStar(star.x-cameraX,star.y+(star.state==='dropped'?Math.sin(airTime*3)*3:0),44,star.spin);
+  for(const star of windStars.slots)if(star.state==='flying'||star.state==='returning')drawWindStar(star.x-cameraX,star.y,44,star.spin);
 }
 function drawHeldWindStar(){if(windStars.owned&&windStars.equipped&&player.attack<=0&&windStars.slots.some(s=>s.state==='ready'))drawWindStar(player.x+player.w/2+player.facing*18-cameraX,player.y+player.h*.62,24,.2*player.facing);}
 function drawWindCurl(x,y,direction,size,alpha=1){
@@ -5485,7 +5522,13 @@ function drawTempestWinds(){
 function drawWindStarInventory(){
   if(!windStars.owned)return;
   const y=H>540?151:100;ctx.save();ctx.fillStyle='rgba(13,42,65,.82)';roundRect(18,y-21,280,65,12);
-  windStars.slots.forEach((s,i)=>{ctx.globalAlpha=s.state==='ready'?1:s.state==='lodged'?.18:.45;drawWindStar(40+i*32,y,30);});ctx.globalAlpha=1;
+  windStars.slots.forEach((star,i)=>{
+    const x=42+i*44;ctx.globalAlpha=star.state==='ready'?1:.45;drawWindStar(x,y-1,30);ctx.globalAlpha=1;
+    if(star.state!=='ready'){ctx.fillStyle='#fff2c1';ctx.font='bold 10px system-ui';ctx.textAlign='center';ctx.fillText(`${Math.max(1,Math.ceil(WIND_STAR_RETURN_TIME-star.age))}s`,x,y+13);}
+  });
+  ctx.fillStyle='#d9fffa';ctx.font='bold 11px system-ui';ctx.textAlign='left';
+  ctx.fillText(`${windStars.slots.filter(star=>star.state==='ready').length} / 2 READY`,112,y-2);
+  ctx.font='10px system-ui';ctx.fillText('RETURN IN 5s',112,y+12);
   ctx.fillStyle='#d9fffa';ctx.font='bold 10px system-ui';ctx.textAlign='center';ctx.fillText(windStars.equipped?'X / F · THROW     Z · STOW':'X / F · PUNCH     Z · EQUIP',158,y+29);ctx.restore();
 }
 const airMonsterSprites=[],airMonsterSheet=new Image();
@@ -5577,7 +5620,6 @@ function drawTempest(){
   ctx.textAlign='center';
   ctx.font='bold 19px system-ui';
   for(let i=0;i<TEMPEST_MAX_HP;i++){ctx.fillStyle=i<tempest.hp?'#eb5779':'#71848d';ctx.fillText('♥',cx+(i-(TEMPEST_MAX_HP-1)/2)*23,cy-69);}
-  for(let i=0;i<tempest.lodged;i++)drawWindStar(cx+(i%3-1)*24,cy+38+Math.floor(i/3)*26,27,i*.7);
   if(tempest.regen>0||tempest.enraged){ctx.fillStyle='#c0ffff';ctx.font='bold 12px system-ui';ctx.fillText(tempest.regen>0?'WIND RECHARGE':'TEMPEST UNLEASHED',cx,cy-88);}
   if(tempest.dizzy>0){
     ctx.fillStyle='#ffe48a';ctx.font='bold 17px system-ui';
@@ -6483,7 +6525,7 @@ function render(time) {
   const nativeW=W,nativeH=H,fieldH=playfieldHeight(),view=level==='fire'?fireViewSize():level==='water'?waterViewSize():{width:W,height:fieldH,scale:1};
   ctx.save();ctx.beginPath();ctx.rect(0,0,W,fieldH);ctx.clip();ctx.scale(view.scale,view.scale);W=view.width;H=view.height;
   drawBackground();ctx.save();ctx.translate(0,-cameraY);if(level==='fire'){drawFireTrees();drawFireVolcano();drawFireMaze();drawSecondFireVolcano();drawFireMazeTransition();}if(level==='earth')drawEarthTrees();platforms.forEach(drawPlatform);if(level==='air')drawAirWorld();else if(level==='earth')drawEarthWorld();else if(level==='fire'){drawFireRollingStones();drawLavaKingBarriers();drawFireGate();drawLavaKing();drawFireArrowPickup();drawFireAimPath();drawBunnyArrows();}else if(level==='water')drawWaterWorld();else if(level==='final'){drawFinalWorld();drawFireAimPath();drawBunnyArrows();}else if(level==='meadow')drawMeadowLessons();else drawShrine(time);
-  coins.forEach(c=>drawCoin(c,time));enemies.forEach(drawEnemy);fireZombies.forEach(drawFireZombie);waterSharks.forEach(drawWaterShark);waterPirates.forEach(drawWaterPirate);if(level==='final')drawFinalMonsters();drawBunny();if(level==='earth')drawEarthVineGrip();if(level==='final')drawFinalWeapons();if(level==='air')drawHeldWindStar();if(level==='earth')drawHeldEarthKnife();if(level==='water'){drawHeldWaterEquipment();drawWaterGateForeground();drawWaterCacti();}if(level==='final'){drawFinalGateForeground();drawFinalForegroundBlocks();}drawBlueCloudForeground();
+  coins.forEach(c=>drawCoin(c,time));enemies.forEach(drawEnemy);fireZombies.forEach(drawFireZombie);waterSharks.forEach(drawWaterShark);waterPirates.forEach(drawWaterPirate);if(level==='final')drawFinalMonsters();drawBunny();if(level==='meadow')drawMeadowGateForeground();if(level==='earth')drawEarthVineGrip();if(level==='final')drawFinalWeapons();if(level==='air')drawHeldWindStar();if(level==='earth')drawHeldEarthKnife();if(level==='water'){drawHeldWaterEquipment();drawWaterGateForeground();drawWaterCacti();}if(level==='final'){drawFinalGateForeground();drawFinalTowerDoorForeground();drawFinalForegroundBlocks();}drawBlueCloudForeground();
   particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;ctx.restore();ctx.restore();W=nativeW;H=nativeH;drawHUD();drawEarthBossHearts();if(level==='fire')drawLavaKingHearts();if(level==='fire'||level==='meadow')drawFireArrowInventory();if(level==='final')drawFinalWeaponInventory();if(level==='air')drawWindStarInventory();if(level==='earth')drawEarthKnifeInventory();drawWaterAdventureHUD();drawTouchControls();if(developerRun){ctx.save();ctx.font='bold 11px system-ui';ctx.textAlign='left';ctx.fillStyle='#fff4ae';ctx.fillText('DEVELOPER MODE · test progress',12,playfieldHeight()-12);ctx.restore();}
 }
 

@@ -4,13 +4,14 @@
 :root{color-scheme:dark;font:15px system-ui;background:#132e32;color:#ecf7dc}body{margin:0;padding:16px}main{max-width:1100px;margin:auto}h1{font-size:23px;margin:0 0 8px}p{line-height:1.5;margin:8px 0}a{color:#ffe49d}nav{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}button{font:inherit;padding:9px 12px;border:1px solid #99bba1;border-radius:8px;background:#b6dab7;color:#243e3b;cursor:pointer}button[aria-pressed=true]{background:#ffe49d}button:disabled{opacity:.5}iframe{display:block;width:100%;height:clamp(400px,calc(100dvh - 220px),740px);border:1px solid #99bba1;border-radius:10px}#status{color:#ffe49d;min-height:22px}
 </style></head><body><main>
 <h1>Meadow · shoot, then dive</h1><p>Three balloons unlock the wooden door. Leave the practice bow at the rack, dive under the stone passage, then reach the shrine. <a href="../index.html">Play the full game</a></p>
-<nav><button disabled data-scene="range">Shooting range</button><button disabled data-scene="open">Open door</button><button disabled data-scene="shore">Dive entrance</button><button disabled data-scene="dive">Under the rock</button><button disabled data-scene="finish">Final shrine</button><button disabled id="live">Live play</button></nav>
+<nav><button disabled data-scene="range">Shooting range</button><button disabled data-scene="open">Open door</button><button disabled data-scene="door">Behind the frame</button><button disabled data-scene="shore">Dive entrance</button><button disabled data-scene="dive">Under the rock</button><button disabled data-scene="finish">Final shrine</button><button disabled id="live">Live play</button></nav>
 <p id="status">Loading artwork…</p><iframe src="../index.html" title="Meadow tutorial practice"></iframe>
 </main><script>
 const frame=document.querySelector('iframe'),status=document.querySelector('#status');let ready=false;
 const scenes={
  range:{x:4990,y:412,cx:4810,cy:0,text:'Z / EQUIP draws or stows the bow. ↑ ↓ aim; X / FIRE shoots. Arrows return after misses. Pop all three balloons to open the door.'},
  open:{x:5580,y:412,cx:5200,cy:0,open:true,text:'The three targets are popped and the door is open. Walk right to leave the practice bow at its rack.'},
+ door:{x:5740,y:412,cx:5420,cy:0,open:true,text:'Benny passes behind the wooden doorway. Choose Live play to walk through it in either direction.'},
  shore:{x:5880,y:412,cx:5650,cy:100,open:true,stored:true,text:'The bow is on the rack. Walk into the pond, then use ↓ / S or DIVE to pass beneath the rock. ↑ / W swims upward; Space is a stroke.'},
  dive:{x:6420,y:705,cx:6050,cy:430,open:true,stored:true,water:true,text:'The low passage cannot be crossed at the surface. Swim right underneath it, rise at the far bank and continue to the shrine.'},
  finish:{x:7250,y:412,cx:6540,cy:0,open:true,stored:true,through:true,text:'The shooting and diving lessons are complete. Walk right to the shrine to finish Meadow.'}
@@ -21,7 +22,7 @@ function show(name){if(!ready)return;const s=scenes[name];
 }
 frame.addEventListener('load',async()=>{
  const doc=frame.contentDocument,style=doc.createElement('style');style.textContent='html,body{margin:0;padding:0;background:#132e32}.game-shell,main{width:100%;max-width:none;padding:0;margin:0}header,footer,#worldMap{display:none}main>.game-frame{width:min(100vw,177.777778vh);margin:auto;border:0;border-radius:0;box-shadow:none}main>.game-frame:not(.expanded){min-height:0}';doc.head.append(style);
- try{await frame.contentWindow.eval('Promise.all([waterCaveSheet,waterCabinSheet,sandyPitSheet,swimSheet,fireArcherySheet,fireWeaponSheet,fireArrowTypeSheet,...Object.values(PAINTED_BUNNY).flatMap(s=>[s.plain,s.quiver])].map(i=>i.decode()))');ready=true;document.querySelectorAll('button').forEach(b=>b.disabled=false);show('range');}
+ try{await frame.contentWindow.eval('Promise.all([waterCaveSheet,waterCabinSheet,sandyPitSheet,swimSheet,fireArcherySheet,fireWeaponSheet,fireArrowTypeSheet,...Object.values(PAINTED_BUNNY).flatMap(s=>[s.plain,s.quiver])].map(i=>i.decode()))');ready=true;document.querySelectorAll('button').forEach(b=>b.disabled=false);show(scenes[location.hash.slice(1)]?location.hash.slice(1):'range');}
  catch(e){status.textContent='Artwork could not load. Reload to try again.';console.error(e);}
 });
 document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>show(b.dataset.scene));document.querySelector('#live').onclick=()=>{const live=frame.contentWindow.eval("state==='playing'?(state='review',false):(state='playing',true)");document.querySelector('#live').textContent=live?'Pause':'Live play';frame.contentWindow.focus();};

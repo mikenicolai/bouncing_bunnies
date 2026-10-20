@@ -19,13 +19,13 @@ for(const fps of [30,60,120]){
  // Castle stars are a two-slot returning pair, with exactly one heart per hit.
  castle();run("player.x=3600;player.y=412;player.onGround=true;player.vx=0;finalMonsters=[];selectFinalWeapon('stars');attack();");assert.equal(run('windStars.slots.length'),2);
  for(let i=0;i<Math.floor(fps*.46);i++)run(`update(1/${fps})`);run('player.attackCooldown=0;attack()');assert.equal(run("windStars.slots.filter(s=>s.state==='flying').length"),2);run('player.attackCooldown=0;attack()');assert.equal(run("windStars.slots.filter(s=>s.state==='flying').length"),2,'only two stars can be out');
- run("selectFinalWeapon('knives')");for(let i=0;i<fps*3;i++)run(`update(1/${fps})`);assert(run("windStars.slots.every(s=>s.state==='ready')"),'misses/wall hits return automatically even after switching');
- castle();run("player.x=3600;player.y=412;player.onGround=true;finalMonsters=[{...finalMonsters[0],x:3740,min:3740,max:3740,hp:3,maxHP:3,dizzy:0}];selectFinalWeapon('stars');attack()");for(let i=0;i<fps*2;i++)run(`update(1/${fps})`);assert.equal(run('finalMonsters[0].hp'),2);assert(run("windStars.slots.every(s=>s.state==='ready')"));
+ run("selectFinalWeapon('knives')");for(let i=0;i<fps*6;i++)run(`update(1/${fps})`);assert(run("windStars.slots.every(s=>s.state==='ready')"),'misses/wall hits return automatically even after switching');
+ castle();run("player.x=3600;player.y=412;player.onGround=true;finalMonsters=[{...finalMonsters[0],x:3740,min:3740,max:3740,hp:3,maxHP:3,dizzy:0}];selectFinalWeapon('stars');attack()");for(let i=0;i<fps*6;i++)run(`update(1/${fps})`);assert.equal(run('finalMonsters[0].hp'),2);assert(run("windStars.slots.every(s=>s.state==='ready')"));
 }
 // R cannot reset a run or bypass game-over/map progression in any world.
 for(const world of ['meadow','air','earth','water','fire','final'])for(const mode of ['playing','map','lost','title']){
  run(`level='${world}';resetGame();player.x=1500;score=5;coinWallet=23;tempest.hp=4;lavaKing.hp=6;state='${mode}';revivePending=state==='lost';var beforeR=JSON.stringify({level,state,player,score,coinWallet,coins,tempest,lavaKing,fireArrow,waterTrident})`);
  run("window.listeners.keydown[1]({code:'KeyR',repeat:false,preventDefault(){}})");assert.equal(run('JSON.stringify({level,state,player,score,coinWallet,coins,tempest,lavaKing,fireArrow,waterTrident})'),run('beforeR'),world+' R has no reset action');assert(!run("keys.has('KeyR')"));
 }
-run("level='air';resetGame()");assert.equal(run('windStars.slots.length'),8,'Air retains its existing Tempest star mechanics');
+run("level='air';resetGame()");assert.equal(run('windStars.slots.length'),2,'Air and Castle share the returning pair');
 console.log('PASS Castle/Fire fixes: all five monsters blocked by each foreground stone from both sides, animated uphill/downhill zombies and stun/pause, two returning one-heart Castle stars, and no R reset in every world/state at 30/60/120 FPS.');

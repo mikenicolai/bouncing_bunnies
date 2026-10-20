@@ -63,12 +63,19 @@ function updateFinalWeapons(dt){
     else if(shot.dash){shot.x=player.x+21+t.dx*40;shot.y=player.y+29+t.dy*40;}
     else{const old={x:shot.x,y:shot.y};shot.x+=shot.vx*dt;shot.y+=shot.vy*dt;if(finalProjectileHit(old,shot)||shot.age>=.7)shot.returning=true;}
   }
-  for(const k of [...earthKnives.slots,...windStars.slots]){
+  for(const k of earthKnives.slots){
     if(k.state==='ready'||k.state==='hidden')continue;
     k.spin+=dt*12;k.age+=dt;
     if(k.state==='returning'){if(returnFinalProjectile(k,dt)){k.state='ready';k.remaining=0;}continue;}
     const old={x:k.x,y:k.y};k.x+=k.vx*dt;
     if(finalProjectileHit(old,k)||k.age>=.8)k.state='returning';
+  }
+  for(const star of windStars.slots){
+    if(star.state==='ready')continue;
+    star.spin+=dt*12;star.age+=dt;
+    if(star.state==='returning'){returnWindStar(star,dt);continue;}
+    const old={x:star.x,y:star.y};star.x+=star.vx*dt;
+    if(finalProjectileHit(old,star)||star.age>=.8)star.state='returning';
   }
 }
 function finalWeaponButtons(){const x=W<650?12:75,y=W<650?152:94;return FINAL_WEAPONS.map((name,i)=>({name,x:x+i*62,y,w:60,h:60}));}

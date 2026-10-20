@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Meadow · smaller enemies</title>
+<style>
+:root{font:16px system-ui;color:#edf3df;background:#152f32}body{margin:0;padding:18px}main{max-width:1100px;margin:auto}h1{font-size:24px;margin:0 0 8px}p{line-height:1.5}a{color:#ffe199}button{font:inherit;padding:9px 16px;border:0;border-radius:8px;background:#ffe199;color:#263e34;cursor:pointer}iframe{display:block;width:100%;aspect-ratio:16/9;border:0;border-radius:14px;margin-top:16px}nav{display:flex;gap:10px}
+</style><main><h1>Meadow · smaller enemies</h1><p>10% smaller, with cream-colored eyes and dark pupils. Walking, hearts and combat stay intact.</p><nav><button id="reset" disabled>Walking preview</button><button id="play" disabled>Play from here</button></nav><iframe src="../index.html" title="Updated Meadow enemies"></iframe><p><a href="../index.html">Open full game</a></p></main>
+<script>
+const frame=document.querySelector('iframe');let ready=false,playing=false,last=0;
+function reset(){if(!ready)return;playing=false;frame.contentWindow.eval("beginDeveloperSession();level='meadow';soundOn=false;start();state='review';player.x=425;player.y=412;player.onGround=true;player.vx=player.vy=0;cameraX=200;cameraY=0;enemies[0].vx=-55;enemies[0].facing=-1;render(0)");}
+frame.addEventListener('load',async()=>{
+ const doc=frame.contentDocument,style=doc.createElement('style');style.textContent='html,body{margin:0;padding:0}main,.game-shell{width:100%;max-width:none;margin:0;padding:0}header,footer,#worldMap{display:none}main>.game-frame{width:100%;margin:0;border:0;border-radius:0;box-shadow:none}';doc.head.append(style);
+ await frame.contentWindow.eval('Promise.all([meadowZombieSheet,earthGroundSheet,...Object.values(PAINTED_BUNNY).flatMap(s=>[s.plain,s.quiver])].map(i=>i.decode()))');ready=true;document.querySelectorAll('button').forEach(b=>b.disabled=false);reset();
+});
+document.querySelector('#reset').onclick=reset;
+document.querySelector('#play').onclick=()=>{if(!ready)return;playing=true;frame.contentWindow.eval("state='playing'");frame.contentWindow.focus();};
+function animate(ms){const dt=Math.min(.033,(ms-last)/1000||0);last=ms;if(ready&&!playing)frame.contentWindow.eval(`updateMeadowZombies(${dt});render(${ms/1000})`);requestAnimationFrame(animate);}requestAnimationFrame(animate);
+</script></html>
