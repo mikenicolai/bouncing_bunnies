@@ -78,6 +78,22 @@ function waterTurtlePose(i,time){
   const live=time===undefined?waterReefSwimmers[105+i]:null;
   return live?{x:live.x,y:live.y,direction:live.direction,stroke:(Math.sin(waterTime*3+i)+1)/2,cycle:(waterTime*.75+i*.23)%1}:waterTurtlePath(i,time??waterTime);
 }
+function waterTurtleBody(c,x=c.x,y=c.y){return {x:x-c.hw,y:y-c.hh,w:c.hw*2,h:c.hh*2,turtle:c};}
+function waterTurtleSolids(){return waterReefSwimmers.filter(c=>c.turtle).map(c=>waterTurtleBody(c));}
+function resolveWaterTurtleContact(solids){
+  // A checkpoint can place Benny inside a passing shell. Separate harmlessly
+  // toward the nearest free face rather than trapping both movement axes.
+  for(const body of solids.filter(s=>s.turtle)){
+    if(!overlap(player,body))continue;
+    const choices=[{x:body.x-player.w-.01,y:player.y},{x:body.x+body.w+.01,y:player.y},
+      {x:player.x,y:body.y-player.h-.01},{x:player.x,y:body.y+body.h+.01}];
+    choices.sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y));
+    for(const p of choices)if(waterPositionClear({...player,...p},solids)){
+      if(p.x!==player.x)player.vx=0;if(p.y!==player.y)player.vy=0;
+      player.x=p.x;player.y=p.y;break;
+    }
+  }
+}
 function waterReefObstacles(){
   return [...waterReefs,...waterShipSolids(),...waterAirPockets.filter(p=>p.ship).map(p=>({x:p.x,y:p.y-22,w:p.w,h:210}))];
 }
@@ -147,6 +163,12 @@ function updateWaterReefLife(dt){
         if(waterSwimmerClear(c,x,c.y,rocks)){y=c.y;vy=0;}
         else if(waterSwimmerClear(c,c.x,y,rocks)){x=c.x;vx=0;}
         else{x=c.x;y=c.y;vx=-c.vx*.35;vy=-c.vy*.35;}
+      }
+      // A turtle gives way but never swims its solid shell through Benny.
+      if(c.turtle&&player.inWater&&!player.breaching&&!overlap(player,waterTurtleBody(c))&&overlap(player,waterTurtleBody(c,x,y))){
+        if(!overlap(player,waterTurtleBody(c,x,c.y))&&waterSwimmerClear(c,x,c.y,rocks)){y=c.y;vy=0;}
+        else if(!overlap(player,waterTurtleBody(c,c.x,y))&&waterSwimmerClear(c,c.x,y,rocks)){x=c.x;vx=0;}
+        else{x=c.x;y=c.y;vx=vy=0;}
       }
       const actualX=(x-c.x)/step;
       return {x,y,vx,vy,direction:Math.abs(actualX)>.5?Math.sign(actualX):c.direction};

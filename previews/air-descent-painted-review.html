@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Air · painted storm descent</title>
+<style>body{margin:0;background:#142b3b;color:#fff5dc;font:16px system-ui}main{max-width:1100px;margin:auto;padding:16px}h1{font-size:25px;margin:0 0 8px}p{line-height:1.4}nav{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}button,a{font:inherit;background:#c2efeb;color:#183d49;padding:9px 12px;border:1px solid #8cbfbf;border-radius:9px;cursor:pointer}button:disabled{opacity:.4}iframe{width:100%;height:clamp(400px,calc(100dvh - 215px),850px);border:0;border-radius:12px;display:block}#status{min-height:22px}</style>
+<main><h1>Air · painted storm descent</h1><p>After Tempest, steer between the storm clouds. Their painted sparks warn you before each lightning strike. Reach the blue cloud, then the portal below.</p>
+<nav><button disabled data-scene="entry">Start of the drop</button><button disabled data-scene="middle">Clouds and lightning</button><button disabled data-scene="lower">Lower descent</button><button disabled id="live">Play this section</button><a href="../index.html">Full game</a></nav><p id="status">Loading the painted clouds…</p><iframe src="../index.html?descent-art=20261025" title="Painted Air descent preview"></iframe></main>
+<script>
+const frame=document.querySelector('iframe'),status=document.querySelector('#status');let ready=false;
+const scenes={entry:{x:6240,y:-1140,cx:6160,cy:-1240},middle:{x:6320,y:-590,cx:6490,cy:-760},lower:{x:6200,y:1080,cx:6490,cy:970}};
+function show(name){if(!ready)return;const s=scenes[name];
+ frame.contentWindow.eval(`beginDeveloperSession();level='air';start();soundOn=false;fallbackFullscreen=true;syncFullscreen();tempest.hp=0;beginDescent();state='review';player.x=${s.x};player.y=${s.y};player.vx=player.vy=0;player.onGround=false;player.invincible=0;cameraX=${s.cx}-W/2;cameraY=${s.cy};airTime=${name==='entry'?0:1.5};render(0);`);
+ status.textContent='Painted cloud billows, charging sparks and ivory-blue lightning follow the same attack cycle as the game.';document.querySelector('#live').textContent='Play this section';frame.contentWindow.focus();
+}
+frame.addEventListener('load',async()=>{
+ const style=frame.contentDocument.createElement('style');style.textContent='html,body{margin:0;padding:0;background:#142b3b}.game-shell,main{width:100%;max-width:none;margin:0;padding:0}header,footer{display:none}.game-frame{border:0;border-radius:0;box-shadow:none}';frame.contentDocument.head.append(style);
+ try{await frame.contentWindow.eval('Promise.all([descentCloudSheet,paintedCloudSheet,islandSheet,PAINTED_BUNNY.actions.plain,PAINTED_BUNNY.actions.quiver].map(i=>i.decode()))');ready=true;document.querySelectorAll('button').forEach(b=>b.disabled=false);show('middle');}catch(e){status.textContent='Artwork could not load. Reload to try again.';console.error(e);}
+});
+document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>show(b.dataset.scene));
+document.querySelector('#live').onclick=()=>{frame.contentWindow.eval("clearInputs();state='playing'");frame.contentWindow.focus();status.textContent='Playing the drop after Tempest. Steer left and right to avoid the clouds; Up / Space jumps from the blue cloud.';};
+let last=0;function animate(ms){const dt=last?Math.min(.033,(ms-last)/1000):0;last=ms;if(ready)frame.contentWindow.eval(`if(state==='review')airTime+=${dt};`);requestAnimationFrame(animate);}requestAnimationFrame(animate);
+</script></html>

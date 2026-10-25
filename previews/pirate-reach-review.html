@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Water · pirate reach</title>
+<style>body{margin:0;background:#143342;color:#effff1;font:16px system-ui}main{max-width:1100px;margin:auto;padding:16px}h1{font-size:25px;margin:0 0 8px}p{line-height:1.4}nav{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}button,a{font:inherit;background:#b9ded0;color:#173d47;padding:9px 12px;border:0;border-radius:9px;cursor:pointer}button:disabled{opacity:.4}iframe{width:100%;height:clamp(400px,calc(100dvh - 210px),850px);border:0;border-radius:12px;display:block}</style>
+<main><h1>Water · fairer pirate reach</h1><p>The hook and cutlass now hit close to the painted weapons. Benny can reach the pirate with a punch from either side. Direct body contact and close weapon hits still hurt.</p><nav><button disabled data-side="-1">Approach from left</button><button disabled data-side="1">Approach from right</button><button disabled id="play">Practice fight</button><a href="../index.html">Full game</a></nav><iframe src="../index.html?pirate-reach=20261025" title="Actual pirate combat practice"></iframe></main>
+<script>
+const frame=document.querySelector('iframe');let ready=false,live=false,last=0;
+function show(side){if(!ready)return;live=false;
+ frame.contentWindow.eval(`beginDeveloperSession();level='water';start();soundOn=false;fallbackFullscreen=true;syncFullscreen();waterSharks=[];waterPirates=[waterPirates[2]];var reviewPirate=waterPirates[0];waterTime=0;reviewPirate.tetherPhase=0;positionWaterPirate(reviewPirate);reviewPirate.swing=.05;reviewPirate.swingCooldown=1.5;waterAquaSuit=true;player.inWater=true;player.invincible=0;player.vx=player.vy=0;player.x=reviewPirate.x+${side<0?'-player.w-25':'reviewPirate.w+25'};player.y=reviewPirate.y+6;player.facing=${-side};cameraX=reviewPirate.x+reviewPirate.w/2-waterViewSize().width*.5;cameraY=reviewPirate.y-waterViewSize().height*.4;clearInputs();state='review';render(0);`);
+ document.querySelector('#play').textContent='Practice fight';frame.contentWindow.focus();
+}
+frame.addEventListener('load',async()=>{const style=frame.contentDocument.createElement('style');style.textContent='html,body{margin:0;padding:0;background:#143342}.game-shell,main{width:100%;max-width:none;margin:0;padding:0}header,footer{display:none}.game-frame{border:0;border-radius:0;box-shadow:none}';frame.contentDocument.head.append(style);
+ try{await frame.contentWindow.eval('Promise.all([pirateSheet,swimSheet,waterCaveSheet,waterCabinSheet,...Object.values(WATER_REEF_ART).map(a=>a.image)].map(i=>i.decode()))');ready=true;document.querySelectorAll('button').forEach(b=>b.disabled=false);show(1);}catch(e){console.error(e);}
+});
+document.querySelectorAll('[data-side]').forEach(b=>b.onclick=()=>show(Number(b.dataset.side)));
+document.querySelector('#play').onclick=()=>{live=true;frame.contentWindow.eval("clearInputs();state='playing'");frame.contentWindow.focus();document.querySelector('#play').textContent='X / F or HIT · punch';};
+function animate(ms){const dt=last?Math.min(.033,(ms-last)/1000):0;last=ms;if(ready&&!live)frame.contentWindow.eval(`waterTime+=${dt};reviewPirate.swing=.8-(waterTime%.8);render(0);`);requestAnimationFrame(animate);}requestAnimationFrame(animate);
+</script></html>

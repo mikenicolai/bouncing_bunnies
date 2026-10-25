@@ -48,3 +48,8 @@ Create TWO separate rooted sea-grass clumps side by side, in two equal columns, 
 ```
 
 Fish and turtles face their actual horizontal swimming direction, turning at each patrol reversal. The Water world clock runs on the beach as well as underwater, so reef movement, flipper strokes and sea-grass sway continue while Benny is dry. Map, developer, death and advertisement screens still pause it. `tests/water-life-motion.cjs` and `tests/water-life-motion-browser.cjs` cover these cases.
+
+
+## Harmless turtle obstacles · 25 October 2026
+
+The five live swimming turtles now supply movement solids using their existing 50 × 28 half-extents. Benny can swim around them but cannot swim or trident-dash through them; contact never deals damage. Turtles still flee and avoid rocks, and yield before moving their shells into Benny. An existing overlap at a checkpoint separates him toward the nearest free face, respecting reefs and other turtles. Fish remain passable. Projectiles keep their existing reef collision behaviour. `tests/water-turtle-solid.cjs` covers swimming/dashing from all four sides, paths above/below, moving contact and checkpoint recovery; `tests/water-turtle-solid-browser.cjs` exercises actual keyboard play on desktop, phone and landscape. `previews/water-reef-life.html#turtle-obstacle` starts a harmless isolated practice encounter.

@@ -41,7 +41,8 @@ assert(run('player.inWater'));
 assert(run('player.x>=WATER_START'));
 reset();run("player.x=1750;player.y=417;player.h=18;player.duck=true;player.vy=100;keys.add('ArrowDown')");step();
 assert(run('player.inWater && !player.duck && player.h===58'),'water entry releases land crouch');run('keys.clear()');
-run("player.invincible=30;player.x=2350;player.y=520;player.vx=0;player.vy=0;keys.add('ArrowDown')");step(60);run("keys.clear()");
+// Basic swim controls use a clear lane; solid-turtle contact is covered separately.
+run("player.invincible=30;player.x=2600;player.y=520;player.vx=0;player.vy=0;keys.add('ArrowDown')");step(60);run("keys.clear()");
 assert(run('player.y>560'),'Dive moves downward');
 const beforeStroke=run('player.vy');run('jump()');assert(run('player.vy')<beforeStroke);
 assert(run('player.stroke>0'));
@@ -89,7 +90,7 @@ reset();run('player.inWater=true;player.x=1850;player.y=348;player.invincible=30
 assert(run('waterPirates.every(p=>Math.abs(Math.hypot(waterPirateAnkle(p).x-waterPirateAnchor(p).x,waterPirateAnkle(p).y-waterPirateAnchor(p).y)-p.chainLength)<.01)'),'floating pirates remain on their chain length');
 
 // Both the left hook and right cutlass can hit beyond the pirate's body.
-for(const [swing,side] of [[.65,-45],[.16,72]]){
+for(const [swing,side] of [[.65,-45],[.16,50]]){
   reset();run(`player.inWater=true;player.x=waterPirates[0].x+${side};player.y=waterPirates[0].y-30;player.air=15;waterPirates[0].swing=${swing};waterPirates[0].swingCooldown=10`);
   assert(run('!overlap(player,waterPirates[0])'));
   step();assert.equal(run('lives'),2,`weapon swing ${swing} catches bunny`);

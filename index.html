@@ -930,28 +930,33 @@ function drawMeadowSign(x,y,title,detail){
   ctx.fillStyle='#eedbb0';ctx.strokeStyle='#705537';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(x,y,205,48,7);ctx.fill();ctx.stroke();
   ctx.fillStyle='#344e49';ctx.font='800 12px system-ui';ctx.textAlign='center';ctx.fillText(title,x+102,y+19);ctx.font='600 10px system-ui';ctx.fillText(detail,x+102,y+36);ctx.restore();
 }
+// MEADOW_GATE_ART_BEGIN
+// Separate painted frame and lifting leaf; gameplay collision remains MEADOW_GATE.
+const meadowGateSheet=new Image();meadowGateSheet.src='assets/meadow-gate-v1.png';
 function drawMeadowGateForeground(){
-  const m=meadowLesson;ctx.save();
-  // Draw the frame and lifting leaf over Benny so he passes behind the doorway.
-  const gate={...MEADOW_GATE,y:MEADOW_GATE.y-MEADOW_GATE.h*m.lift},gx=MEADOW_GATE.x-cameraX;
-  if(gx>-160&&gx<W+160){
-    for(const beam of [{x:MEADOW_GATE.x-20,y:30,w:20,h:440},{x:MEADOW_GATE.x+90,y:30,w:20,h:440},{x:MEADOW_GATE.x-32,y:20,w:154,h:28}]){
-      ctx.fillStyle='#81603b';ctx.fillRect(beam.x-cameraX,beam.y,beam.w,beam.h);
-      if(waterCabinSheet.naturalWidth)drawShipTimber(beam);
-    }
-    ctx.save();ctx.beginPath();ctx.rect(gx,MEADOW_GATE.y,MEADOW_GATE.w,MEADOW_GATE.h);ctx.clip();
-    ctx.fillStyle='#715436';ctx.fillRect(gx,gate.y,gate.w,gate.h);
-    for(let i=0;i<6;i++){
-      const beam={x:MEADOW_GATE.x+i*15,y:gate.y,w:15,h:gate.h};
-      if(waterCabinSheet.naturalWidth)drawShipTimber(beam);
-      ctx.strokeStyle='#3f4139';ctx.lineWidth=1;ctx.strokeRect(beam.x-cameraX,beam.y,beam.w,beam.h);
-    }
-    for(const y of [gate.y+90,gate.y+320]){ctx.fillStyle='#344e51';ctx.fillRect(gx,y,90,13);for(let i=0;i<3;i++){ctx.fillStyle='#b5b699';ctx.beginPath();ctx.arc(gx+12+i*32,y+6,3,0,7);ctx.fill();}}
-    ctx.restore();ctx.fillStyle='#304d45';roundRect(gx-5,95,100,45,8);ctx.font='800 13px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff1be';ctx.fillText(m.lift===1?'OPEN':`${meadowBalloonsPopped()} / 3`,gx+45,114);
-    for(let i=0;i<3;i++){ctx.fillStyle=m.balloons[i].popped?'#a6e5a0':'#c3a36b';ctx.beginPath();ctx.arc(gx+22+i*23,129,5,0,7);ctx.fill();}
-  }
+  const m=meadowLesson,g=MEADOW_GATE,gx=g.x-cameraX;
+  if(gx<-160||gx>W+160)return;
+  ctx.save();
+  // The moving leaf stays behind its fixed jambs and header, even halfway open.
+  ctx.save();ctx.beginPath();ctx.rect(gx,g.y,g.w,g.h);ctx.clip();
+  const leafY=g.y-g.h*m.lift;
+  ctx.fillStyle='#80522b';ctx.fillRect(gx,leafY,g.w,g.h);
+  if(meadowGateSheet.complete&&meadowGateSheet.naturalWidth)ctx.drawImage(meadowGateSheet,640,234,372,1210,gx,leafY,g.w,g.h);
+  ctx.restore();
+  // Opaque cores preserve the walk-behind effect around the painted timber edges.
+  ctx.fillStyle='#95612f';
+  ctx.fillRect(gx-20,30,20,440);ctx.fillRect(gx+90,30,20,440);ctx.fillRect(gx-32,20,154,28);
+  if(meadowGateSheet.complete&&meadowGateSheet.naturalWidth)ctx.drawImage(meadowGateSheet,11,10,613,1455,gx-32,20,154,450);
+  // The progress plaque belongs to the lintel rather than floating in the passage.
+  ctx.fillStyle='#304d45';roundRect(gx-5,28,100,40,7);
+  ctx.strokeStyle='#bd995c';ctx.lineWidth=1.5;ctx.strokeRect(gx-2,31,94,34);
+  ctx.font='800 12px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff1be';
+  ctx.fillText(m.lift>=1?'OPEN':`${meadowBalloonsPopped()} / 3`,gx+45,43);
+  for(let i=0;i<3;i++){ctx.fillStyle=m.balloons[i].popped?'#a6e5a0':'#c3a36b';ctx.beginPath();ctx.arc(gx+22+i*23,56,4.5,0,7);ctx.fill();}
   ctx.restore();
 }
+
+// MEADOW_GATE_ART_END
 function drawMeadowLessons(){
   const m=meadowLesson,p=MEADOW_POOL,t=m.time;
   drawMeadowPondGround();ctx.save();
@@ -3932,13 +3937,22 @@ function pirateFrame(pirate){
   if(pirate.swing>0)return 4+Math.min(3,Math.floor((.8-pirate.swing)/.2));
   return Math.floor(pirate.phase*1.2)%4;
 }
+// Tight weapon bounds in the painted pose, relative to the pirate's body.
+const PIRATE_WEAPON_BOXES=[{x:-13,y:22,w:27,h:24},{x:26,y:-29,w:27,h:38},
+  {x:-14,y:9,w:45,h:24},{x:40,y:2,w:22,h:30}];
 function pirateWeaponBox(pirate){
   if(pirate.swing<=0)return null;
   const frame=pirateFrame(pirate);
-  if(frame===4)return pirate.swing<=.7?{x:pirate.x-45,y:pirate.y-45,w:58,h:70}:null;
-  if(frame===5)return{x:pirate.x+23,y:pirate.y-96,w:52,h:98};
-  if(frame===6)return{x:pirate.x-55,y:pirate.y-45,w:120,h:58};
-  return{x:pirate.x+28,y:pirate.y-58,w:65,h:73};
+  if(frame===4&&pirate.swing>.7)return null;
+  const b=PIRATE_WEAPON_BOXES[frame-4],angle=(pirate.tetherAngle||0)*.25;
+  if(!angle)return {x:pirate.x+b.x,y:pirate.y+b.y,w:b.w,h:b.h};
+  // Follow the same pendulum rotation as the painting, around its feet.
+  const cx=pirate.x+pirate.w/2,cy=pirate.y+pirate.h,c=Math.cos(angle),s=Math.sin(angle);
+  const points=[[b.x,b.y],[b.x+b.w,b.y],[b.x,b.y+b.h],[b.x+b.w,b.y+b.h]].map(([x,y])=>{
+    const dx=x-pirate.w/2,dy=y-pirate.h;return {x:cx+dx*c-dy*s,y:cy+dx*s+dy*c};
+  });
+  const left=Math.min(...points.map(p=>p.x)),top=Math.min(...points.map(p=>p.y));
+  return {x:left,y:top,w:Math.max(...points.map(p=>p.x))-left,h:Math.max(...points.map(p=>p.y))-top};
 }
 function waterPirateAnchor(pirate){return{x:pirate.anchorX+24,y:waterFloorY(pirate.anchorX+24)-65};}
 function waterPirateAnkle(pirate){return{x:pirate.x+12,y:pirate.y+pirate.h-4};}
@@ -3972,14 +3986,15 @@ function updateWater(dt){
   player.swimClock+=dt;player.stroke=Math.max(0,player.stroke-dt);
   waterPirates.filter(p=>p.hp>0).forEach(positionWaterPirate);
   const waterSolids=[...waterReefs,...waterShipSolids(),...waterGateSolid(),...waterAdventureSolids(),...waterPirates.filter(p=>p.hp>0).flatMap(waterTetherSolids)];
-  if(!player.breaching)resolveWaterTetherContact(waterSolids);
+  const movementSolids=[...waterSolids,...waterTurtleSolids()];
+  if(!player.breaching){resolveWaterTetherContact(waterSolids);resolveWaterTurtleContact(movementSolids);}
   const swimX=(keys.has('ArrowRight')||keys.has('KeyD')?1:0)-(keys.has('ArrowLeft')||keys.has('KeyA')?1:0)||joystickAxis(joystick.dx);
   const swimY=(keys.has('ArrowDown')||keys.has('KeyS')||duckPointer!==null?1:0)-(keys.has('ArrowUp')||keys.has('KeyW')?1:0)||joystickAxis(joystick.dy);
   const left=swimX<0,right=swimX>0,up=swimY<0,down=swimY>0;
   if(left)player.facing=-1;if(right)player.facing=1;
   updateWaterGate(dt,right);
   const oldX=player.x,oldY=player.y;
-  if(waterTrident.dash>0){moveWaterDash(dt,waterSolids);}
+  if(waterTrident.dash>0){moveWaterDash(dt,movementSolids);}
   else if(player.breaching){
     player.jumpAge+=dt;
     player.vx+=swimX*480*dt;
@@ -3994,7 +4009,7 @@ function updateWater(dt){
     if(player.x<oldX&&player.y+player.h>waterFloorY(player.x+player.w/2)+12){player.x=oldX;player.vx=0;}
     if(player.vy>0&&player.y+player.h>=WATER_SURFACE+6&&waterFloorY(player.x+player.w/2)>WATER_SURFACE){
       player.breaching=false;player.y=WATER_SURFACE+6-player.h;player.vy=Math.min(170,player.vy*.3);player.stroke=.4;
-      for(const reef of waterSolids)if(overlap(player,reef)){
+      for(const reef of movementSolids)if(overlap(player,reef)){
         player.x=oldX<reef.x?reef.x-player.w:reef.x+reef.w;player.vx=0;
       }
       burst(player.x+player.w/2,WATER_SURFACE,'#ddfff5',12);tone(250,.09,'sine',.025);
@@ -4010,11 +4025,11 @@ function updateWater(dt){
     const center=player.x+player.w/2;
     const shallowBank=center<WATER_CAVE_START&&player.y<=WATER_SURFACE-WATER_FLOAT_HEAD+2&&player.y+player.h<=waterFloorY(center)+12;
     if(center>=WATER_CAVE_START&&player.y<waterCeilingY(center,player.y)-1||!shallowBank&&player.y+player.h>waterFloorY(center)+1){player.x=oldX;player.vx=0;}
-    for(const reef of waterSolids)if(overlap(player,reef)){player.x=oldX;player.vx=0;}
+    for(const reef of movementSolids)if(overlap(player,reef)){player.x=reef.turtle&&player.vx?player.vx>0?reef.x-player.w-.01:reef.x+reef.w+.01:oldX;player.vx=0;}
     const minY=waterSwimTopY(player.x+player.w/2,player.y),maxY=waterFloorY(player.x+player.w/2)-player.h;
     player.y=Math.max(minY,Math.min(maxY,player.y+player.vy*dt));
     if(player.y===minY&&player.vy<0||player.y===maxY&&player.vy>0)player.vy=0;
-    for(const reef of waterSolids)if(overlap(player,reef)){player.y=oldY;player.vy=0;}
+    for(const reef of movementSolids)if(overlap(player,reef)){player.y=reef.turtle&&player.vy?player.vy>0?reef.y-player.h-.01:reef.y+reef.h+.01:oldY;player.vy=0;}
   }
   player.onGround=false;
   const shoreFloor=waterFloorY(player.x+player.w/2),feet=player.y+player.h;
@@ -4450,8 +4465,9 @@ function drawFinalTowerDoor(){
 function drawFinalTowerDoorForeground(){
   const x=FINAL_INNER_DOOR_X-cameraX,w=FINAL_INNER_DOOR_HALF_W;
   if(x>W||x+2*w<0)return;
-  // Keep the stone jambs in front while leaving the passage itself visible.
-  ctx.save();ctx.beginPath();ctx.rect(x,FINAL_HALL.top,2*w,FINAL_FLOOR-FINAL_HALL.top);
+  // Benny passes in front of the left jamb, then behind the right jamb into the tower.
+  ctx.save();ctx.beginPath();ctx.rect(x+w,FINAL_HALL.top,w,FINAL_FLOOR-FINAL_HALL.top);ctx.clip();
+  ctx.beginPath();ctx.rect(x,FINAL_HALL.top,2*w,FINAL_FLOOR-FINAL_HALL.top);
   finalTowerDoorAperture();ctx.clip('evenodd');drawFinalTowerDoorFrame();
   ctx.fillStyle=`rgba(8,10,25,${Math.min(.27,cameraX/6000)})`;ctx.fillRect(x,FINAL_HALL.top,2*w,FINAL_HALL.height);ctx.restore();
   const width=117*(1-finalTowerDoorLift);
@@ -5104,6 +5120,22 @@ function waterTurtlePose(i,time){
   const live=time===undefined?waterReefSwimmers[105+i]:null;
   return live?{x:live.x,y:live.y,direction:live.direction,stroke:(Math.sin(waterTime*3+i)+1)/2,cycle:(waterTime*.75+i*.23)%1}:waterTurtlePath(i,time??waterTime);
 }
+function waterTurtleBody(c,x=c.x,y=c.y){return {x:x-c.hw,y:y-c.hh,w:c.hw*2,h:c.hh*2,turtle:c};}
+function waterTurtleSolids(){return waterReefSwimmers.filter(c=>c.turtle).map(c=>waterTurtleBody(c));}
+function resolveWaterTurtleContact(solids){
+  // A checkpoint can place Benny inside a passing shell. Separate harmlessly
+  // toward the nearest free face rather than trapping both movement axes.
+  for(const body of solids.filter(s=>s.turtle)){
+    if(!overlap(player,body))continue;
+    const choices=[{x:body.x-player.w-.01,y:player.y},{x:body.x+body.w+.01,y:player.y},
+      {x:player.x,y:body.y-player.h-.01},{x:player.x,y:body.y+body.h+.01}];
+    choices.sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y));
+    for(const p of choices)if(waterPositionClear({...player,...p},solids)){
+      if(p.x!==player.x)player.vx=0;if(p.y!==player.y)player.vy=0;
+      player.x=p.x;player.y=p.y;break;
+    }
+  }
+}
 function waterReefObstacles(){
   return [...waterReefs,...waterShipSolids(),...waterAirPockets.filter(p=>p.ship).map(p=>({x:p.x,y:p.y-22,w:p.w,h:210}))];
 }
@@ -5173,6 +5205,12 @@ function updateWaterReefLife(dt){
         if(waterSwimmerClear(c,x,c.y,rocks)){y=c.y;vy=0;}
         else if(waterSwimmerClear(c,c.x,y,rocks)){x=c.x;vx=0;}
         else{x=c.x;y=c.y;vx=-c.vx*.35;vy=-c.vy*.35;}
+      }
+      // A turtle gives way but never swims its solid shell through Benny.
+      if(c.turtle&&player.inWater&&!player.breaching&&!overlap(player,waterTurtleBody(c))&&overlap(player,waterTurtleBody(c,x,y))){
+        if(!overlap(player,waterTurtleBody(c,x,c.y))&&waterSwimmerClear(c,x,c.y,rocks)){y=c.y;vy=0;}
+        else if(!overlap(player,waterTurtleBody(c,c.x,y))&&waterSwimmerClear(c,c.x,y,rocks)){x=c.x;vx=0;}
+        else{x=c.x;y=c.y;vx=vy=0;}
       }
       const actualX=(x-c.x)/step;
       return {x,y,vx,vy,direction:Math.abs(actualX)>.5?Math.sign(actualX):c.direction};
@@ -5557,11 +5595,7 @@ function drawAirWorld(){
     ctx.save();ctx.strokeStyle='#a7faff';ctx.shadowColor='#84f4ff';ctx.shadowBlur=14;ctx.globalAlpha=.5+.2*Math.sin(airTime*4);ctx.lineWidth=4;
     for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(5932-cameraX,-1690-i*48);ctx.quadraticCurveTo(5904-cameraX,-1714-i*48,5932-cameraX,-1738-i*48);ctx.stroke();}ctx.restore();
   }
-  if(descentStarted){
-    ctx.save();ctx.strokeStyle='rgba(245,255,255,.38)';ctx.lineWidth=2;ctx.setLineDash([10,18]);
-    for(const wx of [DESCENT.left,DESCENT.right]){ctx.beginPath();ctx.moveTo(wx-cameraX,-1610);ctx.lineTo(wx-cameraX,airPlatforms[DESCENT.finish].y);ctx.stroke();}
-    ctx.restore();
-  }
+  drawDescentWindGuide();
 }
 const windStarSheet=new Image();windStarSheet.src='assets/wind-ninja-star-v1.png';
 function drawWindStar(x,y,size,angle=0){
@@ -5640,24 +5674,44 @@ function drawAirMonster(m){
   }
   ctx.restore();
 }
+// AIR_DESCENT_ART_BEGIN
+// Painted hazards for the drop after Tempest; all collision/timing stays in updateDescent.
+const descentCloudSheet=new Image();descentCloudSheet.src='assets/air-descent-clouds-v1.png';
+const DESCENT_CLOUD_CROPS=[[12,267,604,159],[639,268,603,158],[12,868,604,159]],DESCENT_BOLT_CROP=[839,672,265,550];
 function drawDescentCloud(o){
-  const x=o.x-cameraX,y=o.y;if(x>W+40||x+o.w<-40||y-cameraY>H+100||y+o.h+120-cameraY<-100)return;
-  const frame=stormFrame(o),phase=stormPhase(o);
-  ctx.save();ctx.fillStyle=phase==='on'?'#455c79':'#263346';ctx.strokeStyle='#142334';ctx.lineWidth=3;
-  ctx.shadowColor='#b8eaff';ctx.shadowBlur=[0,3,5,9,12,22,26,8][frame];
-  ctx.beginPath();ctx.roundRect(x,y+18,o.w,o.h-18,24);ctx.fill();ctx.stroke();
-  for(let i=28;i<o.w;i+=44){ctx.beginPath();ctx.ellipse(x+i,y+26,30,26+Math.sin(i+airTime*2)*3,0,0,Math.PI*2);ctx.fill();}
-  ctx.fillStyle=phase==='warn'?'#91a7c2':'#68728b';ctx.beginPath();ctx.ellipse(x+o.w*.35,y+18,o.w*.22,9,0,0,Math.PI*2);ctx.fill();
-  if(frame>0){
-    ctx.strokeStyle=phase==='on'?'#fffce1':'#b5e3ff';ctx.lineWidth=phase==='on'?4:2;
-    ctx.globalAlpha=phase==='fade'?.35:1;
-    const cx=x+o.w*.5;ctx.beginPath();ctx.moveTo(cx-20,y+22);ctx.lineTo(cx+9,y+34);ctx.lineTo(cx-9,y+46);ctx.lineTo(cx+17,y+o.h-6);ctx.stroke();
+  const x=o.x-cameraX,y=o.y;
+  if(x>W+40||x+o.w<-40||y-cameraY>H+100||y+o.h+120-cameraY<-100)return;
+  const frame=stormFrame(o),phase=stormPhase(o),pose=frame===0?0:frame<4?1:2;
+  ctx.save();ctx.shadowColor='#b8eaff';ctx.shadowBlur=[0,3,5,9,12,22,26,8][frame];
+  if(descentCloudSheet.complete&&descentCloudSheet.naturalWidth){
+    ctx.drawImage(descentCloudSheet,...DESCENT_CLOUD_CROPS[pose],x,y,o.w,o.h);
     if(phase==='on'||phase==='fade'){
-      const bolt=descentBolt(o);ctx.beginPath();ctx.moveTo(cx,y+o.h-6);ctx.lineTo(cx-9,y+o.h+bolt.h*.4);ctx.lineTo(cx+9,y+o.h+bolt.h*.55);ctx.lineTo(cx,y+o.h+bolt.h);ctx.stroke();
+      const b=descentBolt(o);ctx.globalAlpha=phase==='fade'?.3:1;
+      // The bright core follows the existing 24px strike lane; the halo is decorative.
+      ctx.drawImage(descentCloudSheet,...DESCENT_BOLT_CROP,b.x-cameraX-7,b.y-3,b.w+14,b.h+3);
+    }
+  }else drawPaintedCloud({x:o.x,y:o.y,w:o.w,kind:'white'});
+  ctx.restore();
+}
+function drawDescentWindGuide(){
+  if(!descentStarted)return;
+  ctx.save();ctx.beginPath();ctx.rect(DESCENT.left-45-cameraX,-1610,DESCENT.right-DESCENT.left+90,airPlatforms[DESCENT.finish].y+1610);ctx.clip();
+  ctx.lineCap='round';ctx.lineJoin='round';
+  const drift=airTime*16%160,first=Math.floor((cameraY+1610)/160)-1;
+  // Soft rising wind curls replace the rigid dotted sides of the drop corridor.
+  for(const [wx,dir] of [[DESCENT.left-18,1],[DESCENT.right+18,-1]]){
+    for(let i=first;i*160-1610-drift<Math.min(cameraY+H+80,airPlatforms[DESCENT.finish].y);i++){
+      const x=wx-cameraX,y=i*160-1610-drift;
+      ctx.beginPath();ctx.moveTo(x,y);ctx.bezierCurveTo(x-dir*10,y+20,x+dir*13,y+43,x+dir*8,y+65);
+      ctx.bezierCurveTo(x+dir*4,y+83,x-dir*8,y+85,x-dir*7,y+72);
+      ctx.strokeStyle='rgba(89,153,179,.22)';ctx.lineWidth=7;ctx.stroke();
+      ctx.strokeStyle='rgba(245,255,244,.6)';ctx.lineWidth=2.2;ctx.stroke();
     }
   }
   ctx.restore();
 }
+
+// AIR_DESCENT_ART_END
 const tempestSheet=new Image();
 tempestSheet.src='assets/tempest-v1.png';
 let tempestPosePainter=null;
