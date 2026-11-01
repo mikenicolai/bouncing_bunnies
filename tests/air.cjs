@@ -1,7 +1,9 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const html=fs.readFileSync('index.html','utf8');
-const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
-new vm.Script(script);
+const releaseScript=html.match(/<script>([\s\S]*?)<\/script>/)[1];
+new vm.Script(releaseScript);
+// Unit fixtures may start any world; the shipped page stays production-only.
+const script=releaseScript.replace('const DEVELOPER_TOOLS_ENABLED=false','const DEVELOPER_TOOLS_ENABLED=true');
 const nodes=new Map();
 function node(id){if(!nodes.has(id))nodes.set(id,{width:960,height:540,hidden:false,style:{setProperty(){},removeProperty(){}},classList:{add(){},remove(){},toggle(){},contains(){return false;}},listeners:{},addEventListener(n,f){(this.listeners[n]??=[]).push(f);},setAttribute(){},focus(){},blur(){},getContext(){return {};},getBoundingClientRect(){return {x:0,y:0,left:0,top:0,width:960,height:540};},querySelector(s){return node(id+s);},setPointerCapture(){}});return nodes.get(id);}
 const window=node('window');window.scrollTo=()=>{};

@@ -286,7 +286,7 @@ kbd { padding: 2px 6px; border: 1px solid #43505b; border-radius: 4px; color: #b
       <footer>
         <span>Collect every coin for a perfect run.</span>
         <span id="walletBalance" aria-live="polite">Wallet: 0 coins</span>
-        <span><kbd>Shift</kbd> + arrows run · <kbd>R</kbd> restart · <kbd>M</kbd> map</span>
+        <span><kbd>Shift</kbd> + arrows run · <kbd>M</kbd> map</span>
         <button id="mapOpen" class="icon-button" type="button">World map</button>
       </footer>
     </main>
@@ -677,7 +677,7 @@ const gameFrame = document.querySelector('.game-frame');
 const gameShell = document.querySelector('.game-shell');
 for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(event,e=>e.preventDefault());
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.21.36',build:2026102003,builtAt:'2026-10-20',builtLabel:'20 October 2026',deployment:'Painted lava, rewards and replay'});
+const BUILD_INFO=Object.freeze({version:'0.22.0',build:2026110101,builtAt:'2026-11-01',builtLabel:'1 November 2026',deployment:'Adventure release'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -3494,7 +3494,7 @@ function restartWithHearts(hearts){
   if(!revivePending||reviveLevel!==level||!['lost','reviveAd'].includes(state))return false;
   // Restart this world from its beginning, keeping the wallet and earlier worlds.
   resetGame(true);lives=hearts;player.invincible=3;saveWorldProgress();
-  document.querySelector('#worldMap').hidden=true;document.querySelector('#developerMenu').hidden=true;
+  document.querySelector('#worldMap').hidden=true;hideDeveloperMenu();
   overlay.classList.add('hidden');overlay.inert=true;tone(650,.15,'sine',.035);return true;
 }
 function buyReviveHeart(){
@@ -3600,7 +3600,7 @@ function start() {
   if(!developerRun&&!canPlayWorld(level)){level=nextWorld();resetGame(false);openWorldMap();return;}
   overlay.inert=true;
   document.querySelector('#worldMap').hidden=true;
-  resetGame(true);document.querySelector('#developerMenu').hidden=true; overlay.classList.add("hidden"); tone(440,.08); setTimeout(()=>tone(660,.12),70);
+  resetGame(true);hideDeveloperMenu(); overlay.classList.add("hidden"); tone(440,.08); setTimeout(()=>tone(660,.12),70);
 }
 
 function showEnd(won) {
@@ -3683,7 +3683,7 @@ function openWorldMap(){
   if(state==='lost'&&revivePending)abandonFailedRun();
   if(state!=='map')mapReturnState=state;
   state='map';clearInputs();
-  document.querySelector('#developerMenu').hidden=true;
+  hideDeveloperMenu();
   overlay.classList.add('hidden');document.querySelector('#worldMap').hidden=false;
   overlay.inert=true;
   document.querySelector('#worldMap').classList.toggle('meadow-finished',meadowFinished&&level==='meadow');
@@ -3704,9 +3704,10 @@ function openWorldMap(){
   if(developerRun)openDeveloperMenu();
 }
 // DEVELOPER_MODE_BEGIN
-// Set false in a production build to remove the hidden map shortcut and test entry points.
-const DEVELOPER_TOOLS_ENABLED=true;
+// Release default. Test harnesses may enable this in memory; no URL/storage opt-in exists.
+const DEVELOPER_TOOLS_ENABLED=false;
 let developerRun=false,developerWalletBefore=null,developerStartedLevel=false;
+function hideDeveloperMenu(){const menu=document.querySelector('#developerMenu');if(menu)menu.hidden=true;}
 function beginDeveloperSession(){
   if(!DEVELOPER_TOOLS_ENABLED)return false;
   if(!developerRun){bankMonsterRewards();developerWalletBefore=coinWallet;developerStartedLevel=false;developerRun=true;}
@@ -3734,25 +3735,27 @@ function setDeveloperCoins(value){
 function launchDeveloperWorld(world){
   if(state!=='developer'||!DEVELOPER_TOOLS_ENABLED||!PROGRESSION_ORDER.includes(world))return false;
   beginDeveloperSession();developerStartedLevel=true;level=world;
-  document.querySelector('#developerMenu').hidden=true;start();
+  hideDeveloperMenu();start();
   if(world==='final')finalGateLift=1;
   return true;
 }
 function exitDeveloperMode(){
-  if(state!=='developer')return false;
+  if(!DEVELOPER_TOOLS_ENABLED||state!=='developer')return false;
   const restartNormal=developerStartedLevel;
   if(developerRun){coinWallet=developerWalletBefore;refreshWallet();}
   developerRun=false;developerWalletBefore=null;developerStartedLevel=false;
-  document.querySelector('#developerMenu').hidden=true;
+  hideDeveloperMenu();
   if(restartNormal){level=nextWorld();resetGame(false);openWorldMap();}
   else{state='map';document.querySelector('#worldMap').hidden=false;}
   document.querySelector('#mapHeading').focus();return true;
 }
-document.querySelectorAll('[data-dev-world]').forEach(button=>button.addEventListener('click',()=>launchDeveloperWorld(button.dataset.devWorld)));
-document.querySelector('#developerWalletForm').addEventListener('submit',event=>{event.preventDefault();setDeveloperCoins(document.querySelector('#developerCoins').value);});
-document.querySelector('#developerCoins100').addEventListener('click',()=>setDeveloperCoins(100));
-document.querySelector('#developerCoins1000').addEventListener('click',()=>setDeveloperCoins(1000));
-document.querySelector('#developerExit').addEventListener('click',exitDeveloperMode);
+if(DEVELOPER_TOOLS_ENABLED){
+  document.querySelectorAll('[data-dev-world]').forEach(button=>button.addEventListener('click',()=>launchDeveloperWorld(button.dataset.devWorld)));
+  document.querySelector('#developerWalletForm').addEventListener('submit',event=>{event.preventDefault();setDeveloperCoins(document.querySelector('#developerCoins').value);});
+  document.querySelector('#developerCoins100').addEventListener('click',()=>setDeveloperCoins(100));
+  document.querySelector('#developerCoins1000').addEventListener('click',()=>setDeveloperCoins(1000));
+  document.querySelector('#developerExit').addEventListener('click',exitDeveloperMode);
+}else document.querySelector('#developerMenu')?.remove();
 
 // DEVELOPER_MODE_END
 document.querySelectorAll('[data-world]').forEach(button=>button.addEventListener('click',()=>selectWorld(button.dataset.world)));
@@ -6662,7 +6665,7 @@ function render(time) {
 
 function loop(ms) { const t=ms/1000,dt=Math.min(.033,t-lastTime||0);lastTime=t;update(dt);render(t);requestAnimationFrame(loop); }
 
-window.addEventListener("keydown",e=>{if(e.code==='KeyR')return;if(state==='reviveAd'){e.preventDefault();return;}if(state==='developer'){if(e.code==='Escape')exitDeveloperMode();return;}if(e.code==='KeyO'){if(level==='final'){e.preventDefault();if(!e.repeat)cycleFinalWeapon();}else if(level==='earth'){e.preventDefault();if(!e.repeat)toggleEarthTurtle();}return;}if(e.code==='KeyM'){e.preventDefault();if(!e.repeat&&state!=='map')openWorldMap();return;}if(state==='map'){if(e.code==='KeyD'&&!e.repeat){e.preventDefault();openDeveloperMenu();}return;}if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(!e.repeat&&(e.code==='Space'||e.code==='ArrowUp'&&!fireArcheryMode()&&!bunnySwimming()))jump();if(e.code==='KeyZ'&&!e.repeat){if(level==='final')toggleFinalWeapon();else if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}if(["KeyX","KeyF"].includes(e.code)&&!e.repeat)attack();});
+window.addEventListener("keydown",e=>{if(e.code==='KeyR')return;if(state==='reviveAd'){e.preventDefault();return;}if(state==='developer'){if(e.code==='Escape')exitDeveloperMode();return;}if(e.code==='KeyO'){if(level==='final'){e.preventDefault();if(!e.repeat)cycleFinalWeapon();}else if(level==='earth'){e.preventDefault();if(!e.repeat)toggleEarthTurtle();}return;}if(e.code==='KeyM'){e.preventDefault();if(!e.repeat&&state!=='map')openWorldMap();return;}if(state==='map'){if(DEVELOPER_TOOLS_ENABLED&&e.code==='KeyD'&&!e.repeat){e.preventDefault();openDeveloperMenu();}return;}if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(!e.repeat&&(e.code==='Space'||e.code==='ArrowUp'&&!fireArcheryMode()&&!bunnySwimming()))jump();if(e.code==='KeyZ'&&!e.repeat){if(level==='final')toggleFinalWeapon();else if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}if(["KeyX","KeyF"].includes(e.code)&&!e.repeat)attack();});
 window.addEventListener("keyup",e=>keys.delete(e.code));
 function canvasPoint(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
 function fitTouchControls(){

@@ -78,7 +78,7 @@ function restartWithHearts(hearts){
   if(!revivePending||reviveLevel!==level||!['lost','reviveAd'].includes(state))return false;
   // Restart this world from its beginning, keeping the wallet and earlier worlds.
   resetGame(true);lives=hearts;player.invincible=3;saveWorldProgress();
-  document.querySelector('#worldMap').hidden=true;document.querySelector('#developerMenu').hidden=true;
+  document.querySelector('#worldMap').hidden=true;hideDeveloperMenu();
   overlay.classList.add('hidden');overlay.inert=true;tone(650,.15,'sine',.035);return true;
 }
 function buyReviveHeart(){

@@ -1,6 +1,7 @@
-// Set false in a production build to remove the hidden map shortcut and test entry points.
-const DEVELOPER_TOOLS_ENABLED=true;
+// Release default. Test harnesses may enable this in memory; no URL/storage opt-in exists.
+const DEVELOPER_TOOLS_ENABLED=false;
 let developerRun=false,developerWalletBefore=null,developerStartedLevel=false;
+function hideDeveloperMenu(){const menu=document.querySelector('#developerMenu');if(menu)menu.hidden=true;}
 function beginDeveloperSession(){
   if(!DEVELOPER_TOOLS_ENABLED)return false;
   if(!developerRun){bankMonsterRewards();developerWalletBefore=coinWallet;developerStartedLevel=false;developerRun=true;}
@@ -28,22 +29,24 @@ function setDeveloperCoins(value){
 function launchDeveloperWorld(world){
   if(state!=='developer'||!DEVELOPER_TOOLS_ENABLED||!PROGRESSION_ORDER.includes(world))return false;
   beginDeveloperSession();developerStartedLevel=true;level=world;
-  document.querySelector('#developerMenu').hidden=true;start();
+  hideDeveloperMenu();start();
   if(world==='final')finalGateLift=1;
   return true;
 }
 function exitDeveloperMode(){
-  if(state!=='developer')return false;
+  if(!DEVELOPER_TOOLS_ENABLED||state!=='developer')return false;
   const restartNormal=developerStartedLevel;
   if(developerRun){coinWallet=developerWalletBefore;refreshWallet();}
   developerRun=false;developerWalletBefore=null;developerStartedLevel=false;
-  document.querySelector('#developerMenu').hidden=true;
+  hideDeveloperMenu();
   if(restartNormal){level=nextWorld();resetGame(false);openWorldMap();}
   else{state='map';document.querySelector('#worldMap').hidden=false;}
   document.querySelector('#mapHeading').focus();return true;
 }
-document.querySelectorAll('[data-dev-world]').forEach(button=>button.addEventListener('click',()=>launchDeveloperWorld(button.dataset.devWorld)));
-document.querySelector('#developerWalletForm').addEventListener('submit',event=>{event.preventDefault();setDeveloperCoins(document.querySelector('#developerCoins').value);});
-document.querySelector('#developerCoins100').addEventListener('click',()=>setDeveloperCoins(100));
-document.querySelector('#developerCoins1000').addEventListener('click',()=>setDeveloperCoins(1000));
-document.querySelector('#developerExit').addEventListener('click',exitDeveloperMode);
+if(DEVELOPER_TOOLS_ENABLED){
+  document.querySelectorAll('[data-dev-world]').forEach(button=>button.addEventListener('click',()=>launchDeveloperWorld(button.dataset.devWorld)));
+  document.querySelector('#developerWalletForm').addEventListener('submit',event=>{event.preventDefault();setDeveloperCoins(document.querySelector('#developerCoins').value);});
+  document.querySelector('#developerCoins100').addEventListener('click',()=>setDeveloperCoins(100));
+  document.querySelector('#developerCoins1000').addEventListener('click',()=>setDeveloperCoins(1000));
+  document.querySelector('#developerExit').addEventListener('click',exitDeveloperMode);
+}else document.querySelector('#developerMenu')?.remove();
