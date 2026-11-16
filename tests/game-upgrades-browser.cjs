@@ -27,9 +27,9 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await normal.evaluate(()=>{completeWorld('meadow');completeWorld('air');openWorldMap();});
   assert.equal(await normal.locator('[data-world]:not(:disabled)').count(),3);
   await normal.locator('[data-world="meadow"]').click();assert.equal(await normal.evaluate(()=>selectedWorld),'meadow');assert((await normal.locator('#mapAvailability').textContent()).startsWith('Replay'));
-  await normal.locator('#mapAvailability').click();assert.equal(await normal.evaluate(()=>level),'meadow');assert.equal(await normal.evaluate(()=>nextWorld()),'water');
-  await normal.evaluate(()=>openWorldMap());await normal.locator('[data-world="air"]').click();await normal.locator('#mapAvailability').click();assert.equal(await normal.evaluate(()=>level),'air');assert.equal(await normal.evaluate(()=>nextWorld()),'water');
-  await normal.evaluate(()=>openWorldMap());await normal.locator('[data-world="water"]').click();await normal.locator('#mapAvailability').click();assert.equal(await normal.evaluate(()=>level),'water');
+  assert.equal(await normal.evaluate(()=>level),'meadow');assert.equal(await normal.evaluate(()=>nextWorld()),'water');
+  await normal.evaluate(()=>openWorldMap());await normal.locator('[data-world="air"]').click();assert.equal(await normal.evaluate(()=>level),'air');assert.equal(await normal.evaluate(()=>nextWorld()),'water');
+  await normal.evaluate(()=>openWorldMap());await normal.locator('[data-world="water"]').click();assert.equal(await normal.evaluate(()=>level),'water');
   await normal.evaluate(()=>openWorldMap());await normal.locator('#worldMap').screenshot({path:'previews/game-upgrades-replay-map-v1.png'});
   assert(await normal.evaluate(()=>meadowFinished&&airFinished&&!waterFinished));assert(await normal.locator('[data-world="earth"]').isDisabled());
   assert.deepEqual(errors,[]);console.log('PASS upgrades browser: painted world-anchored lava, new bow in-game, real 3-heart reward and wallet accounting, Knight parry, phone scenes, no fullscreen controls, ordered unlocks and replay of completed worlds without losing progress.');

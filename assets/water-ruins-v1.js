@@ -6,21 +6,51 @@ const NEPTUNUS_HP=10;
 const NEPTUNUS_COMBAT={hurt:.38,guard:1.35,warn:.52,enragedWarn:.42,recover:.42,enragedRecover:.32,cooldown:.25,enragedCooldown:.16};
 const WATER_TRIDENT_DASH_SPEED=720,WATER_TRIDENT_DASH_TIME=.68,WATER_TRIDENT_RETURN_SPEED=1500;
 let waterTrident,waterAquaSuit,neptunus,neptunusShots;
+// Remember a failed unprepared attempt across retries, without interrupting the first try.
+let neptunusHelpSeen=false,neptunusHelpTime=0;
+function neptunusHelpLines(){
+  if(level!=='water'||!neptunusHelpSeen||neptunus?.hp<=0)return [];
+  const lines=[];
+  if(!waterAquaSuit)lines.push('Aqua Suit: look low in the ruins, before Neptunus.');
+  if(!waterTrident.owned)lines.push('Trident: look just beyond the ship-key gate.');
+  return lines;
+}
+function rememberNeptunusFailure(){
+  if(level!=='water'||!neptunus.active||neptunus.hp<=0||player.x<=WATER_ARENA.left+80||waterAquaSuit&&waterTrident.owned)return;
+  neptunusHelpSeen=true;neptunusHelpTime=10;
+}
+function updateWaterGuidance(dt){
+  if(player.x>WATER_GATE.exitX-500)neptunusHelpTime=Math.max(0,neptunusHelpTime-dt);
+}
+function refreshWaterRetryHint(){
+  const node=document.querySelector('#waterRetryHint');if(!node)return;
+  const lines=neptunusHelpLines();node.hidden=!lines.length;
+  node.textContent=lines.length?'Hint · '+lines.join(' '):'';
+}
+function drawWaterGuidance(){
+  const lines=neptunusHelpLines();
+  if(!lines.length||neptunusHelpTime<=0||player.x<=WATER_GATE.exitX-500)return;
+  const width=Math.min(W-28,400),height=29+lines.length*17,x=(W-width)/2,y=playfieldHeight()-height-14;
+  ctx.save();ctx.fillStyle='rgba(13,42,65,.9)';roundRect(x,y,width,height,10);
+  ctx.textAlign='left';ctx.fillStyle='#ffe3a0';ctx.font='bold 12px system-ui';ctx.fillText('A little help for the next try',x+12,y+18);
+  ctx.fillStyle='#e6f7ee';ctx.font='11px system-ui';lines.forEach((line,i)=>ctx.fillText(line,x+12,y+36+i*17));ctx.restore();
+}
 const neptunusSheet=new Image();neptunusSheet.src='assets/neptunus-v2.png';
 const waterRuinsSheet=new Image();waterRuinsSheet.src='assets/ancient-water-ruins-v1.png';
 const waterTridentSheet=new Image();waterTridentSheet.src='assets/benny-trident-gold-cyber-v1.png';
 
 function waterClamp(value,min,max){return Math.max(min,Math.min(max,value));}
 function resetWaterAdventure(){
+  neptunusHelpTime=neptunusHelpSeen?10:0;
   neptunusPaintFrame=0;neptunusPreviousFrame=0;neptunusBlendAge=1;drawNeptunus.lastTime=0;
   waterTrident={owned:false,cyber:false,mode:'throw',cooldown:0,shot:null,dash:0,dx:1,dy:0};
   waterAquaSuit=false;neptunusShots=[];
-  neptunus={x:13800,y:1130,w:120,h:220,hp:NEPTUNUS_HP,active:false,mode:'idle',age:0,
+  neptunus={x:13800,y:1130,w:120,h:220,hp:NEPTUNUS_HP,active:false,sealed:false,mode:'idle',age:0,
     cooldown:.65,turn:0,facing:-1,flash:0,dizzy:0,guard:0,deathAge:0,targetX:0,targetY:0};
 }
 // The arena barrier must never separate a paid continuation from the fight.
 function ensureNeptunusCheckpoint(){
-  if(!neptunus.active||neptunus.hp<=0)return;
+  if(!neptunus.active||!neptunus.sealed||neptunus.hp<=0)return;
   if(checkpoint.arena&&checkpoint.water&&checkpoint.x>WATER_ARENA.left+80&&checkpoint.x<WATER_ARENA.right-100)return;
   const x=WATER_ARENA.left+180;
   const y=waterClamp(player.y,waterProfileY(WATER_ROOF,x)+80,waterFloorY(x)-player.h-65);
@@ -37,7 +67,7 @@ function waterViewSize(){
 }
 function waterAdventureSolids(){
   const walls=[];
-  if(neptunus.active&&neptunus.hp>0)walls.push({x:WATER_ARENA.left-65,y:680,w:55,h:820});
+  if(neptunus.active&&neptunus.sealed&&neptunus.hp>0)walls.push({x:WATER_ARENA.left-65,y:680,w:55,h:820});
   if(neptunus.hp>0||neptunus.deathAge<1.6)walls.push({x:WATER_ARENA.right,y:680,w:64,h:820});
   return walls;
 }
@@ -171,7 +201,9 @@ function pushNeptunusBubble(dt){
 function updateNeptunus(dt){
   const b=neptunus;
   player.waterBubbleGrace=Math.max(0,(player.waterBubbleGrace||0)-dt);
-  if(!b.active&&player.x>WATER_ARENA.left+80&&waterTrident.owned&&waterAquaSuit){b.active=true;ensureNeptunusCheckpoint();tone(120,.35,'triangle',.04);}
+  if(!b.active&&player.x>WATER_ARENA.left+80){b.active=true;tone(120,.35,'triangle',.04);}
+  // Unprepared challengers may retreat for the relics; a ready return seals the fight.
+  if(b.active&&!b.sealed&&waterTrident.owned&&waterAquaSuit&&player.x>WATER_ARENA.left+80){b.sealed=true;ensureNeptunusCheckpoint();}
   if(!b.active)return;
   if(b.hp<=0){b.deathAge+=dt;return;}
   b.age+=dt;b.flash=Math.max(0,b.flash-dt);b.dizzy=Math.max(0,b.dizzy-dt);b.guard=Math.max(0,b.guard-dt);
@@ -265,7 +297,16 @@ function waterItemPedestal(spot,label){
   const x=spot.x-cameraX,y=spot.y+52;ctx.fillStyle='#648d93';ctx.strokeStyle='#305267';ctx.lineWidth=3;
   ctx.fillStyle='#466d7b';ctx.fillRect(x-27,y+8,54,Math.max(26,waterFloorY(spot.x)-y));ctx.fillStyle='#648d93';
   ctx.beginPath();ctx.roundRect(x-42,y,84,26,6);ctx.fill();ctx.stroke();
-  ctx.fillStyle='#b1cfc0';ctx.fillRect(x-36,y-3,72,6);ctx.fillStyle='#edfbe0';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(label,x,spot.y-57);
+  ctx.fillStyle='#b1cfc0';ctx.fillRect(x-36,y-3,72,6);ctx.fillStyle='#edfbe0';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(label,x,spot.y-92);
+}
+function drawWaterRelicCue(spot){
+  if(Math.hypot(player.x+21-spot.x,player.y+29-spot.y)>480)return;
+  const x=spot.x-cameraX,y=spot.y,pulse=.5+.5*Math.sin(waterTime*2.4);
+  ctx.save();ctx.strokeStyle=`rgba(188,255,238,${.22+pulse*.13})`;ctx.lineWidth=2;
+  ctx.beginPath();ctx.ellipse(x,y+7,29+pulse*3,43+pulse*3,0,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='rgba(255,232,160,.65)';
+  for(let i=0;i<3;i++){const t=(waterTime*.22+i/3)%1;ctx.beginPath();ctx.arc(x+Math.sin(i*2.7)*27,y+30-t*80,1.5,0,Math.PI*2);ctx.fill();}
+  ctx.restore();
 }
 function drawWaterRuins(){
   if(cameraX+W<WATER_RUINS_START-200)return;
@@ -275,12 +316,12 @@ function drawWaterRuins(){
     }
   }
   // An aura distinguishes each pickup from the decorative temple stones.
-  if(!waterTrident.owned){waterItemPedestal(WATER_TRIDENT_SPOT,'TRIDENT');drawWaterTrident(WATER_TRIDENT_SPOT.x,WATER_TRIDENT_SPOT.y+Math.sin(waterTime*2)*4,92,-.65);}
-  if(!waterAquaSuit){waterItemPedestal(WATER_SUIT_SPOT,'AQUA SUIT · BREATHE UNDERWATER');drawAquaSuit(WATER_SUIT_SPOT.x,WATER_SUIT_SPOT.y+Math.sin(waterTime*2)*4,78);}
+  if(!waterTrident.owned){drawWaterRelicCue(WATER_TRIDENT_SPOT);waterItemPedestal(WATER_TRIDENT_SPOT,'TRIDENT');drawWaterTrident(WATER_TRIDENT_SPOT.x,WATER_TRIDENT_SPOT.y+Math.sin(waterTime*2)*4,92,-.65);}
+  if(!waterAquaSuit){drawWaterRelicCue(WATER_SUIT_SPOT);waterItemPedestal(WATER_SUIT_SPOT,'AQUA SUIT');drawAquaSuit(WATER_SUIT_SPOT.x,WATER_SUIT_SPOT.y+Math.sin(waterTime*2)*4,78);}
 }
 function drawWaterAdventure(){
   // The trident sits just after the gate, before the first temple arch.
-  if(cameraX+W>=WATER_GATE.exitX-100&&cameraX+W<WATER_RUINS_START-200&&!waterTrident.owned){waterItemPedestal(WATER_TRIDENT_SPOT,'TRIDENT');drawWaterTrident(WATER_TRIDENT_SPOT.x,WATER_TRIDENT_SPOT.y+Math.sin(waterTime*2)*4,92,-.65);}
+  if(cameraX+W>=WATER_GATE.exitX-100&&cameraX+W<WATER_RUINS_START-200&&!waterTrident.owned){drawWaterRelicCue(WATER_TRIDENT_SPOT);waterItemPedestal(WATER_TRIDENT_SPOT,'TRIDENT');drawWaterTrident(WATER_TRIDENT_SPOT.x,WATER_TRIDENT_SPOT.y+Math.sin(waterTime*2)*4,92,-.65);}
   drawWaterRuins();drawNeptunus();
   for(const p of neptunusShots){
     const x=p.x-cameraX;
@@ -288,7 +329,7 @@ function drawWaterAdventure(){
     ctx.fillStyle=p.kind==='tide'?'#80f7df':'#b3fff1';ctx.strokeStyle='#268fb1';ctx.lineWidth=4;
     ctx.beginPath();ctx.arc(x,p.y,p.r,0,7);ctx.fill();ctx.stroke();ctx.strokeStyle='#f0fff5';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x-3,p.y-3,p.r*.6,3.3,5);ctx.stroke();
   }
-  if(neptunus.active&&neptunus.hp>0){
+  if(neptunus.active&&neptunus.sealed&&neptunus.hp>0){
     ctx.fillStyle='rgba(114,246,226,.25)';ctx.fillRect(WATER_ARENA.left-65-cameraX,680,55,820);
   }
   const exit=WATER_ARENA.right-cameraX;
@@ -322,7 +363,7 @@ function drawWaterAdventureHUD(){
     ctx.fillStyle=t.cyber?'#67f7ff':'#ffe3a0';ctx.font='bold 12px system-ui';ctx.textAlign='left';ctx.fillText(`${t.cyber?'CYBER ':''}TRIDENT · ${t.mode.toUpperCase()}${t.shot?(t.shot.returning?' · RETURNING':' · IN FLIGHT'):''}`,x+12,y+18);
     ctx.fillStyle='#d8e9e7';ctx.font='11px system-ui';ctx.fillText('Z: switch · X/F: use · arrows: aim',x+12,y+34);
   }
-  const b=neptunus;if(!b.active||b.hp<=0)return;
+  const b=neptunus;if(!b.active||b.hp<=0||player.x<WATER_ARENA.left-180)return;
   const zoom=waterViewSize().scale;
   const x=waterClamp((b.x+b.w/2-cameraX)*zoom,110,W-110),y=waterClamp((b.y-cameraY-32)*zoom,110,playfieldHeight()-38);
   ctx.fillStyle='rgba(13,42,65,.8)';roundRect(x-103,y-23,206,47,12);ctx.textAlign='center';ctx.font='bold 11px system-ui';ctx.fillStyle='#ffe3a0';ctx.fillText('NEPTUNUS',x,y-6);

@@ -12,7 +12,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
    return {version:BUILD_INFO.version,build:BUILD_INFO.build,documentBytes:nav.decodedBodySize,resourceCount:resources.length,
     resourceBytes:resources.reduce((n,r)=>n+r.decodedBodySize,0),developerToolsEnabled:DEVELOPER_TOOLS_ENABLED};
   });
-  assert.equal(audit.version,'0.22.0');assert.equal(audit.developerToolsEnabled,false);
+  assert.equal(audit.version,'0.22.1');assert.equal(audit.developerToolsEnabled,false);
   assert.equal(await page.locator('#developerMenu,[data-dev-world],#developerCoins,#developerWalletForm').count(),0,'developer controls are removed from the production DOM');
   await page.getByRole('button',{name:'World map',exact:true}).click();
   for(const viewport of [{width:1100,height:950},{width:390,height:844},{width:844,height:390}]){
@@ -33,13 +33,13 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   assert(await page.evaluate(()=>lives===3&&coinWallet===5&&level==='meadow'),'five-second current-level restart works without the removed menu');
   await page.evaluate(()=>{completeWorld('meadow');completeWorld('air');openWorldMap();});
   assert.equal(await page.locator('[data-world]:not(:disabled)').count(),3);
-  await page.locator('[data-world="meadow"]').click();await page.locator('#mapAvailability').click();assert.equal(await page.evaluate(()=>level),'meadow');
+  await page.locator('[data-world="meadow"]').click();assert.equal(await page.evaluate(()=>level),'meadow');
   await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>typeof player==='object');
   assert(await page.evaluate(()=>level==='water'&&coinWallet===5&&!developerRun),'saved wallet and ordered progress survive reload');
   await page.getByRole('button',{name:'World map',exact:true}).click();await page.keyboard.press('d');
   assert.equal(await page.evaluate(()=>state),'map');assert.equal(await page.locator('#developerMenu').count(),0);assert(await page.locator('[data-world="final"]').isDisabled());
   assert.deepEqual(errors,[]);assert.deepEqual(failed,[],'all requested release files load');
-  fs.writeFileSync('previews/production-release-audit-v0.22.0.json',JSON.stringify(audit,null,2)+'\n');
+  fs.writeFileSync('previews/production-release-audit-v0.22.1.json',JSON.stringify(audit,null,2)+'\n');
   console.log('PASS production release: developer UI absent, D/query flags/helpers cannot grant coins or skip worlds, desktop/phone/landscape map, real paid revive and 5-second restart, ordered unlock/replay and saved progress, no runtime/missing-resource errors.');
   console.log(JSON.stringify(audit));
  }finally{await browser.close();}

@@ -93,8 +93,10 @@ html.game-expanded body { position:fixed; inset:0; touch-action:none; }
 .revive-mode #startButton { width:100%; font:900 14px system-ui; box-shadow:0 5px 0 #bf783c; }
 .revive-mode .brand-logo { width:64px; height:64px; }
 .revive-mode .card { padding:22px; }
+.overlay.revive-mode { overflow:auto; align-items:safe center; }
 #reviveWallet { margin:0; color:#ffdc8b; font-weight:800; }
 #reviveAdStatus { margin:0; font-size:13px; }
+#waterRetryHint { margin:0; padding:8px; border-radius:8px; background:rgba(174,224,206,.09); color:#e4f0cb; font-size:12px; line-height:1.4; }
 @media(max-height:500px){
   .game-frame .overlay.revive-mode { padding:10px; align-items:safe center; }
   .revive-mode .brand-logo, .revive-mode .kicker, .revive-mode .build-info { display:none; }
@@ -223,6 +225,7 @@ kbd { padding: 2px 6px; border: 1px solid #43505b; border-radius: 4px; color: #b
             <p>Gather sun-coins, dodge the mossy undead, and reach the elemental shrine.</p>
             <div id="reviveOptions" hidden>
               <p id="reviveWallet"></p>
+              <p id="waterRetryHint" role="status" hidden></p>
               <button id="reviveCoinButton" type="button">20 coins · Continue from checkpoint with 1 heart</button>
               <button id="reviveAdButton" type="button">Test ad (5 seconds) · Restart level with 3 hearts</button>
               <p id="reviveAdStatus" role="status" aria-live="polite">Test ad only—no real advertisement.</p>
@@ -677,7 +680,7 @@ const gameFrame = document.querySelector('.game-frame');
 const gameShell = document.querySelector('.game-shell');
 for(const event of ['selectstart','contextmenu'])gameShell.addEventListener(event,e=>e.preventDefault());
 // Release timestamp identifies this artifact, not the later Pages job completion.
-const BUILD_INFO=Object.freeze({version:'0.22.0',build:2026110101,builtAt:'2026-11-01',builtLabel:'1 November 2026',deployment:'Adventure release'});
+const BUILD_INFO=Object.freeze({version:'0.22.1',build:2026111601,builtAt:'2026-11-16',builtLabel:'16 November 2026',deployment:'Bunny Hop music and helpful adventures'});
 document.querySelector('#buildInfo').textContent=`v${BUILD_INFO.version} · Build ${BUILD_INFO.build} · ${BUILD_INFO.builtLabel} · ${BUILD_INFO.deployment}`;
 const standaloneMode=()=>Boolean(window.navigator?.standalone||window.matchMedia?.('(display-mode: standalone)').matches);
 const iphoneSafari=()=>/iPhone|iPod/.test(window.navigator?.userAgent||'');
@@ -756,6 +759,84 @@ function freshTempest(){return{x:5330,y:-1865,w:120,h:175,hp:TEMPEST_MAX_HP,dizz
 let tempest=freshTempest(),tempestWinds=[];
 const keys = new Set();
 let state = "title", cameraX = 0, cameraY = 0, lastTime = 0, soundOn = true, audioCtx;
+// GAME_MUSIC_BEGIN
+// Original sixteen-bar "Bunny Hop" theme: soft plucks, bass and offbeat chords.
+// Synthesized locally; no recording, external music service or audio download.
+const GAME_MUSIC={tempo:112,volume:.35,melody:[
+  [76,79,81,79,76,null,74,72],[74,76,79,null,76,74,72,null],
+  [72,76,81,79,76,null,74,76],[79,76,74,72,69,null,72,null],
+  [77,81,84,81,79,77,76,null],[74,77,79,null,77,76,74,null],
+  [79,83,86,83,81,79,77,74],[76,74,72,null,79,null,74,null],
+  [76,79,84,83,81,79,76,null],[74,76,79,81,79,null,76,74],
+  [72,76,81,84,83,81,79,76],[74,76,79,null,76,72,69,null],
+  [77,81,84,null,81,79,77,76],[74,77,81,79,77,null,74,null],
+  [79,83,86,84,83,81,79,74],[76,79,74,71,72,null,null,null]
+],roots:[48,48,45,45,41,41,43,43,48,48,45,45,41,41,43,48]};
+let gameAudioBus=null,gameMusicBus=null,gameAudioUnlocked=false,gameAudioForeground=true,gameAudioMuted=null;
+let gameMusicStep=0,gameMusicNext=0,gameMusicRunning=false;
+const gameMusicVoices=new Set();
+function ensureGameAudio(){
+  if(audioCtx?.state==='closed'){audioCtx=null;gameAudioBus=null;gameMusicBus=null;gameAudioMuted=null;}
+  if(!audioCtx){const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return null;try{audioCtx=new Audio();}catch{return null;}}
+  if(!gameAudioBus){
+    gameAudioBus=audioCtx.createGain();gameAudioBus.gain.value=1;gameAudioBus.connect(audioCtx.destination);
+    gameMusicBus=audioCtx.createGain();gameMusicBus.gain.value=GAME_MUSIC.volume;gameMusicBus.connect(gameAudioBus);
+    audioCtx.addEventListener?.('statechange',()=>updateGameMusic());
+  }
+  return audioCtx;
+}
+function unlockGameAudio(){
+  if(!soundOn)return;
+  gameAudioUnlocked=true;const context=ensureGameAudio();if(!context)return;
+  if(context.state==='suspended'||context.state==='interrupted'){
+    try{const pending=context.resume();pending?.then(()=>updateGameMusic()).catch(()=>{});}catch{/* A later gesture can retry. */}
+  }
+  updateGameMusic();
+}
+function stopGameMusic(){
+  if(!gameMusicRunning&&!gameMusicVoices.size)return;
+  gameMusicRunning=false;gameMusicNext=0;
+  const now=audioCtx?.currentTime||0;
+  for(const voice of gameMusicVoices){
+    voice.gain.gain.cancelScheduledValues(now);voice.gain.gain.setTargetAtTime(.0001,now,.006);
+    try{voice.osc.stop(now+.025);}catch{/* The voice may already have ended. */}
+  }
+  gameMusicVoices.clear();
+}
+function gameMusicNote(midi,when,duration,volume,type='sine'){
+  if(!audioCtx||!gameMusicBus)return;
+  const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type=type;osc.frequency.value=440*Math.pow(2,(midi-69)/12);
+  gain.gain.setValueAtTime(.0001,when);gain.gain.linearRampToValueAtTime(volume,when+.008);
+  gain.gain.exponentialRampToValueAtTime(.0001,when+duration);
+  osc.connect(gain);gain.connect(gameMusicBus);
+  const voice={osc,gain};gameMusicVoices.add(voice);
+  osc.onended=()=>{gameMusicVoices.delete(voice);osc.disconnect();gain.disconnect();};
+  osc.start(when);osc.stop(when+duration+.01);
+}
+function scheduleGameMusicStep(step,when){
+  const bar=Math.floor(step/8)%16,beat=step%8,note=GAME_MUSIC.melody[bar][beat],root=GAME_MUSIC.roots[bar];
+  if(note!==null){gameMusicNote(note,when,.23,.065);gameMusicNote(note+12,when,.11,.008,'triangle');}
+  if(beat%4===0)gameMusicNote(root+(beat===4?7:0),when,.24,.042,'triangle');
+  if(beat%4===2){gameMusicNote(root+12,when,.12,.012,'triangle');gameMusicNote(root+(root===45?15:16),when,.14,.012,'triangle');gameMusicNote(root+19,when,.12,.008,'triangle');}
+}
+function updateGameMusic(){
+  if(!audioCtx||!gameAudioBus)return;
+  const muted=!soundOn||!gameAudioForeground||document.hidden||state==='reviveAd',now=audioCtx.currentTime;
+  if(gameAudioMuted!==muted){gameAudioBus.gain.cancelScheduledValues(now);gameAudioBus.gain.setTargetAtTime(muted?0:1,now,.012);gameAudioMuted=muted;}
+  if(muted||!gameAudioUnlocked||state!=='playing'||audioCtx.state!=='running'){stopGameMusic();return;}
+  if(!gameMusicRunning||gameMusicNext<now-.15){gameMusicNext=now+.035;gameMusicRunning=true;}
+  const eighth=60/GAME_MUSIC.tempo/2;
+  while(gameMusicNext<now+.12){scheduleGameMusicStep(gameMusicStep,gameMusicNext);gameMusicStep=(gameMusicStep+1)%128;gameMusicNext+=eighth;}
+}
+document.addEventListener('pointerdown',()=>{if(soundOn)unlockGameAudio();},{capture:true,passive:true});
+document.addEventListener('keydown',e=>{if(!e.repeat&&soundOn)unlockGameAudio();},{capture:true});
+window.addEventListener('blur',()=>{gameAudioForeground=false;updateGameMusic();});
+window.addEventListener('focus',()=>{gameAudioForeground=true;if(gameAudioUnlocked)unlockGameAudio();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)updateGameMusic();else if(gameAudioUnlocked)unlockGameAudio();});
+window.addEventListener('pagehide',()=>{gameAudioForeground=false;updateGameMusic();});
+window.addEventListener('pageshow',()=>{gameAudioForeground=true;if(gameAudioUnlocked)unlockGameAudio();});
+
+// GAME_MUSIC_END
 const joystick = { active:false, pointerId:null, dx:0, dy:0, rawX:0, rawY:0,  jumpArmed:true, duck:false, sprint:false, motion:false, jumpGesture:null };
 const JOY = { x: W-92, y:H-94, radius:57, knob:25 };
 const ACTIONS = {
@@ -2920,21 +3001,51 @@ const NEPTUNUS_HP=10;
 const NEPTUNUS_COMBAT={hurt:.38,guard:1.35,warn:.52,enragedWarn:.42,recover:.42,enragedRecover:.32,cooldown:.25,enragedCooldown:.16};
 const WATER_TRIDENT_DASH_SPEED=720,WATER_TRIDENT_DASH_TIME=.68,WATER_TRIDENT_RETURN_SPEED=1500;
 let waterTrident,waterAquaSuit,neptunus,neptunusShots;
+// Remember a failed unprepared attempt across retries, without interrupting the first try.
+let neptunusHelpSeen=false,neptunusHelpTime=0;
+function neptunusHelpLines(){
+  if(level!=='water'||!neptunusHelpSeen||neptunus?.hp<=0)return [];
+  const lines=[];
+  if(!waterAquaSuit)lines.push('Aqua Suit: look low in the ruins, before Neptunus.');
+  if(!waterTrident.owned)lines.push('Trident: look just beyond the ship-key gate.');
+  return lines;
+}
+function rememberNeptunusFailure(){
+  if(level!=='water'||!neptunus.active||neptunus.hp<=0||player.x<=WATER_ARENA.left+80||waterAquaSuit&&waterTrident.owned)return;
+  neptunusHelpSeen=true;neptunusHelpTime=10;
+}
+function updateWaterGuidance(dt){
+  if(player.x>WATER_GATE.exitX-500)neptunusHelpTime=Math.max(0,neptunusHelpTime-dt);
+}
+function refreshWaterRetryHint(){
+  const node=document.querySelector('#waterRetryHint');if(!node)return;
+  const lines=neptunusHelpLines();node.hidden=!lines.length;
+  node.textContent=lines.length?'Hint · '+lines.join(' '):'';
+}
+function drawWaterGuidance(){
+  const lines=neptunusHelpLines();
+  if(!lines.length||neptunusHelpTime<=0||player.x<=WATER_GATE.exitX-500)return;
+  const width=Math.min(W-28,400),height=29+lines.length*17,x=(W-width)/2,y=playfieldHeight()-height-14;
+  ctx.save();ctx.fillStyle='rgba(13,42,65,.9)';roundRect(x,y,width,height,10);
+  ctx.textAlign='left';ctx.fillStyle='#ffe3a0';ctx.font='bold 12px system-ui';ctx.fillText('A little help for the next try',x+12,y+18);
+  ctx.fillStyle='#e6f7ee';ctx.font='11px system-ui';lines.forEach((line,i)=>ctx.fillText(line,x+12,y+36+i*17));ctx.restore();
+}
 const neptunusSheet=new Image();neptunusSheet.src='assets/neptunus-v2.png';
 const waterRuinsSheet=new Image();waterRuinsSheet.src='assets/ancient-water-ruins-v1.png';
 const waterTridentSheet=new Image();waterTridentSheet.src='assets/benny-trident-gold-cyber-v1.png';
 
 function waterClamp(value,min,max){return Math.max(min,Math.min(max,value));}
 function resetWaterAdventure(){
+  neptunusHelpTime=neptunusHelpSeen?10:0;
   neptunusPaintFrame=0;neptunusPreviousFrame=0;neptunusBlendAge=1;drawNeptunus.lastTime=0;
   waterTrident={owned:false,cyber:false,mode:'throw',cooldown:0,shot:null,dash:0,dx:1,dy:0};
   waterAquaSuit=false;neptunusShots=[];
-  neptunus={x:13800,y:1130,w:120,h:220,hp:NEPTUNUS_HP,active:false,mode:'idle',age:0,
+  neptunus={x:13800,y:1130,w:120,h:220,hp:NEPTUNUS_HP,active:false,sealed:false,mode:'idle',age:0,
     cooldown:.65,turn:0,facing:-1,flash:0,dizzy:0,guard:0,deathAge:0,targetX:0,targetY:0};
 }
 // The arena barrier must never separate a paid continuation from the fight.
 function ensureNeptunusCheckpoint(){
-  if(!neptunus.active||neptunus.hp<=0)return;
+  if(!neptunus.active||!neptunus.sealed||neptunus.hp<=0)return;
   if(checkpoint.arena&&checkpoint.water&&checkpoint.x>WATER_ARENA.left+80&&checkpoint.x<WATER_ARENA.right-100)return;
   const x=WATER_ARENA.left+180;
   const y=waterClamp(player.y,waterProfileY(WATER_ROOF,x)+80,waterFloorY(x)-player.h-65);
@@ -2951,7 +3062,7 @@ function waterViewSize(){
 }
 function waterAdventureSolids(){
   const walls=[];
-  if(neptunus.active&&neptunus.hp>0)walls.push({x:WATER_ARENA.left-65,y:680,w:55,h:820});
+  if(neptunus.active&&neptunus.sealed&&neptunus.hp>0)walls.push({x:WATER_ARENA.left-65,y:680,w:55,h:820});
   if(neptunus.hp>0||neptunus.deathAge<1.6)walls.push({x:WATER_ARENA.right,y:680,w:64,h:820});
   return walls;
 }
@@ -3085,7 +3196,9 @@ function pushNeptunusBubble(dt){
 function updateNeptunus(dt){
   const b=neptunus;
   player.waterBubbleGrace=Math.max(0,(player.waterBubbleGrace||0)-dt);
-  if(!b.active&&player.x>WATER_ARENA.left+80&&waterTrident.owned&&waterAquaSuit){b.active=true;ensureNeptunusCheckpoint();tone(120,.35,'triangle',.04);}
+  if(!b.active&&player.x>WATER_ARENA.left+80){b.active=true;tone(120,.35,'triangle',.04);}
+  // Unprepared challengers may retreat for the relics; a ready return seals the fight.
+  if(b.active&&!b.sealed&&waterTrident.owned&&waterAquaSuit&&player.x>WATER_ARENA.left+80){b.sealed=true;ensureNeptunusCheckpoint();}
   if(!b.active)return;
   if(b.hp<=0){b.deathAge+=dt;return;}
   b.age+=dt;b.flash=Math.max(0,b.flash-dt);b.dizzy=Math.max(0,b.dizzy-dt);b.guard=Math.max(0,b.guard-dt);
@@ -3179,7 +3292,16 @@ function waterItemPedestal(spot,label){
   const x=spot.x-cameraX,y=spot.y+52;ctx.fillStyle='#648d93';ctx.strokeStyle='#305267';ctx.lineWidth=3;
   ctx.fillStyle='#466d7b';ctx.fillRect(x-27,y+8,54,Math.max(26,waterFloorY(spot.x)-y));ctx.fillStyle='#648d93';
   ctx.beginPath();ctx.roundRect(x-42,y,84,26,6);ctx.fill();ctx.stroke();
-  ctx.fillStyle='#b1cfc0';ctx.fillRect(x-36,y-3,72,6);ctx.fillStyle='#edfbe0';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(label,x,spot.y-57);
+  ctx.fillStyle='#b1cfc0';ctx.fillRect(x-36,y-3,72,6);ctx.fillStyle='#edfbe0';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(label,x,spot.y-92);
+}
+function drawWaterRelicCue(spot){
+  if(Math.hypot(player.x+21-spot.x,player.y+29-spot.y)>480)return;
+  const x=spot.x-cameraX,y=spot.y,pulse=.5+.5*Math.sin(waterTime*2.4);
+  ctx.save();ctx.strokeStyle=`rgba(188,255,238,${.22+pulse*.13})`;ctx.lineWidth=2;
+  ctx.beginPath();ctx.ellipse(x,y+7,29+pulse*3,43+pulse*3,0,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='rgba(255,232,160,.65)';
+  for(let i=0;i<3;i++){const t=(waterTime*.22+i/3)%1;ctx.beginPath();ctx.arc(x+Math.sin(i*2.7)*27,y+30-t*80,1.5,0,Math.PI*2);ctx.fill();}
+  ctx.restore();
 }
 function drawWaterRuins(){
   if(cameraX+W<WATER_RUINS_START-200)return;
@@ -3189,12 +3311,12 @@ function drawWaterRuins(){
     }
   }
   // An aura distinguishes each pickup from the decorative temple stones.
-  if(!waterTrident.owned){waterItemPedestal(WATER_TRIDENT_SPOT,'TRIDENT');drawWaterTrident(WATER_TRIDENT_SPOT.x,WATER_TRIDENT_SPOT.y+Math.sin(waterTime*2)*4,92,-.65);}
-  if(!waterAquaSuit){waterItemPedestal(WATER_SUIT_SPOT,'AQUA SUIT · BREATHE UNDERWATER');drawAquaSuit(WATER_SUIT_SPOT.x,WATER_SUIT_SPOT.y+Math.sin(waterTime*2)*4,78);}
+  if(!waterTrident.owned){drawWaterRelicCue(WATER_TRIDENT_SPOT);waterItemPedestal(WATER_TRIDENT_SPOT,'TRIDENT');drawWaterTrident(WATER_TRIDENT_SPOT.x,WATER_TRIDENT_SPOT.y+Math.sin(waterTime*2)*4,92,-.65);}
+  if(!waterAquaSuit){drawWaterRelicCue(WATER_SUIT_SPOT);waterItemPedestal(WATER_SUIT_SPOT,'AQUA SUIT');drawAquaSuit(WATER_SUIT_SPOT.x,WATER_SUIT_SPOT.y+Math.sin(waterTime*2)*4,78);}
 }
 function drawWaterAdventure(){
   // The trident sits just after the gate, before the first temple arch.
-  if(cameraX+W>=WATER_GATE.exitX-100&&cameraX+W<WATER_RUINS_START-200&&!waterTrident.owned){waterItemPedestal(WATER_TRIDENT_SPOT,'TRIDENT');drawWaterTrident(WATER_TRIDENT_SPOT.x,WATER_TRIDENT_SPOT.y+Math.sin(waterTime*2)*4,92,-.65);}
+  if(cameraX+W>=WATER_GATE.exitX-100&&cameraX+W<WATER_RUINS_START-200&&!waterTrident.owned){drawWaterRelicCue(WATER_TRIDENT_SPOT);waterItemPedestal(WATER_TRIDENT_SPOT,'TRIDENT');drawWaterTrident(WATER_TRIDENT_SPOT.x,WATER_TRIDENT_SPOT.y+Math.sin(waterTime*2)*4,92,-.65);}
   drawWaterRuins();drawNeptunus();
   for(const p of neptunusShots){
     const x=p.x-cameraX;
@@ -3202,7 +3324,7 @@ function drawWaterAdventure(){
     ctx.fillStyle=p.kind==='tide'?'#80f7df':'#b3fff1';ctx.strokeStyle='#268fb1';ctx.lineWidth=4;
     ctx.beginPath();ctx.arc(x,p.y,p.r,0,7);ctx.fill();ctx.stroke();ctx.strokeStyle='#f0fff5';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x-3,p.y-3,p.r*.6,3.3,5);ctx.stroke();
   }
-  if(neptunus.active&&neptunus.hp>0){
+  if(neptunus.active&&neptunus.sealed&&neptunus.hp>0){
     ctx.fillStyle='rgba(114,246,226,.25)';ctx.fillRect(WATER_ARENA.left-65-cameraX,680,55,820);
   }
   const exit=WATER_ARENA.right-cameraX;
@@ -3236,7 +3358,7 @@ function drawWaterAdventureHUD(){
     ctx.fillStyle=t.cyber?'#67f7ff':'#ffe3a0';ctx.font='bold 12px system-ui';ctx.textAlign='left';ctx.fillText(`${t.cyber?'CYBER ':''}TRIDENT · ${t.mode.toUpperCase()}${t.shot?(t.shot.returning?' · RETURNING':' · IN FLIGHT'):''}`,x+12,y+18);
     ctx.fillStyle='#d8e9e7';ctx.font='11px system-ui';ctx.fillText('Z: switch · X/F: use · arrows: aim',x+12,y+34);
   }
-  const b=neptunus;if(!b.active||b.hp<=0)return;
+  const b=neptunus;if(!b.active||b.hp<=0||player.x<WATER_ARENA.left-180)return;
   const zoom=waterViewSize().scale;
   const x=waterClamp((b.x+b.w/2-cameraX)*zoom,110,W-110),y=waterClamp((b.y-cameraY-32)*zoom,110,playfieldHeight()-38);
   ctx.fillStyle='rgba(13,42,65,.8)';roundRect(x-103,y-23,206,47,12);ctx.textAlign='center';ctx.font='bold 11px system-ui';ctx.fillStyle='#ffe3a0';ctx.fillText('NEPTUNUS',x,y-6);
@@ -3446,6 +3568,7 @@ function cancelRevive(){
   startButton.disabled=false;document.querySelector('#mapOpen').disabled=false;
 }
 function refreshReviveOffer(){
+  refreshWaterRetryHint();
   const waiting=state==='reviveAd';
   document.querySelector('#reviveWallet').textContent=`Your wallet: ${coinWallet} coins`;
   document.querySelector('#reviveCoinButton').disabled=waiting||coinWallet<REVIVE_PRICE;
@@ -3586,12 +3709,12 @@ function resetGame(autoPlay = true) {
 }
 
 function tone(freq, duration=.08, type="sine", volume=.035) {
-  if (!soundOn||state==='reviveAd') return;
-  audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
-  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-  o.type=type; o.frequency.value=freq; g.gain.setValueAtTime(volume,audioCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+duration);
-  o.connect(g).connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+duration);
+  if(!soundOn||state==='reviveAd'||!gameAudioForeground||document.hidden)return;
+  const context=ensureGameAudio();if(!context)return;
+  const o=context.createOscillator(),g=context.createGain();
+  o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(volume,context.currentTime);
+  g.gain.exponentialRampToValueAtTime(.0001,context.currentTime+duration);
+  o.connect(g);g.connect(gameAudioBus);o.onended=()=>{o.disconnect();g.disconnect();};o.start();o.stop(context.currentTime+duration);
 }
 
 function start() {
@@ -3604,6 +3727,7 @@ function start() {
 }
 
 function showEnd(won) {
+  if(!won&&level==='water')rememberNeptunusFailure();
   clearInputs();
   overlay.inert=false;
   state = won ? "won" : "lost";
@@ -3676,6 +3800,10 @@ function selectWorld(world){
   document.querySelector('#mapDetail').textContent=locked?'Complete the earlier levels first.':description;
   document.querySelector('#mapAvailability').textContent=locked?'Complete earlier levels first':worldCompleted(world)?`Replay ${title}`:availability;
   document.querySelector('#mapAvailability').disabled=!canPlayWorld(world);
+}
+function launchMapWorld(world=selectedWorld){
+  if(state!=='map'||!canPlayWorld(world))return false;
+  selectWorld(world);level=world;start();return true;
 }
 function openWorldMap(){
   if(state==='reviveAd')return;
@@ -3758,13 +3886,10 @@ if(DEVELOPER_TOOLS_ENABLED){
 }else document.querySelector('#developerMenu')?.remove();
 
 // DEVELOPER_MODE_END
-document.querySelectorAll('[data-world]').forEach(button=>button.addEventListener('click',()=>selectWorld(button.dataset.world)));
+document.querySelectorAll('[data-world]').forEach(button=>button.addEventListener('click',()=>launchMapWorld(button.dataset.world)));
 document.querySelector('#mapOpen').addEventListener('click',openWorldMap);
 document.querySelector('#mapSound').addEventListener('click',()=>soundButton.click());
-document.querySelector('#mapAvailability').addEventListener('click',()=>{
-  if(state!=='map'||!canPlayWorld(selectedWorld))return;
-  level=selectedWorld;start();
-});
+document.querySelector('#mapAvailability').addEventListener('click',()=>launchMapWorld());
 document.querySelector('#mapBack').addEventListener('click',()=>{
   document.querySelector('#worldMap').hidden=true;
   if(['playing','finalReveal','finalEnding'].includes(mapReturnState)){state=mapReturnState;if(state==='finalEnding'){overlay.inert=false;overlay.classList.remove('hidden');}}else start();
@@ -4048,7 +4173,7 @@ function updateWater(dt){
   else player.air=Math.max(0,player.air-dt);
   if(player.air<=0){
     stopWaterDash();waterTrident.shot=null;
-    lives--;burst(player.x+21,player.y+25,'#e8fbff',18);tone(120,.25,'sawtooth');
+    rememberNeptunusFailure();lives--;burst(player.x+21,player.y+25,'#e8fbff',18);tone(120,.25,'sawtooth');
     if(lives<=0){showEnd(false);return;}
     player.x=checkpoint.water?checkpoint.x:WATER_START+100;player.y=checkpoint.water?checkpoint.y:WATER_SURFACE-WATER_FLOAT_HEAD;player.vx=0;player.vy=0;player.breaching=false;player.air=WATER_AIR;player.invincible=2;
   }
@@ -4108,7 +4233,7 @@ function update(dt) {
 function updateWorld(dt) {
   if (state!=="playing") return;
   // Reef life and water animation continue while Benny is on the beach.
-  if(level==='water'){waterTime+=dt;updateWaterReefLife(dt);}
+  if(level==='water'){waterTime+=dt;updateWaterGuidance(dt);updateWaterReefLife(dt);}
   if(level==='meadow'){
     updateMeadowLesson(dt);
     if(meadowShouldSwim()){updateMeadowSwimming(dt);return;}
@@ -4299,6 +4424,7 @@ function attack() {
      enemy.hp--;enemy.dizzy=.9;if('swing' in enemy)enemy.swing=0;
      burst(enemy.x+enemy.w/2,enemy.y+enemy.h/2,enemy.hp?'#c6f4fa':'#f4e9cd',12);tone(enemy.hp?240:150,.12,'triangle');
    }
+   if(level==='water'&&overlap(reach,neptunus))hitNeptunus();
    if(level==='final'){if(finalChapter==='knight'){if(overlap(reach,finalKnight))hitFinalKnight();}else for(const monster of finalMonsters)if(overlap(reach,monster))hitFinalMonster(monster);}
   for(const e of enemies)if(overlap(reach,e))hitMeadowZombie(e);
 }
@@ -6608,7 +6734,7 @@ function drawHUD() {
   ctx.fillStyle=THEME.coral;for(let i=0;i<lives;i++){ctx.beginPath();ctx.arc(219+i*22,41,8,0,7);ctx.fill();ctx.beginPath();ctx.ellipse(215+i*22,32,3,7,-.3,0,7);ctx.ellipse(223+i*22,32,3,7,.3,0,7);ctx.fill();}
   ctx.restore();
   const progress=Math.max(0,Math.min(1,(level==='air'?(descentStarted?.78+.22*Math.max(0,Math.min(1,(player.y+1690)/3460)):.78*player.x/5910):level==='earth'?player.x/EARTH_GATE_X:level==='fire'?(fireMode==='king'?.9+.1*(10-lavaKing.hp)/10:fireMode==='secondVolcano'?.65+.25*Math.max(0,(player.x-6680)/(10350-6680)):fireMode==='maze'?.45+.2*Math.max(0,(player.mazeC-1)/22):fireUnderground?.3+.15*Math.max(0,Math.min(1,(player.y+1050)/3070)):.3*player.x/4750):level==='water'?player.x/WATER_ARENA.exit:level==='final'?finalCastleProgress():player.x/(WORLD_W-150)))),progressY=H>540?110:28;ctx.fillStyle="rgba(13,32,43,.4)";roundRect(W-210,progressY,180,10,5);ctx.fillStyle=THEME.shrine;roundRect(W-210,progressY,180*progress,10,5);
-  ctx.fillStyle=level==='final'?'#f5e5bf':"rgba(13,32,43,.75)";ctx.font="700 11px system-ui";ctx.textAlign="right";ctx.fillText(level==='final'?(finalChapter==='knight'?'FINAL · THE CROWN’S SWORD':finalTowerEntered?'FINAL · LAVA TOWER':player.x<3130?'FINAL · DEAD WOODS':'FINAL · OLD CASTLE'):level==='air'?(descentStarted?"AIR · DOWNDRAFT":"AIR · CLIMB"):level==='earth'?"EARTH · WILDWOOD":level==='fire'?(fireMode==='king'?"FIRE · LAVA KING":fireMode==='secondVolcano'?"FIRE · KING’S VOLCANO":fireMode==='maze'?"FIRE · LABYRINTH":fireMode==='dropper'?"FIRE · CRATER DROP":fireMode==='volcano'?"FIRE · VOLCANO":"FIRE · EMBER PASS"):level==='water'?(player.x<WATER_CAVE_START?"WATER · SANDY SHORE":player.x<5050?"WATER · KELP GROTTO":player.x<7000?"WATER · PIRATE WRECK":player.x<WATER_GATE.exitX?"WATER · DEEP CAVE":player.x<WATER_RUINS_START?"WATER · TRIDENT PASSAGE":neptunus.active?"WATER · NEPTUNUS":"WATER · ANCIENT RUINS"):level==='meadow'?(player.inWater?'MEADOW · DIVE PASSAGE':player.x>=6920?'MEADOW · SHRINE':player.x>=MEADOW_BOW_RACK_X?'MEADOW · SWIMMING':player.x>=4800?'MEADOW · BALLOON RANGE':'FIRST MEADOW'):'ELEMENTAL SHRINE',W-30,progressY+28);
+  ctx.fillStyle=level==='final'?'#f5e5bf':"rgba(13,32,43,.75)";ctx.font="700 11px system-ui";ctx.textAlign="right";ctx.fillText(level==='final'?(finalChapter==='knight'?'FINAL · THE CROWN’S SWORD':finalTowerEntered?'FINAL · LAVA TOWER':player.x<3130?'FINAL · DEAD WOODS':'FINAL · OLD CASTLE'):level==='air'?(descentStarted?"AIR · DOWNDRAFT":"AIR · CLIMB"):level==='earth'?"EARTH · WILDWOOD":level==='fire'?(fireMode==='king'?"FIRE · LAVA KING":fireMode==='secondVolcano'?"FIRE · KING’S VOLCANO":fireMode==='maze'?"FIRE · LABYRINTH":fireMode==='dropper'?"FIRE · CRATER DROP":fireMode==='volcano'?"FIRE · VOLCANO":"FIRE · EMBER PASS"):level==='water'?(player.x<WATER_CAVE_START?"WATER · SANDY SHORE":player.x<5050?"WATER · KELP GROTTO":player.x<7000?"WATER · PIRATE WRECK":player.x<WATER_GATE.exitX?"WATER · DEEP CAVE":player.x<WATER_RUINS_START?"WATER · TRIDENT PASSAGE":neptunus.active&&player.x>=WATER_ARENA.left-180?"WATER · NEPTUNUS":"WATER · ANCIENT RUINS"):level==='meadow'?(player.inWater?'MEADOW · DIVE PASSAGE':player.x>=6920?'MEADOW · SHRINE':player.x>=MEADOW_BOW_RACK_X?'MEADOW · SWIMMING':player.x>=4800?'MEADOW · BALLOON RANGE':'FIRST MEADOW'):'ELEMENTAL SHRINE',W-30,progressY+28);
   if(level==='water'){
     const x=20,y=H>540?152:130;ctx.save();ctx.fillStyle='rgba(13,42,65,.8)';roundRect(x,y,176,32,10);
     ctx.globalAlpha=waterPortalKeyTaken?1:.55;drawWaterKeyIcon(x+19,y+16,25);ctx.globalAlpha=1;ctx.fillStyle=waterPortalKeyTaken?'#ffdf86':'#dcece7';ctx.font='bold 12px system-ui';ctx.textAlign='left';ctx.fillText(waterGate.phase==='open'?'GATE OPEN':waterPortalKeyTaken?'KEY · SWIM TO LOCK':'FIND THE SHIP KEY',x+36,y+20);ctx.restore();
@@ -6660,10 +6786,10 @@ function render(time) {
   ctx.save();ctx.beginPath();ctx.rect(0,0,W,fieldH);ctx.clip();ctx.scale(view.scale,view.scale);W=view.width;H=view.height;
   drawBackground();ctx.save();ctx.translate(0,-cameraY);if(level==='fire'){drawFireTrees();drawFireVolcano();drawFireMaze();drawSecondFireVolcano();drawFireMazeTransition();}if(level==='earth')drawEarthTrees();platforms.forEach(drawPlatform);if(level==='air')drawAirWorld();else if(level==='earth')drawEarthWorld();else if(level==='fire'){drawFireRollingStones();drawLavaKingBarriers();drawFireGate();drawLavaKing();drawFireArrowPickup();drawFireAimPath();drawBunnyArrows();}else if(level==='water')drawWaterWorld();else if(level==='final'){drawFinalWorld();drawFireAimPath();drawBunnyArrows();}else if(level==='meadow')drawMeadowLessons();else drawShrine(time);
   coins.forEach(c=>drawCoin(c,time));drawMonsterRewards();enemies.forEach(drawEnemy);fireZombies.forEach(drawFireZombie);waterSharks.forEach(drawWaterShark);waterPirates.forEach(drawWaterPirate);if(level==='final')drawFinalMonsters();drawBunny();if(level==='meadow')drawMeadowGateForeground();if(level==='earth')drawEarthVineGrip();if(level==='final')drawFinalWeapons();if(level==='air')drawHeldWindStar();if(level==='earth')drawHeldEarthKnife();if(level==='water'){drawHeldWaterEquipment();drawWaterGateForeground();drawWaterCacti();}if(level==='final'){drawFinalGateForeground();drawFinalTowerDoorForeground();drawFinalForegroundBlocks();}drawBlueCloudForeground();
-  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;ctx.restore();ctx.restore();W=nativeW;H=nativeH;drawHUD();drawEarthBossHearts();if(level==='fire')drawLavaKingHearts();if(level==='fire'||level==='meadow')drawFireArrowInventory();if(level==='final')drawFinalWeaponInventory();if(level==='air')drawWindStarInventory();if(level==='earth')drawEarthKnifeInventory();drawWaterAdventureHUD();drawTouchControls();if(developerRun){ctx.save();ctx.font='bold 11px system-ui';ctx.textAlign='left';ctx.fillStyle='#fff4ae';ctx.fillText('DEVELOPER MODE · test progress',12,playfieldHeight()-12);ctx.restore();}
+  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*1.8);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x-cameraX,p.y,p.r,0,7);ctx.fill();});ctx.globalAlpha=1;ctx.restore();ctx.restore();W=nativeW;H=nativeH;drawHUD();drawEarthBossHearts();if(level==='fire')drawLavaKingHearts();if(level==='fire'||level==='meadow')drawFireArrowInventory();if(level==='final')drawFinalWeaponInventory();if(level==='air')drawWindStarInventory();if(level==='earth')drawEarthKnifeInventory();drawWaterAdventureHUD();if(level==='water')drawWaterGuidance();drawTouchControls();if(developerRun){ctx.save();ctx.font='bold 11px system-ui';ctx.textAlign='left';ctx.fillStyle='#fff4ae';ctx.fillText('DEVELOPER MODE · test progress',12,playfieldHeight()-12);ctx.restore();}
 }
 
-function loop(ms) { const t=ms/1000,dt=Math.min(.033,t-lastTime||0);lastTime=t;update(dt);render(t);requestAnimationFrame(loop); }
+function loop(ms) { const t=ms/1000,dt=Math.min(.033,t-lastTime||0);lastTime=t;update(dt);updateGameMusic();render(t);requestAnimationFrame(loop); }
 
 window.addEventListener("keydown",e=>{if(e.code==='KeyR')return;if(state==='reviveAd'){e.preventDefault();return;}if(state==='developer'){if(e.code==='Escape')exitDeveloperMode();return;}if(e.code==='KeyO'){if(level==='final'){e.preventDefault();if(!e.repeat)cycleFinalWeapon();}else if(level==='earth'){e.preventDefault();if(!e.repeat)toggleEarthTurtle();}return;}if(e.code==='KeyM'){e.preventDefault();if(!e.repeat&&state!=='map')openWorldMap();return;}if(state==='map'){if(DEVELOPER_TOOLS_ENABLED&&e.code==='KeyD'&&!e.repeat){e.preventDefault();openDeveloperMenu();}return;}if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(!e.repeat&&(e.code==='Space'||e.code==='ArrowUp'&&!fireArcheryMode()&&!bunnySwimming()))jump();if(e.code==='KeyZ'&&!e.repeat){if(level==='final')toggleFinalWeapon();else if(level==='air')toggleWindStars();else if(level==='earth')toggleEarthKnives();else if(level==='water')toggleWaterTrident();else toggleFireAim();}if(["KeyX","KeyF"].includes(e.code)&&!e.repeat)attack();});
 window.addEventListener("keyup",e=>keys.delete(e.code));
@@ -6757,7 +6883,7 @@ function releaseJoystick(e){
 canvas.addEventListener('lostpointercapture',releaseJoystick);
 window.addEventListener('blur',clearInputs);
 canvas.addEventListener("pointerup",releaseJoystick);canvas.addEventListener("pointercancel",releaseJoystick);
-startButton.addEventListener("click",start);soundButton.addEventListener("click",()=>{soundOn=!soundOn;soundButton.textContent=`Sound: ${soundOn?"on":"off"}`;document.querySelector('#mapSound').setAttribute('aria-pressed',String(!soundOn));document.querySelector('#mapSound').setAttribute('aria-label',soundOn?'Mute sound':'Enable sound');});
+startButton.addEventListener("click",start);soundButton.addEventListener("click",()=>{soundOn=!soundOn;if(soundOn)unlockGameAudio();else updateGameMusic();soundButton.textContent=`Sound: ${soundOn?"on":"off"}`;document.querySelector('#mapSound').setAttribute('aria-pressed',String(!soundOn));document.querySelector('#mapSound').setAttribute('aria-label',soundOn?'Mute sound':'Enable sound');});
 restoreWorldProgress();restoreCoinWallet();fitGameViewport();fallbackFullscreen=standaloneMode();syncFullscreen();
 level=nextWorld();resetGame(false);if(level!=='meadow'){overlay.querySelector('.kicker').textContent=worldDetails[level][0];overlay.querySelector('h2').textContent='Continue your adventure';overlay.querySelector('.card > p:not(.kicker):not(.controls-copy)').textContent=worldDetails[level][1];startButton.textContent=worldDetails[level][2];}requestAnimationFrame(loop);
     </script>

@@ -30,6 +30,7 @@ function cancelRevive(){
   startButton.disabled=false;document.querySelector('#mapOpen').disabled=false;
 }
 function refreshReviveOffer(){
+  refreshWaterRetryHint();
   const waiting=state==='reviveAd';
   document.querySelector('#reviveWallet').textContent=`Your wallet: ${coinWallet} coins`;
   document.querySelector('#reviveCoinButton').disabled=waiting||coinWallet<REVIVE_PRICE;
