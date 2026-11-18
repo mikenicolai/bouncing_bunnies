@@ -26,7 +26,9 @@ Phones reserve an opaque gray dock below the playing field for Jump, Hit, Duck, 
 
 ## Music
 
-An original, quiet sixteen-bar “Bunny Hop” melody accompanies gameplay, with soft plucked notes, a bouncing bass line and offbeat chords. Web Audio synthesizes the tune locally without an audio download. Keyboard or touch interaction enables audio; the existing Sound buttons control both music and effects. Music pauses on menus, death screens and the simulated ad. Background tabs and unfocused windows mute all audio; returning or another input resumes it. Browsers without Web Audio can still play silently. `assets/game-music-v1.js` is embedded in the game; `tests/game-music-browser.cjs` checks desktop/touch controls, pause/mute/interruption recovery and renders the complete score to verify quiet, unclipped output.
+Meadow keeps its original “Bunny Hop” tune. Air has bright bells, Water has soft echoes, and Wildwood has syncopated percussion with occasional monkey calls. Fire has a low pulse, and Castle has a slow, darker melody. In boss arenas the music switches to a faster combat theme in a different key for each world, then returns to the level theme after the fight.
+
+Web Audio synthesizes the score and jungle calls locally. Keyboard or touch interaction enables audio. The existing Sound buttons control music and effects together. Music pauses on menus, death screens and the simulated ad. Background tabs and unfocused windows mute all audio. `assets/game-music-v1.js` is embedded in the game. `tests/game-music-browser.cjs` checks playback, encounter transitions, mute and the rendered score.
 
 ## Coins and continuing after death
 
